@@ -301,8 +301,8 @@
             ".github/workflows"
           ],
           "acceptance": "Clonar + npm ci + servicios locales reproducible; backup se restaura a instancia aislada; no exige secretos para checks unitarios.",
-          "status": "implemented",
-          "evidence": "Compose PostgreSQL 17.11-alpine con puerto loopback, volumen y healthcheck; db:up/down/backup, smoke:db y smoke:repository. Dos proyectos Docker aislados prueban restauración de documentos, versiones, auditoría y recibos. Gateway /health y /ready con comprobación de DB configurada y logs HTTP sin prompt/secret; test de contrato. CI sin credenciales ejecuta check y ambos smokes de DB; ejecución remota de GitHub pendiente porque este árbol no tiene .git."
+          "status": "verified",
+          "evidence": "Compose PostgreSQL 17.11-alpine con puerto loopback, volumen y healthcheck; db:up/down/backup, smoke:db y smoke:repository. Dos proyectos Docker aislados prueban restauración de documentos, versiones, auditoría y recibos. Gateway /health y /ready con comprobación de DB configurada y logs HTTP sin prompt/secret; test de contrato. GitHub Actions de 65baaf9 ejecutó npm ci, check, schemas, backup/restore y smoke:repository sin secretos: jobs check y database aprobados."
         }
       ]
     },

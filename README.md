@@ -48,4 +48,4 @@ El editor y el gateway consumen los paquetes compilados. Después de modificar `
 
 La IA del editor funciona con el gateway y un proveedor configurado en `.env`. Con OIDC activado también exige sesión y cuota de créditos. El guardado compartido y la cuenta se configuran como se indica en [docs/CUENTA_Y_COMPARTIDO.md](docs/CUENTA_Y_COMPARTIDO.md); MCP remoto en [docs/MCP_REMOTO.md](docs/MCP_REMOTO.md). Sin proveedor de IA, sigue disponible el canal manual (copiar contexto y pegar un lote).
 
-No subir `.env`, archivos personales de `state`, node_modules ni configuraciones MCP generadas con rutas locales. Incluí `package-lock.json` en Git. El código de aplicación no incluye una licencia de publicación abierta; decidila antes de publicar el repositorio. Las licencias de fuentes están en `brand/fonts`.
+No subir `.env`, archivos personales de `state`, node_modules ni configuraciones MCP generadas con rutas locales. Incluí `package-lock.json` en Git. El repositorio está público en GitHub por decisión del propietario, pero todavía no se eligió una licencia para el código de aplicación. Las licencias de fuentes están en `brand/fonts`.

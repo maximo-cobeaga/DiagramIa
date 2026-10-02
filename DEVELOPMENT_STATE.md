@@ -2,9 +2,13 @@
 
 ## Último checkpoint
 
+02/10/2026 (Argentina). El proyecto se publicó por instrucción del usuario en el repositorio GitHub público `maximo-cobeaga/DiagramIa`, rama `main`. El primer CI reveló un orden de build incorrecto en `smoke:repository`; se corrigió también `smoke:shared`. La ejecución del commit `65baaf9` pasó ambos jobs (`check` y `database`) en GitHub Actions; P4.5 quedó verificada. Esto publica el código, **no despliega la aplicación** ni completa el MVP. El siguiente bloque de producto continúa siendo P4.3.
+
 01/10/2026 (Argentina, continuación). Se implementó P5.2: MCP remoto Streamable HTTP con OAuth, autorización por cuenta/proyecto y scopes, conservando stdio. También está implementada P6.3 con import/export PlantUML y BPMN; P4.1, P5.1 y partes de P4.4/P6.4 venían de la sesión anterior. El primer MVP **no está completo**: faltan prueba con Auth0 y hosts MCP reales, P4.3, resto de P4.4/P6.4, P5.3 y cierre de P8. Ver estados por microfase en `BACKLOG.md` y `docs/development-plan.json`.
 
 ## Evidencia
+
+- GitHub Actions en `65baaf9`: jobs `check` y `database` aprobados después de corregir el orden de compilación MCP→API en dos scripts de smoke. `npm run smoke:repository` también pasó localmente tras la corrección. El repositorio remoto y `main` apuntan al mismo commit antes de este registro documental.
 
 - Informe breve para lectura: `docs/Estado_Diagramia_MVP.docx` resume estado, pendientes, decisiones abiertas y producto esperado en una página. Se generó con `scripts/create-status-doc.ps1`; Word lo abrió y contabilizó una página. No cambia el estado técnico de ninguna microfase.
 
@@ -50,7 +54,7 @@ P4.3, cierre de P4.4 (Pro/BYOK/costos), P5.3 (capacidades y prueba en dos hosts)
 - **Claude (único pendiente de P3):** falta `ANTHROPIC_API_KEY`. Con la key: crear `.env` en la raíz con `ANTHROPIC_API_KEY=...`, `npm run api`, y `npm run smoke:ai -- anthropic`. Si pasa, P3.1 queda verificada. El proveedor local ya se probó de verdad: `ollama serve` con `OLLAMA_CONTEXT_LENGTH=16384`, y en `.env` `DIAGRAMIA_LOCAL_BASE_URL=http://127.0.0.1:11434/v1`, `DIAGRAMIA_LOCAL_MODEL=qwen2.5-coder:7b`, `DIAGRAMIA_REQUEST_TIMEOUT_MS=420000`.
 - Auth0 real: faltan tenant, client ID/secret y callback registrado. El adapter OIDC, identidad y scoping están implementados y probados con issuer local; no afirmar producción multiusuario sin una prueba real del proveedor y revisión de seguridad/release.
 - MCP remoto real: además de Auth0, faltan API/audience/scopes configurados, proxy HTTPS público y dos hosts OAuth compatibles. El flujo local firmado pasó; el interop externo y la reconexión corresponden a P5.3.
-- Higgsfield y despliegue: sin capacidad/API autorizada ni publicación. No se activaron cobros ni servicios pagos.
+- Higgsfield y despliegue: sin capacidad/API autorizada ni despliegue de la aplicación. El repositorio de código sí se publicó en GitHub por instrucción del usuario. No se activaron cobros ni servicios pagos.
 
 ## Próxima acción inequívoca
 

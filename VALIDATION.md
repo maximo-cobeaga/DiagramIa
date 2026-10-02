@@ -205,3 +205,9 @@ Se añadió configuración en `.env.example`, guía en `docs/MCP_REMOTO.md` y AD
 ## Informe ejecutivo para lectura (01/10/2026)
 
 Se generó `docs/Estado_Diagramia_MVP.docx` a partir de `scripts/create-status-doc.ps1`. Se validó la estructura ZIP/OpenXML y cada XML; Microsoft Word abrió el archivo sin error y lo paginó en una página. El informe no cambia las decisiones ni el estado de las microfases.
+
+---
+
+# Publicación del repositorio Git (02/10/2026)
+
+Se inicializó Git y se publicó `main` en `https://github.com/maximo-cobeaga/DiagramIa`, repositorio público existente y vacío. `git check-ignore` confirmó que `.env`, `node_modules`, el ledger, respaldos y capturas no entraron al commit; el escaneo de los archivos preparados no encontró claves privadas con los patrones revisados. El informe `.docx` sí está incluido. El primer CI pasó `check` pero falló `database` por compilar API antes de MCP en `smoke:repository`; se corrigió también el orden de `smoke:shared`. `npm run smoke:repository` pasó localmente y el CI del commit `65baaf9` terminó con **`check` y `database` aprobados**. No se probó ningún despliegue.

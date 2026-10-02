@@ -4,6 +4,8 @@ Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y
 
 Para una lectura rápida del proyecto y las decisiones abiertas: `docs/Estado_Diagramia_MVP.docx`.
 
+El código está publicado en `maximo-cobeaga/DiagramIa` (GitHub, público). El CI remoto de `check` y `database` pasó el 02/10/2026; esto no equivale a desplegar el producto ni cambia los estados de las microfases pendientes.
+
 Estados: **verificada** = criterio de salida comprobado; **implementada** = alcance hecho con checks automáticos, falta revisión manual del usuario o una prueba real bloqueada; **parcial** = falta alcance (ver evidence); **pendiente** = sin empezar.
 
 | ID | Tarea | Estado |
@@ -29,7 +31,7 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 | P4.2 | Documentos y versiones durables | implementada |
 | P4.3 | Assets y jobs | pendiente |
 | P4.4 | Free/Pro y BYOK | parcial |
-| P4.5 | Operación local y CI | implementada |
+| P4.5 | Operación local y CI | verificada |
 | P5.1 | Unificar canal de cambios | implementada |
 | P5.2 | Transporte remoto y permisos | implementada |
 | P5.3 | Capacidades y hosts | pendiente |
