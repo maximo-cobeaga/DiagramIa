@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="Definitions_Approval" targetNamespace="https://diagramia.local/examples">
+  <bpmn:process id="Process_Approval" name="Aprobación simple" isExecutable="false">
+    <bpmn:startEvent id="Start" name="Solicitud recibida" />
+    <bpmn:userTask id="Review" name="Revisar solicitud" />
+    <bpmn:exclusiveGateway id="Decision" name="¿Aprobada?" />
+    <bpmn:serviceTask id="Notify" name="Avisar resultado" />
+    <bpmn:endEvent id="End" name="Terminado" />
+    <bpmn:sequenceFlow id="Flow1" sourceRef="Start" targetRef="Review" />
+    <bpmn:sequenceFlow id="Flow2" sourceRef="Review" targetRef="Decision" />
+    <bpmn:sequenceFlow id="Flow3" sourceRef="Decision" targetRef="Notify" name="sí" />
+    <bpmn:sequenceFlow id="Flow4" sourceRef="Notify" targetRef="End" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_Approval"><bpmndi:BPMNPlane id="Plane_Approval" bpmnElement="Process_Approval">
+    <bpmndi:BPMNShape id="Shape_Start" bpmnElement="Start"><dc:Bounds x="40" y="120" width="48" height="48" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Shape_Review" bpmnElement="Review"><dc:Bounds x="150" y="108" width="150" height="72" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Shape_Decision" bpmnElement="Decision"><dc:Bounds x="360" y="110" width="70" height="70" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Shape_Notify" bpmnElement="Notify"><dc:Bounds x="500" y="108" width="150" height="72" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Shape_End" bpmnElement="End"><dc:Bounds x="710" y="120" width="48" height="48" /></bpmndi:BPMNShape>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>

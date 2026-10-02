@@ -1,0 +1,17 @@
+node_modules/
+**/dist/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+state/*.diagramia.json
+state/*.tmp
+state/*.lock
+!state/.gitkeep
+coverage/
+integrations/*.generated.json
+integrations/*.generated.toml
+state/smoke/
+state/usage-ledger.json
+state/backups/

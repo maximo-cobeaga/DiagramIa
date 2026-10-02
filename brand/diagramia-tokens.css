@@ -1,0 +1,14 @@
+:root {
+  --diagramia-ink: #141619;
+  --diagramia-paper: #F4F6F8;
+  --diagramia-white: #FFFFFF;
+  --diagramia-blue: #245CF6;
+  --diagramia-lime: #D4F246;
+  --diagramia-muted: #606975;
+  --diagramia-line: #D7DCE2;
+  --diagramia-error: #AA3F25;
+  --diagramia-font: "Manrope", sans-serif;
+  --diagramia-code: "IBM Plex Mono", monospace;
+  --diagramia-ease: cubic-bezier(.22,1,.36,1);
+  --diagramia-space: 8px;
+}

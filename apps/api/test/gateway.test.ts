@@ -1,0 +1,339 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createServer,type Server} from 'node:http';
+import {readFileSync} from 'node:fs';
+import type {AddressInfo} from 'node:net';
+import {applyBatch,emptyDocument,findOverlaps} from '@diagramia/core';
+import {anthropicProvider,openAICompatibleProvider,mockProvider,ProviderError,type Provider,type ProviderRequest} from '@diagramia/providers';
+import {createApp} from '../src/server.js';
+import {UsageLedger} from '../src/usage.js';
+
+const architecture=()=>JSON.parse(readFileSync('examples/architecture.diagramia.json','utf8'));
+// La zona en la que queda el nodo que agrega una propuesta: el ordenador la restituye con un UPDATE_NODE al final del lote.
+const zoneOf=(body:{batch:{actions:{type:string;changes?:{zoneId?:string}}[]}})=>body.batch.actions.find(a=>a.type==='UPDATE_NODE'&&a.changes?.zoneId)?.changes?.zoneId;
+const listen=(server:Server)=>new Promise<string>(resolve=>server.listen(0,'127.0.0.1',()=>resolve(`http://127.0.0.1:${(server.address() as AddressInfo).port}`)));
+const redis=(id='redis')=>JSON.stringify({summary:'Agrega Redis.',clarification:null,actions:[{type:'ADD_NODE',node:{id,kind:'cache',label:'Redis',position:{x:0,y:0},size:{width:150,height:82}},placement:{inside:'backend',below:'api',gap:60}}]});
+const info=(id:string,kind:'remote'|'local'='remote')=>({id,label:id,model:'fake-1',kind,configured:true,missing:null,capabilities:{structuredOutput:false,streaming:false,vision:false,cancellation:true},pricing:{inputPerMTok:4,outputPerMTok:20}});
+/** Proveedor guionado: cada llamada consume la siguiente respuesta. Es un doble de prueba, no un modelo. */
+function scripted(replies:(string|((request:ProviderRequest)=>Promise<string>))[]){
+  const calls:ProviderRequest[]=[];
+  const provider:Provider={info:()=>info('fake'),async generate(request){
+    calls.push(request);const reply=replies[Math.min(calls.length,replies.length)-1];
+    return {text:typeof reply==='string'?reply:await reply(request),model:'fake-1',stopReason:'end_turn',usage:{inputTokens:1000,outputTokens:200},providerRequestId:null};
+  }};
+  return {provider,calls};
+}
+async function gateway(providers:Provider[],overrides:{budget?:number;perMinute?:number;timeoutMs?:number;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void}={}){
+  const ledger=new UsageLedger({dailyTokenBudget:overrides.budget??1_000_000,dailyUsdBudget:5,requestsPerMinute:overrides.perMinute??100,ledgerPath:null});
+  const server=createApp({providers,ledger,productPrompt:'Sos el asistente de Diagramia.',allowedOrigins:['http://127.0.0.1:5173'],token:null,log:overrides.log,config:{maxOutputTokens:2000,maxContextChars:60000,maxRepairs:1,timeoutMs:overrides.timeoutMs??5000}});
+  const url=await listen(server);
+  const post=(body:object,init:RequestInit={})=>fetch(url+'/v1/assist',{method:'POST',headers:{'content-type':'application/json','x-diagramia-client':'editor'},body:JSON.stringify(body),...init});
+  const ask=(extra:object={})=>({requestId:'req-1',providerId:'fake',mode:'edit',prompt:'Agregá Redis debajo de API dentro de Backend',document:architecture(),selectedIds:['api'],...extra});
+  return {url,post,ask,ledger,close:()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);})};
+}
+
+test('an edit request returns a validated proposal with its diff and never mutates anything',async()=>{
+  const {provider,calls}=scripted([redis()]),g=await gateway([provider]);
+  try{
+    const response=await g.post(g.ask()),body=await response.json();
+    assert.equal(response.status,200);assert.equal(body.kind,'proposal');
+    assert.deepEqual(body.batch.id,'req-1');assert.equal(body.batch.baseRevision,0);assert.deepEqual(body.changes.nodes.added,['redis']);
+    assert.match(calls[0].messages[0].content,/"focusNodeIds":\["api"\]/);
+    assert.ok(!calls[0].messages[0].content.includes('"id":"user"'),'el contexto de selección no incluye nodos lejanos');
+    assert.equal(body.usage.estimatedCostUsd,(1000*4+200*20)/1e6);assert.equal(body.usage.costBasis,'published-price-estimate');
+  }finally{await g.close();}
+});
+test('liveness, readiness and request logs expose no prompt or query string',async()=>{
+  const logs:{event:'http';method:string;path:string;status:number;durationMs:number}[]=[];
+  const {provider}=scripted([redis()]),g=await gateway([provider],{log:entry=>logs.push(entry)});
+  try{
+    assert.equal((await(await fetch(g.url+'/health')).json()).status,'ok');
+    assert.equal((await(await fetch(g.url+'/ready')).json()).status,'ready');
+    const response=await g.post(g.ask({prompt:'clave-privada-en-el-pedido'}));
+    assert.equal(response.status,200);
+    assert.deepEqual(logs.map(e=>[e.path,e.status]),[['/health',200],['/ready',200],['/v1/assist',200]]);
+    assert.ok(!JSON.stringify(logs).includes('clave-privada'));
+  }finally{await g.close();}
+});
+test('an invalid proposal gets one bounded repair with the engine error, then a visible failure',async()=>{
+  const broken=JSON.stringify({summary:'',actions:[{type:'ADD_EDGE',edge:{id:'x',from:'api',to:'ghost'}}]});
+  const repaired=scripted([broken,redis()]),g=await gateway([repaired.provider]);
+  try{
+    const ok=await(await g.post(g.ask())).json();
+    assert.equal(ok.kind,'proposal');assert.equal(ok.repairs,1);assert.equal(repaired.calls.length,2);
+    assert.match(repaired.calls[1].messages[2].content,/sin extremos válidos/);
+  }finally{await g.close();}
+  const hopeless=scripted([broken]),h=await gateway([hopeless.provider]);
+  try{
+    const response=await h.post(h.ask()),body=await response.json();
+    assert.equal(response.status,422);assert.equal(body.error.code,'PROPOSAL_REJECTED');assert.equal(hopeless.calls.length,2,'no hay un tercer intento');
+  }finally{await h.close();}
+});
+test('malformed new-node geometry is replaced before validation while semantic fields stay strict',async()=>{
+  const malformed=JSON.stringify({summary:'Agrega Redis.',actions:[{type:'ADD_NODE',node:{id:'redis',kind:'cache',label:'Redis',position:{'y:50,':60,width:200},size:null},placement:{inside:'backend',below:'api'}}]});
+  const {provider,calls}=scripted([malformed]),g=await gateway([provider]);
+  try{
+    const response=await g.post(g.ask()),body=await response.json();
+    assert.equal(response.status,200);assert.equal(body.kind,'proposal');assert.equal(body.repairs,0);assert.equal(calls.length,1);
+    assert.deepEqual(body.batch.actions[0].node.size,{width:160,height:80});
+    assert.deepEqual(body.batch.actions[0].node.position,{x:0,y:0});
+  }finally{await g.close();}
+  const invalid=JSON.stringify({summary:'',actions:[{type:'ADD_NODE',node:{id:'redis',kind:'invented',label:'Redis'}}]});
+  const broken=scripted([invalid]),h=await gateway([broken.provider]);
+  try{
+    const response=await h.post(h.ask());
+    assert.equal(response.status,422);
+    assert.equal(broken.calls.length,2);
+  }finally{await h.close();}
+});
+test('create mode turns a compact graph into canonical actions and lays it out without overlaps',async()=>{
+  const graph=JSON.stringify({summary:'Login completo',clarification:null,zones:[{id:'backend',label:'Backend'}],
+    nodes:[{id:'user',kind:'actor',label:'Usuario'},{id:'web',kind:'service',label:'Frontend'},{id:'api',kind:'service',label:'API',zoneId:'backend',shape:'component',details:'Autenticación',style:{fill:'#d4f246'}},{id:'db',kind:'database',label:'Usuarios',zoneId:'backend'}],
+    edges:[{from:'user',to:'web'},{from:'web',to:'api',line:'straight',endArrow:'triangle'},{from:'api',to:'db'}]});
+  const {provider,calls}=scripted([graph]),g=await gateway([provider]);
+  try{
+    const empty=emptyDocument('login','Login'),response=await g.post(g.ask({mode:'create',prompt:'Creá un login completo',document:empty,selectedIds:[]})),body=await response.json();
+    assert.equal(response.status,200);assert.equal(body.kind,'proposal');assert.equal(calls.length,1);
+    const result=applyBatch(empty,body.batch);
+    assert.equal(result.nodes.length,4);assert.equal(result.edges.length,3);
+    assert.deepEqual(result.nodes.filter(n=>['api','db'].includes(n.id)).map(n=>n.zoneId),['backend','backend']);
+    assert.equal(result.nodes.find(n=>n.id==='api')?.shape,'component');
+    assert.equal(result.nodes.find(n=>n.id==='api')?.style.fill,'#d4f246');
+    assert.equal(result.edges.find(e=>e.from==='web')?.line,'straight');
+    assert.deepEqual(findOverlaps(result).filter(i=>!['edge-through-node','label-overlap'].includes(i.type)),[]);
+  }finally{await g.close();}
+});
+test('create accepts only known semantic kind aliases and still rejects an unknown kind',async()=>{
+  const login={summary:'Inicio de sesión',clarification:null,zones:[],
+    nodes:[{id:'user',kind:'user',label:'Usuario'},{id:'web',kind:'frontend',label:'Frontend'},{id:'api',kind:'api',label:'API'},{id:'db',kind:'db',label:'Base de datos'}],
+    edges:[{from:'user',to:'web'},{from:'web',to:'api'},{from:'api',to:'db'}]};
+  const scriptedLogin=scripted([JSON.stringify(login)]),g=await gateway([scriptedLogin.provider]);
+  try{
+    const empty=emptyDocument('login-aliases','Login'),response=await g.post(g.ask({requestId:'alias-login',mode:'create',prompt:'Creá un diagrama de inicio de sesión con usuario, frontend, API y base de datos',document:empty,selectedIds:[]})),body=await response.json();
+    assert.equal(response.status,200);assert.equal(body.kind,'proposal');assert.equal(scriptedLogin.calls.length,1);
+    assert.match(scriptedLogin.calls[0].messages.at(-1)!.content,/kind DEBE ser exactamente uno de/);
+    const result=applyBatch(empty,body.batch);
+    assert.deepEqual(result.nodes.map((n:{kind:string})=>n.kind),['actor','service','service','database']);
+    assert.equal(result.edges.length,3);
+    assert.equal(empty.nodes.length,0,'el gateway no cambió el documento de origen');
+  }finally{await g.close();}
+  const bad=scripted([JSON.stringify({...login,nodes:[{...login.nodes[0],kind:'invented'},...login.nodes.slice(1)]})]),h=await gateway([bad.provider]);
+  try{
+    const response=await h.post(h.ask({requestId:'unknown-kind',mode:'create',document:emptyDocument('bad-kind','Bad'),selectedIds:[]})),body=await response.json();
+    assert.equal(response.status,422);assert.equal(bad.calls.length,2);
+    assert.match(body.error.message,/nodes\.0\.kind/);
+  }finally{await h.close();}
+});
+test('retrying the same requestId replays the stored result without a second provider call',async()=>{
+  const {provider,calls}=scripted([redis()]),g=await gateway([provider]);
+  try{
+    const first=await(await g.post(g.ask())).json(),second=await(await g.post(g.ask())).json();
+    assert.equal(calls.length,1);assert.equal(second.replayed,true);assert.deepEqual(second.batch,first.batch);
+    assert.equal((await g.post(g.ask({prompt:'Otra cosa'}))).status,409,'mismo ID con otro pedido es un conflicto');
+    assert.equal(g.ledger.summary().tokens,1200);
+  }finally{await g.close();}
+});
+test('an exhausted budget or rate limit stops the request before any provider call',async()=>{
+  const budget=scripted([redis()]),g=await gateway([budget.provider],{budget:1000});
+  try{
+    const response=await g.post(g.ask()),body=await response.json();
+    assert.equal(response.status,402);assert.equal(body.error.code,'BUDGET_EXCEEDED');assert.equal(budget.calls.length,0);
+  }finally{await g.close();}
+  const rate=scripted([redis()]),r=await gateway([rate.provider],{perMinute:1});
+  try{
+    assert.equal((await r.post(r.ask())).status,200);
+    assert.equal((await r.post(r.ask({requestId:'req-2'}))).status,429);assert.equal(rate.calls.length,1);
+  }finally{await r.close();}
+});
+test('a provider timeout fails once without retry loops; a client cancel aborts the provider call',async()=>{
+  const hang=(request:ProviderRequest)=>new Promise<string>((_,reject)=>request.signal.addEventListener('abort',()=>reject(new ProviderError('CANCELLED','abortado'))));
+  const slow=scripted([hang]),g=await gateway([slow.provider],{timeoutMs:150});
+  try{
+    const response=await g.post(g.ask()),body=await response.json();
+    assert.equal(response.status,504);assert.equal(body.error.code,'TIMEOUT');assert.equal(slow.calls.length,1);
+    assert.equal(g.ledger.summary().recent.at(-1)!.status,'failed');
+  }finally{await g.close();}
+  const cancelled=scripted([hang]),c=await gateway([cancelled.provider]);
+  try{
+    const controller=new AbortController(),pending=c.post(c.ask(),{signal:controller.signal}).catch(error=>error.name);
+    await new Promise(resolve=>setTimeout(resolve,150));controller.abort();
+    assert.equal(await pending,'AbortError');await new Promise(resolve=>setTimeout(resolve,100));
+    assert.equal(cancelled.calls[0].signal.aborted,true);assert.equal(c.ledger.summary().recent.at(-1)!.status,'cancelled');
+    assert.equal(c.ledger.summary().reservedTokens,0);
+  }finally{await c.close();}
+});
+test('explain returns text, review returns findings bound to existing IDs, ambiguity returns a clarification',async()=>{
+  const review=JSON.stringify({summary:'ok',findings:[{targetId:'db',severity:'warning',observation:'Sin réplica.',evidence:'Un solo nodo de datos.',suggestion:'Agregar réplica.'}]});
+  const clarify=JSON.stringify({summary:'',clarification:'Hay dos zonas Backend: ¿backend o backend-2?',actions:[]});
+  const {provider}=scripted(['La API consulta PostgreSQL.',review,clarify]),g=await gateway([provider]);
+  try{
+    const text=await(await g.post(g.ask({requestId:'r-explain',mode:'explain'}))).json();
+    assert.equal(text.kind,'text');assert.equal(text.text,'La API consulta PostgreSQL.');assert.equal(text.batch,undefined);
+    const findings=await(await g.post(g.ask({requestId:'r-review',mode:'review'}))).json();
+    assert.equal(findings.kind,'review');assert.equal(findings.findings[0].targetId,'db');
+    const question=await(await g.post(g.ask({requestId:'r-edit'}))).json();
+    assert.equal(question.kind,'clarification');assert.match(question.clarification,/dos zonas/);
+  }finally{await g.close();}
+});
+test('the gateway rejects foreign origins, missing client header and unconfigured providers; no key is ever listed',async()=>{
+  const g=await gateway([anthropicProvider({}),mockProvider()]);
+  try{
+    assert.equal((await fetch(g.url+'/v1/providers',{headers:{origin:'https://evil.example','x-diagramia-client':'editor'}})).status,403);
+    assert.equal((await fetch(g.url+'/v1/providers')).status,400);
+    const listing=await(await fetch(g.url+'/v1/providers',{headers:{'x-diagramia-client':'editor'}})).json();
+    assert.deepEqual(listing.providers.map((p:{id:string;configured:boolean;kind:string})=>[p.id,p.configured,p.kind]),[['anthropic',false,'remote'],['mock',true,'mock']]);
+    assert.ok(!JSON.stringify(listing).toLowerCase().includes('apikey'));
+    const response=await g.post(g.ask({providerId:'anthropic'})),body=await response.json();
+    assert.equal(response.status,409);assert.match(body.error.message,/ANTHROPIC_API_KEY/);
+  }finally{await g.close();}
+});
+
+// Pruebas de contrato de los adapters contra servidores HTTP locales que imitan la forma de cada API. No son smoke reales.
+test('Anthropic adapter sends the documented request shape and maps usage, refusals and auth errors',async()=>{
+  const seen:{headers:Record<string,unknown>;body:Record<string,unknown>}[]=[];let mode:'ok'|'refusal'|'auth'='ok';
+  const upstream=createServer(async(req,res)=>{
+    const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(chunk as Buffer);
+    seen.push({headers:req.headers,body:JSON.parse(Buffer.concat(chunks).toString())});
+    if(mode==='auth'){res.writeHead(401,{'content-type':'application/json'});return void res.end(JSON.stringify({type:'error',error:{type:'authentication_error',message:'invalid x-api-key'}}));}
+    res.writeHead(200,{'content-type':'application/json','request-id':'req_test'});
+    res.end(JSON.stringify({id:'msg_1',type:'message',role:'assistant',model:'claude-opus-5-5',content:mode==='refusal'?[]:[{type:'text',text:'hola'}],stop_reason:mode==='refusal'?'refusal':'end_turn',stop_details:mode==='refusal'?{type:'refusal',category:'cyber',explanation:''}:null,stop_sequence:null,usage:{input_tokens:10,output_tokens:5,cache_read_input_tokens:90,cache_creation_input_tokens:0}}));
+  });
+  const baseURL=await listen(upstream),provider=anthropicProvider({apiKey:'test-key',baseURL});
+  const request={system:'sistema',messages:[{role:'user' as const,content:'hola'}],maxOutputTokens:500,signal:new AbortController().signal};
+  try{
+    const result=await provider.generate(request);
+    assert.equal(result.text,'hola');assert.deepEqual(result.usage,{inputTokens:100,outputTokens:5});
+    const {headers,body}=seen[0];
+    assert.equal(headers['x-api-key'],'test-key');assert.match(String(headers['anthropic-beta']),/server-side-fallback-2026-07-01/);
+    assert.equal(body.model,'claude-opus-5-5');assert.equal(body.max_tokens,500);assert.equal(body.fallbacks,'default');
+    assert.deepEqual(body.output_config,{effort:'medium'});assert.equal(body.thinking,undefined);assert.equal(body.temperature,undefined);
+    assert.deepEqual(body.system,[{type:'text',text:'sistema',cache_control:{type:'ephemeral'}}]);
+    mode='refusal';await assert.rejects(provider.generate(request),(e:unknown)=>e instanceof ProviderError&&e.code==='REFUSED'&&/cyber/.test(e.message));
+    mode='auth';await assert.rejects(provider.generate(request),(e:unknown)=>e instanceof ProviderError&&e.code==='AUTH');
+    assert.equal(seen.length,3,'el adapter no reintenta por su cuenta');
+  }finally{upstream.closeAllConnections();await new Promise(resolve=>upstream.close(resolve));}
+});
+test('OpenAI-compatible adapter talks to /chat/completions and reports truncation and connection failures',async()=>{
+  let finish='stop';
+  const upstream=createServer(async(req,res)=>{
+    const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(chunk as Buffer);
+    const body=JSON.parse(Buffer.concat(chunks).toString());
+    assert.equal(req.url,'/v1/chat/completions');assert.equal(body.messages[0].role,'system');assert.equal(body.stream,false);
+    res.writeHead(200,{'content-type':'application/json'});
+    res.end(JSON.stringify({id:'c1',model:body.model,choices:[{finish_reason:finish,message:{role:'assistant',content:'respuesta local'}}],usage:{prompt_tokens:7,completion_tokens:3}}));
+  });
+  const base=await listen(upstream),provider=openAICompatibleProvider({baseURL:base+'/v1/',model:'qwen'});
+  const request={system:'s',messages:[{role:'user' as const,content:'hola'}],maxOutputTokens:100,signal:new AbortController().signal};
+  try{
+    assert.equal(provider.info().kind,'local');
+    assert.deepEqual(await provider.generate(request),{text:'respuesta local',model:'qwen',stopReason:'stop',providerRequestId:'c1',usage:{inputTokens:7,outputTokens:3}});
+    finish='length';await assert.rejects(provider.generate(request),(e:unknown)=>e instanceof ProviderError&&e.code==='TRUNCATED');
+  }finally{upstream.closeAllConnections();await new Promise(resolve=>upstream.close(resolve));}
+  await assert.rejects(provider.generate(request),(e:unknown)=>e instanceof ProviderError&&e.code==='UPSTREAM'&&e.retryable);
+  assert.equal(openAICompatibleProvider({}).info().configured,false);
+});
+
+test('a follow-up turn carries the conversation as text and a malformed history is rejected',async()=>{
+  const {provider,calls}=scripted([redis()]),g=await gateway([provider]);
+  try{
+    const history=[{role:'user',content:'Agregá una caché en Backend'},{role:'assistant',content:'Hay dos zonas Backend: ¿backend o backend-2?'}];
+    const body=await(await g.post(g.ask({prompt:'En backend',history}))).json();
+    assert.equal(body.kind,'proposal');
+    assert.deepEqual(calls[0].messages.map(m=>m.role),['user','assistant','user']);
+    assert.equal(calls[0].messages[1].content,history[1].content);
+    assert.ok(!calls[0].messages[0].content.includes('CONTEXTO DEL DOCUMENTO'),'el documento sólo viaja en el turno actual');
+    assert.match(calls[0].messages[2].content,/PEDIDO DEL USUARIO:\nEn backend/);
+    assert.equal((await g.post(g.ask({requestId:'req-bad',history:[{role:'assistant',content:'hola'}]}))).status,400);
+    assert.equal(calls.length,1);
+  }finally{await g.close();}
+});
+test('a large document is trimmed to the context budget and the focus survives',async()=>{
+  const doc=architecture();
+  for(let i=0;i<600;i++){
+    doc.nodes.push({id:'n'+i,kind:'service',label:'Servicio número '+i,position:{x:(i%30)*200,y:1000+Math.floor(i/30)*120},size:{width:150,height:82},zoneId:null,subtitle:''});
+    if(i)doc.edges.push({id:'e'+i,from:'n'+(i-1),to:'n'+i,label:'',alternative:false});
+  }
+  const whole=scripted(['Explicación.']),g=await gateway([whole.provider]);
+  try{
+    const body=await(await g.post(g.ask({mode:'explain',document:doc,selectedIds:[]}))).json();
+    assert.equal(body.kind,'text');assert.equal(body.contextTruncated,true);
+    assert.ok(whole.calls[0].messages[0].content.length<61_000,'el contexto respeta el presupuesto');
+    assert.match(whole.calls[0].messages[0].content,/"total":\{"nodes":604/);
+  }finally{await g.close();}
+  const focused=scripted(['Explicación.']),h=await gateway([focused.provider]);
+  try{
+    const body=await(await h.post(h.ask({mode:'explain',document:doc,selectedIds:['n300']}))).json();
+    assert.equal(body.contextTruncated,false);
+    const sent=focused.calls[0].messages[0].content;
+    assert.ok(sent.includes('"id":"n300"')&&sent.includes('"id":"n299"')&&sent.includes('"id":"n301"')&&!sent.includes('"id":"n5"'),'selección y vecinos, sin el resto');
+  }finally{await h.close();}
+});
+
+test('homonymous zones are disambiguated by code before any provider call; a selection or a written ID resolves it',async()=>{
+  const doc=architecture();doc.zones.push({id:'backend-eu',label:'Backend',bounds:{x:480,y:700,width:690,height:300}});
+  const queue=JSON.stringify({summary:'Cola.',clarification:null,actions:[{type:'ADD_NODE',node:{id:'cola',kind:'queue',label:'Cola',position:{x:0,y:0},size:{width:150,height:82}},placement:{inside:'backend-eu'}}]});
+  // Las tres primeras respuestas usan backend-eu; la cuarta, backend (la zona del nodo seleccionado en el último pedido).
+  const {provider,calls}=scripted([queue,queue,queue,queue.replace('backend-eu','backend')]),g=await gateway([provider]);
+  const ask=(extra:object)=>g.post(g.ask({prompt:'Agregá una cola dentro de Backend',document:doc,selectedIds:[],...extra}));
+  try{
+    const question=await(await ask({requestId:'q1'})).json();
+    assert.equal(question.kind,'clarification');assert.match(question.clarification,/backend, backend-eu/);assert.equal(calls.length,0);assert.equal(g.ledger.summary().tokens,0);
+    assert.equal((await(await ask({requestId:'q2',mode:'explain'})).json()).kind,'text','explicar no necesita elegir zona');
+    const bySelection=await(await ask({requestId:'q3',selectedIds:['backend-eu']})).json();assert.equal(bySelection.kind,'proposal');
+    const byId=await(await ask({requestId:'q4',prompt:'Agregá una cola dentro de Backend, en backend-eu'})).json();assert.equal(byId.kind,'proposal');
+    const byNode=await(await ask({requestId:'q5',selectedIds:['api']})).json();assert.equal(byNode.kind,'proposal','un nodo seleccionado dentro de una de las zonas alcanza');assert.equal(zoneOf(byNode),'backend');
+  }finally{await g.close();}
+});
+test('the local adapter requests native JSON mode only when the answer must be JSON',async()=>{
+  const bodies:Record<string,unknown>[]=[];
+  const upstream=createServer(async(req,res)=>{
+    const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(chunk as Buffer);
+    bodies.push(JSON.parse(Buffer.concat(chunks).toString()));
+    res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:'{}'}}],usage:{}}));
+  });
+  const provider=openAICompatibleProvider({baseURL:await listen(upstream),model:'m'}),request={system:'s',messages:[{role:'user' as const,content:'x'}],maxOutputTokens:10,signal:new AbortController().signal};
+  try{
+    await provider.generate({...request,json:true});await provider.generate(request);
+    assert.deepEqual(bodies[0].response_format,{type:'json_object'});assert.equal(bodies[1].response_format,undefined);
+  }finally{upstream.closeAllConnections();await new Promise(resolve=>upstream.close(resolve));}
+});
+
+test('when the user chose one of two homonymous zones, a proposal that uses the other one is rejected and repaired',async()=>{
+  const doc=architecture();doc.zones.push({id:'backend-eu',label:'Backend',bounds:{x:480,y:700,width:690,height:300}});
+  const queue=(zone:string)=>JSON.stringify({summary:'Cola.',clarification:null,actions:[{type:'ADD_NODE',node:{id:'cola',kind:'queue',label:'Cola',position:{x:0,y:0},size:{width:150,height:82}},placement:{inside:zone}}]});
+  const {provider,calls}=scripted([queue('backend'),queue('backend-eu')]),g=await gateway([provider]);
+  try{
+    const body=await(await g.post(g.ask({prompt:'Agregá una cola dentro de Backend',document:doc,selectedIds:['backend-eu']}))).json();
+    assert.equal(body.kind,'proposal');assert.equal(body.repairs,1);assert.equal(zoneOf(body),'backend-eu');
+    assert.match(calls[0].messages[0].content,/eligió la zona de ID "backend-eu"/);assert.match(calls[1].messages[2].content,/quedó en "backend"/);
+  }finally{await g.close();}
+});
+
+test('a local model never consumes the spending budget, but still obeys the rate limit',async()=>{
+  const calls:ProviderRequest[]=[];
+  const local:Provider={info:()=>({...info('fake','local'),pricing:null}),async generate(request){calls.push(request);return {text:redis('r'+calls.length),model:'local-1',stopReason:'stop',usage:{inputTokens:9000,outputTokens:300},providerRequestId:null};}};
+  const g=await gateway([local],{budget:1000,perMinute:2});
+  try{
+    assert.equal((await g.post(g.ask())).status,200);assert.equal((await g.post(g.ask({requestId:'req-2'}))).status,200);
+    assert.equal(g.ledger.summary().tokens,0);assert.equal(g.ledger.summary().recent.length,2);
+    assert.equal((await g.post(g.ask({requestId:'req-3'}))).status,429);
+  }finally{await g.close();}
+});
+
+test('a proposal that leaves a new node unconnected carries a visible warning',async()=>{
+  const lonely=JSON.stringify({summary:'Usuario.',clarification:null,actions:[{type:'ADD_NODE',node:{id:'cliente',kind:'actor',label:'Cliente',position:{x:40,y:400},size:{width:150,height:82}}}]});
+  const {provider}=scripted([lonely,redis()]),g=await gateway([provider]);
+  try{
+    assert.deepEqual((await(await g.post(g.ask({selectedIds:[]}))).json()).warnings,['«Cliente» queda sin ninguna conexión.']);
+    assert.deepEqual((await(await g.post(g.ask({requestId:'req-2'}))).json()).warnings,['«Redis» queda sin ninguna conexión.']);
+  }finally{await g.close();}
+});
+
+test('nulls a model writes where a field should be omitted are dropped instead of costing a repair',async()=>{
+  const sloppy=JSON.stringify({summary:null,clarification:null,actions:[{type:'ADD_NODE',node:{id:'cola',kind:'queue',label:'Cola',position:{x:0,y:0},size:{width:150,height:82},zoneId:null,subtitle:null,style:null},placement:{inside:null,below:'api',rightOf:null,gap:null}}]});
+  const {provider,calls}=scripted([sloppy]),g=await gateway([provider]);
+  try{
+    const body=await(await g.post(g.ask())).json();
+    assert.equal(body.kind,'proposal');assert.equal(body.repairs,0);assert.equal(calls.length,1);
+  }finally{await g.close();}
+});

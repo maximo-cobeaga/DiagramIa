@@ -1,0 +1,39 @@
+{
+  "id": "add-redis-001",
+  "baseRevision": 0,
+  "actions": [
+    {
+      "type": "ADD_NODE",
+      "node": {
+        "id": "redis",
+        "kind": "cache",
+        "label": "Redis",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "size": {
+          "width": 150,
+          "height": 82
+        },
+        "zoneId": null,
+        "subtitle": "CACHE"
+      },
+      "placement": {
+        "inside": "backend",
+        "below": "api",
+        "gap": 60
+      }
+    },
+    {
+      "type": "ADD_EDGE",
+      "edge": {
+        "id": "api-redis",
+        "from": "api",
+        "to": "redis",
+        "label": "Cache",
+        "alternative": false
+      }
+    }
+  ]
+}

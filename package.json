@@ -1,0 +1,39 @@
+{
+  "name": "diagramia",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @diagramia/editor",
+    "dev:landing": "node scripts/serve-landing.mjs",
+    "build": "npm run build -w @diagramia/core && npm run build -w @diagramia/interop && npm run build -w @diagramia/providers && npm run build -w @diagramia/editor && npm run build -w @diagramia/mcp && npm run build -w @diagramia/api",
+    "typecheck": "npm run build -w @diagramia/core && npm run build -w @diagramia/interop && npm run build -w @diagramia/providers && tsc --noEmit -p apps/editor/tsconfig.json && tsc --noEmit -p apps/mcp/tsconfig.json && tsc --noEmit -p apps/api/tsconfig.json",
+    "test": "npm run build -w @diagramia/core && npm run build -w @diagramia/interop && npm run build -w @diagramia/providers && npm run build -w @diagramia/mcp && node --import tsx --test packages/core/test/*.test.ts packages/interop/test/*.test.ts apps/mcp/test/*.test.ts apps/api/test/*.test.ts",
+    "check": "npm run build && npm test",
+    "mcp": "node apps/mcp/dist/index.js",
+    "schemas": "node --import tsx scripts/export-schemas.ts",
+    "postinstall": "npm run build -w @diagramia/core && npm run build -w @diagramia/interop && npm run build -w @diagramia/providers",
+    "api": "npm run dev -w @diagramia/api",
+    "smoke": "node scripts/browser-smoke.mjs",
+    "smoke:ai": "node scripts/ai-smoke.mjs",
+    "db:up": "docker compose -f infra/compose.dev.yml up -d --wait db",
+    "db:down": "docker compose -f infra/compose.dev.yml down",
+    "db:backup": "node scripts/pg-backup.mjs",
+    "smoke:db": "node scripts/pg-restore-smoke.mjs",
+    "smoke:repository": "npm run build -w @diagramia/api && npm run build -w @diagramia/mcp && node scripts/pg-repository-smoke.mjs",
+    "smoke:shared": "npm run build -w @diagramia/api && npm run build -w @diagramia/mcp && node scripts/shared-browser-smoke.mjs",
+    "smoke:mcp-remote": "npm run build -w @diagramia/mcp && npm run build -w @diagramia/api && node scripts/mcp-remote-smoke.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "tsx": "4.20.6",
+    "@types/node": "24.10.0"
+  }
+}

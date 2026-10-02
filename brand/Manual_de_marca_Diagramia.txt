@@ -1,0 +1,332 @@
+BRAND GUIDELINES / 2026
+diagramia
+Manual de marca
+Una identidad para crear, transformar y explicar ideas
+mediante un canvas visual, IA y movimiento.
+Máximo Andrés Cobeaga
+30 septiembre 2026 / Propuesta inicial
+diagramia / brand guidelines
+V1.0   /   01
+
+
+01 / NAMING
+Un nombre que puede viajar
+Decisión recomendada: conservar Diagramia, escrito como una sola palabra. La evaluación es estratégica, no una autorización de uso.
+diagramia / brand guidelines
+V1.0   /   02
+Diagramia
+La raíz diagram ayuda a reconocer la categoría. La
+terminación ia funciona como parte del nombre: no exige
+explicar la sigla española de inteligencia artificial.
+Escritura de marca
+Diagramia en texto. diagramia en el logotipo y en identificadores
+digitales. Sin tilde, espacio ni guion. Evitar DiagramIA, Diagram AI
+y cambiar el nombre según el idioma.
+Límite a considerar
+Es un nombre asociado a diagramas. Si el producto crece hacia
+creación audiovisual general, el descriptor deberá ampliar su alcance.
+Comprensión de categoría
+Alta
+Facilidad de escritura
+Alta
+Pronunciación internacional
+Media
+Distintividad verbal
+Media
+Expansión a otros usos
+Media
+Verificación pendiente
+La búsqueda web exploratoria no identificó una coincidencia directa
+clara en software. No se verificaron registros de marcas, dominios ni
+usuarios sociales. No afirmar disponibilidad ni usar el símbolo de marca
+registrada.
+
+
+02 / ESTRATEGIA
+Ideas que se pueden explicar
+Diagramia es un canvas visual para construir, editar y explicar ideas con IA y animaciones.
+diagramia / brand guidelines
+V1.0   /   03
+Dale movimiento
+a tus ideas.
+Promesa
+Pasar de una idea a una estructura editable y a una
+explicación que se puede recorrer.
+Descriptor internacional
+AI-native visual canvas.
+Expresión corta en inglés
+Ideas in motion.
+01
+Claridad
+Cada palabra, forma y movimiento ayuda a
+comprender.
+02
+Control
+El usuario puede seleccionar, revisar, editar y
+revertir.
+03
+Movimiento
+Las animaciones explican relaciones y cambios de
+estado.
+Primer público
+Equipos de IT, desarrollo y consultoría que necesitan documentar y
+explicar sistemas. Educación como expansión natural.
+
+
+03 / IDENTIDAD
+Una ruta dentro de una forma
+El símbolo combina un contorno abierto al recorrido, una conexión y un nodo. La marca debe funcionar en una sola tinta.
+diagramia / brand guidelines
+V1.0   /   04
+diagramia
+diagramia
+PRINCIPAL
+UNA TINTA
+SÍMBOLO
+Arquitectura de marca
+Una marca principal. Las funciones se nombran de forma
+descriptiva: Canvas, Animaciones, Componentes y
+Conexiones. No crear un logo nuevo para cada función.
+Las integraciones mantienen el nombre de su proveedor. Su
+presencia no implica asociación comercial ni certificación.
+
+
+04 / CONSTRUCCIÓN
+Espacio para reconocer la marca
+Usar los archivos maestros. No reconstruir el símbolo, alterar sus curvas o reemplazar el logotipo por texto de otra tipografía.
+diagramia / brand guidelines
+V1.0   /   05
+diagramia
+x
+ÁREA DE PROTECCIÓN = x
+Área de protección
+Reservar un margen equivalente a la altura del nodo del símbolo. En el
+maestro de 40 unidades, x = 8. Ningún texto, borde u otro logo debe
+invadir ese espacio.
+Tamaño mínimo recomendado
+Símbolo: 24 px en interfaces. Logotipo horizontal: 140 px. Para favicon, usar la versión
+específica simplificada de 16 a 32 px.
+Usos que se evitan
+Deformación
+Conservar siempre la proporción.
+Efectos añadidos
+Sin sombras, brillos, contornos ni degradados.
+Contraste insuficiente
+Usar versiones aprobadas según el fondo.
+Siglas enfatizadas
+No destacar IA con otro color o peso.
+
+
+05 / COLOR
+Una paleta con funciones claras
+Tinta y blanco llevan la información. Azul organiza la acción. Lima señala el movimiento y la atención.
+diagramia / brand guidelines
+V1.0   /   06
+#141619
+Tinta
+Texto y superficies oscuras
+#F4F6F8
+Papel
+Fondo principal
+#FFFFFF
+Blanco
+Superficies de trabajo
+#245CF6
+Azul
+Acción y selección
+#D4F246
+Lima
+Movimiento y foco
+Combinaciones de texto
+Tinta / Papel  16.7:1
+Blanco / Azul  5.3:1
+Tinta / Lima  14.3:1
+Texto secundario: #606975. Bordes: #D7DCE2. Error: #AA3F25. Nunca comunicar un estado solo por color; acompañarlo con una etiqueta o símbolo.
+
+
+06 / TIPOGRAFÍA
+Una voz precisa y abierta
+Manrope para la marca y la interfaz. IBM Plex Mono para código, tiempos, IDs y metadatos.
+diagramia / brand guidelines
+V1.0   /   07
+Ideas en movimiento.
+Aa Bb Cc 0123456789
+{ "flow": ["idea", "forma", "movimiento"] }
+Titular de landing
+64-126 px
+550 / 600
+Título de sección
+36-66 px
+550
+Texto principal
+16-20 px
+450
+Etiqueta de control
+14-16 px
+550 / 650
+Código y metadatos
+12-14 px
+Regular
+Reglas de composición
+Titulares breves con interlineado de
+1,05 a 1,15. Párrafos de 1,5 a 1,7. Evitar
+títulos extensos en mayúsculas. El
+espaciado negativo se limita a
+títulos grandes y al logotipo.
+Fuentes distribuidas bajo SIL Open Font
+License. Se incluyen archivos de licencia. No
+sustituyen la revisión del nombre comercial.
+
+
+07 / VOZ
+Explicar sin exagerar
+La voz es clara, curiosa y competente. Habla de acciones que el usuario puede reconocer y comprobar.
+diagramia / brand guidelines
+V1.0   /   08
+En español
+Usar voseo para la comunicación inicial en Argentina.
+Para otros mercados, localizar verbos y ejemplos sin
+cambiar la marca. Priorizar frases cortas y palabras
+habituales.
+En inglés
+Usar verbos concretos y voz activa. Evitar traducir IA
+como parte del nombre. Traducir el significado y el
+beneficio, no cada palabra de una frase.
+Compromiso de comunicación
+Distinguir funciones disponibles, propuestas y
+demostraciones. No inventar clientes, métricas, integraciones
+activas o resultados garantizados.
+Creá un flujo y recorré cada paso.
+Create a flow and explore every step.
+Tu IA trabaja sobre el mismo documento.
+Your AI works on the same document.
+Revisá los cambios antes de aplicarlos.
+Review changes before applying them.
+Dale movimiento a tus ideas.
+Bring your ideas into motion.
+
+
+08 / SISTEMA VISUAL
+La estructura es parte de la identidad
+La gráfica nace de elementos útiles del producto: nodos, conexiones, zonas, selección y timeline.
+diagramia / brand guidelines
+V1.0   /   09
+BACKEND
+Usuario
+API
+PostgreSQL
+Nodos con esquinas moderadas. Conexiones con trazos constantes. Zonas con
+bordes diferenciados y etiquetas. El color resalta la función, no decora cada pieza.
+Composición
+Usar una grilla de 8 px. Dar más espacio
+a los elementos relevantes. Las
+superficies se separan por contraste y
+bordes discretos.
+Iconografía
+Iconos simples de trazo. Mantener el
+mismo grosor y escala. Preferir
+símbolos reconocibles y etiquetas
+visibles.
+Imágenes generadas
+Recursos opcionales vinculados al
+contenido. Etiquetas, flechas y recorridos
+técnicos deben seguir bajo el control del
+motor del canvas.
+
+
+09 / MOVIMIENTO
+Animar para que se entienda
+Las animaciones son una capacidad central del producto y un comportamiento de la marca.
+diagramia / brand guidelines
+V1.0   /   10
+Intención antes
+que espectáculo.
+Mover para explicar relaciones, cambios de estado y
+recorridos. Evitar efectos que compitan con el
+contenido.
+Accesibilidad
+Respetar prefers-reduced-motion. El contenido debe seguir
+disponible sin desplazamientos intensos. Pausa, reinicio y avance
+manual siempre visibles en recorridos.
+Respuesta de interfaz
+160-240 ms
+Transición de una escena
+500-900 ms
+Paso explicativo inicial
+1,5-2,5 s
+Curva de transición
+cubic-bezier(.22,1,.36,1)
+Dos sistemas separados: historial de cambios de IA y timeline del
+contenido. Las animaciones referencian elementos estables del
+documento.
+
+
+10 / APLICACIÓN
+Una landing que demuestra la idea
+El prototipo narra la transformación de una idea mediante scroll y permite explorar un recorrido animado.
+diagramia / brand guidelines
+V1.0   /   11
+01
+Idea
+Una frase define la intención.
+02
+Estructura
+El canvas muestra piezas y
+relaciones.
+03
+Movimiento
+Una request recorre las
+conexiones.
+04
+Documento
+La estructura queda
+expresada como código.
+Interacciones del prototipo
+Scroll narrativo, navegación por etapas, reproducción, pausa,
+reinicio, timeline manual, dos escenarios, cambio de idioma y
+descarga del manual.
+Responsive
+En móvil, la narrativa se apila y el canvas conserva su proporción. La
+navegación principal se simplifica. Nunca interceptar la rueda ni secuestrar
+el scroll.
+Estado del producto
+Es una demostración de marca y experiencia. El canvas, el
+MCP y las integraciones generativas son propuestas de
+producto; la landing no ejecuta llamadas a proveedores.
+Coherencia internacional
+La demo está en español e inglés. El nombre, logo, colores y
+comportamiento permanecen iguales. La copy se adapta al idioma.
+
+
+11 / ENTREGA
+Archivos y mantenimiento
+Esta primera versión sirve como base para diseño, desarrollo y pruebas de posicionamiento.
+diagramia / brand guidelines
+V1.0   /   12
+Archivos maestros
+Logotipos SVG con letras convertidas en trazados. Símbolos
+positivos, negativos y de una tinta. Favicon. Paleta y tokens
+CSS y JSON. Fuentes y licencias. Manual PDF y texto editable.
+Antes del lanzamiento comercial
+Verificar nombre y variantes fonéticas en los mercados
+elegidos, disponibilidad de dominios y usuarios sociales.
+Probar comprensión y recuerdo con usuarios reales. Registrar
+las decisiones en una nueva versión del manual.
+Mantenimiento
+Cambiar versiones completas. Conservar un único set de maestros.
+Revisar mensajes cuando una función pase de concepto a
+disponibilidad real.
+Referencias de consulta
+Nombre
+Búsqueda exploratoria de Diagramia / 30 septiembre 2026
+Manrope
+github.com/google/fonts/tree/main/ofl/manrope
+IBM Plex Mono
+github.com/google/fonts/tree/main/ofl/ibmplexmono
+MCP
+modelcontextprotocol.io/docs/learn/server-concepts
+Higgsfield
+docs.higgsfield.ai/docs/llms.txt
+Las referencias describen fuentes y posibilidades técnicas. No acreditan
+disponibilidad del nombre, asociación con proveedores ni integraciones
+implementadas.

@@ -1,0 +1,803 @@
+# Producto: plataforma de diagramación AI-native
+
+Quiero desarrollar una plataforma de diagramación visual comparable en alcance general a Draw.io, Miro, Excalidraw o Lucidchart, pero diseñada desde cero con una filosofía **AI-native**.
+
+La idea central es que el usuario trabaje sobre un canvas completamente visual, pero que internamente todo el contenido exista como una representación estructurada en código.
+
+El producto no debe tratar a la inteligencia artificial como un chatbot añadido encima de un editor gráfico tradicional. La IA debe formar parte del núcleo de la arquitectura.
+
+## Concepto principal
+
+El usuario ve:
+
+- nodos
+- cajas
+- líneas
+- conectores
+- grupos
+- diagramas
+- texto
+- imágenes
+- iconos
+- zonas
+- animaciones
+- flujos
+- componentes
+- diagramas técnicos
+- diagramas libres
+
+Pero internamente cada elemento está representado mediante un modelo estructurado propio, idealmente JSON o una DSL específica.
+
+Por ejemplo:
+
+```json
+{
+  "id": "postgres",
+  "type": "database",
+  "label": "PostgreSQL",
+  "position": {
+    "x": 840,
+    "y": 320
+  },
+  "size": {
+    "width": 160,
+    "height": 80
+  },
+  "style": {
+    "variant": "database",
+    "theme": "blue"
+  },
+  "metadata": {
+    "technology": "PostgreSQL"
+  }
+}
+```
+
+De esta forma, la IA no necesita interpretar el canvas únicamente mediante visión.
+
+Puede entenderlo como una estructura semántica.
+
+## Principio fundamental
+
+La filosofía sería:
+
+**Lo que el usuario ve es visual.  
+Lo que el sistema entiende es código.**
+
+Esto permite que cualquier modelo de IA compatible con structured output, function calling o generación de JSON pueda modificar el canvas.
+
+La plataforma debería ser agnóstica respecto al proveedor de IA.
+
+Debería poder integrarse con:
+
+- OpenAI
+- Anthropic
+- Google Gemini
+- modelos open-source
+- modelos locales
+- APIs compatibles
+- futuros proveedores
+
+El objetivo es evitar que el producto dependa exclusivamente de un único modelo.
+
+---
+
+# Chat lateral con IA
+
+La aplicación tendría un chatbot lateral integrado al editor.
+
+El usuario podría escribir instrucciones como:
+
+- "Creá una arquitectura SaaS con React, Django, Redis y PostgreSQL."
+- "Agregá un balanceador antes del backend."
+- "Mové Redis debajo de la API."
+- "Separá frontend, backend e infraestructura."
+- "Simplificá este diagrama para mostrárselo a un cliente."
+- "Animá el recorrido de una request."
+- "Explicame este flujo paso por paso."
+- "Convertí esta arquitectura a AWS."
+- "Detectá puntos únicos de fallo."
+- "Convertí este diagrama a Mermaid."
+- "Creá documentación técnica a partir de este canvas."
+
+La IA no debería devolver únicamente texto.
+
+Debería producir acciones estructuradas sobre el canvas.
+
+Por ejemplo:
+
+```json
+{
+  "actions": [
+    {
+      "type": "ADD_NODE",
+      "node": {
+        "id": "redis",
+        "type": "cache",
+        "label": "Redis"
+      },
+      "placement": {
+        "inside": "backend-zone",
+        "below": "api"
+      }
+    },
+    {
+      "type": "ADD_EDGE",
+      "from": "api",
+      "to": "redis",
+      "label": "cache"
+    }
+  ]
+}
+```
+
+La aplicación valida las acciones y luego las ejecuta.
+
+---
+
+# IA observable
+
+Un requisito importante es que la IA no modifique silenciosamente todo el canvas.
+
+Quiero que el usuario pueda observar lo que está haciendo.
+
+Por ejemplo:
+
+1. La IA interpreta la solicitud.
+2. Identifica los elementos involucrados.
+3. Agrega un componente.
+4. Lo posiciona.
+5. Genera las conexiones.
+6. Reordena los elementos afectados.
+7. Actualiza el resultado final.
+
+Idealmente, estas operaciones deberían verse progresivamente en pantalla.
+
+También debería existir:
+
+- undo
+- redo
+- historial
+- versiones
+- comparación de cambios
+- revertir una acción de IA
+- aceptar/rechazar cambios
+
+---
+
+# Canvas semántico
+
+Una de las principales innovaciones sería introducir referencias semánticas dentro del canvas.
+
+El usuario podría crear:
+
+- zonas
+- marcadores
+- frames
+- anchors
+- regiones
+- grupos
+- referencias
+
+Por ejemplo, utilizando una herramienta llamada **Marcador** o **Zona**, el usuario puede seleccionar una región del canvas y etiquetarla como:
+
+- Backend
+- Frontend
+- Producción
+- Base de datos
+- Sistema externo
+- Seguridad
+- Flujo de autenticación
+- Arquitectura actual
+- Arquitectura futura
+
+Internamente:
+
+```json
+{
+  "id": "zone-backend",
+  "type": "zone",
+  "label": "Backend",
+  "bounds": {
+    "x": 400,
+    "y": 200,
+    "width": 600,
+    "height": 400
+  }
+}
+```
+
+De esa forma, el usuario puede decir:
+
+"Agregá Redis dentro de Backend."
+
+La IA no necesita interpretar visualmente dónde está el backend.
+
+El sistema sabe exactamente dónde se encuentra.
+
+---
+
+# Posicionamiento relativo
+
+La IA no debería encargarse principalmente de decidir coordenadas absolutas.
+
+En lugar de:
+
+```json
+{
+  "x": 453,
+  "y": 287
+}
+```
+
+debería poder expresar:
+
+```json
+{
+  "inside": "backend",
+  "below": "api",
+  "left_of": "postgres"
+}
+```
+
+Después, un motor de layout transforma esas relaciones en coordenadas.
+
+Esto debería mejorar sustancialmente la estabilidad de la generación automática.
+
+---
+
+# Selección contextual
+
+Si el usuario selecciona elementos del canvas y luego habla con la IA, el sistema debería enviar esa selección como contexto.
+
+Ejemplo:
+
+El usuario selecciona:
+
+- API
+- Redis
+- PostgreSQL
+
+Y escribe:
+
+"Ordená esta parte."
+
+La IA recibe:
+
+```json
+{
+  "selected_elements": [
+    "api",
+    "redis",
+    "postgres"
+  ]
+}
+```
+
+Esto elimina una gran cantidad de ambigüedad.
+
+También debería funcionar para:
+
+- nodos individuales
+- grupos
+- regiones
+- conexiones
+- frames
+- flujos completos
+
+---
+
+# Sistema de acciones
+
+La IA no debería editar directamente el documento completo siempre que sea posible.
+
+Debería utilizar un conjunto controlado de operaciones.
+
+Ejemplos:
+
+- ADD_NODE
+- DELETE_NODE
+- UPDATE_NODE
+- MOVE_NODE
+- RESIZE_NODE
+- ADD_EDGE
+- DELETE_EDGE
+- UPDATE_EDGE
+- CREATE_ZONE
+- CREATE_GROUP
+- GROUP_NODES
+- UNGROUP_NODES
+- UPDATE_STYLE
+- CREATE_ANIMATION
+- MOVE_TO_ZONE
+- ALIGN
+- DISTRIBUTE
+- AUTO_LAYOUT
+- ADD_LABEL
+
+Esto permite:
+
+- validación
+- seguridad
+- historial
+- undo
+- observabilidad
+- compatibilidad entre modelos
+
+---
+
+# Animaciones
+
+El producto no debería limitarse a diagramas estáticos.
+
+Quiero soportar animaciones y secuencias.
+
+Por ejemplo:
+
+"Mostrame cómo funciona el login."
+
+El sistema podría generar:
+
+1. Usuario envía credenciales.
+2. Frontend envía request.
+3. API valida datos.
+4. Auth service genera token.
+5. PostgreSQL devuelve información.
+6. Token vuelve al usuario.
+
+Visualmente podrían animarse:
+
+- líneas
+- partículas
+- nodos
+- estados
+- colores
+- resaltados
+- etiquetas
+- zoom
+- cámara
+
+Las animaciones también deberían representarse en código.
+
+Ejemplo:
+
+```json
+{
+  "animation": {
+    "id": "login-flow",
+    "steps": [
+      {
+        "highlight": "user"
+      },
+      {
+        "flow": {
+          "from": "user",
+          "to": "frontend"
+        }
+      },
+      {
+        "flow": {
+          "from": "frontend",
+          "to": "api"
+        }
+      }
+    ]
+  }
+}
+```
+
+---
+
+# Timeline
+
+Me gustaría incorporar una timeline visual similar a herramientas de animación o edición.
+
+El usuario podría controlar:
+
+- pasos
+- duración
+- orden
+- triggers
+- animaciones
+- cambios de estado
+
+Esto podría utilizarse para:
+
+- explicar sistemas
+- onboarding
+- arquitectura
+- procesos empresariales
+- presentaciones
+- educación
+- simulaciones
+
+---
+
+# Modo presentación
+
+Un diagrama podría convertirse en una presentación interactiva.
+
+Por ejemplo:
+
+Paso 1: vista general  
+Paso 2: frontend  
+Paso 3: backend  
+Paso 4: autenticación  
+Paso 5: base de datos  
+Paso 6: observabilidad  
+
+La IA podría generar esta presentación automáticamente.
+
+---
+
+# Compatibilidad
+
+Uno de los pilares del producto debe ser la interoperabilidad.
+
+Idealmente debería importar/exportar:
+
+- Mermaid
+- PlantUML
+- Graphviz DOT
+- draw.io XML
+- SVG
+- PNG
+- PDF
+- JSON
+- Markdown
+- BPMN
+- formatos UML cuando sea razonable
+
+También debería ser posible copiar el código interno de un diagrama y entregárselo directamente a una IA externa.
+
+---
+
+# AI-friendly by design
+
+Todo el producto debería estar diseñado pensando en que una IA pueda entenderlo fácilmente.
+
+Esto implica:
+
+- IDs estables
+- esquema documentado
+- nombres semánticos
+- relaciones explícitas
+- posiciones relativas
+- metadata
+- agrupación
+- jerarquías
+- selección
+- zonas
+- referencias
+- versionado
+- acciones deterministas
+
+Un diagrama debería poder describirse con una estructura relativamente compacta.
+
+Ejemplo:
+
+```json
+{
+  "zones": [...],
+  "nodes": [...],
+  "edges": [...],
+  "animations": [...],
+  "selection": [...]
+}
+```
+
+---
+
+# Diferencia respecto de Draw.io
+
+No quiero construir simplemente una alternativa visual más moderna a Draw.io.
+
+La diferencia fundamental debería ser:
+
+**Draw.io permite dibujar diagramas.**
+
+Este producto debería permitir:
+
+**crear, entender, transformar, explicar, revisar y animar diagramas mediante inteligencia artificial.**
+
+La IA debe poder operar sobre el diagrama como si estuviera trabajando con código.
+
+---
+
+# Casos de uso
+
+## Arquitectura de software
+
+Generar arquitecturas desde lenguaje natural y modificarlas mediante IA.
+
+## Cloud
+
+Crear diagramas AWS, Azure, GCP y Kubernetes.
+
+## UML
+
+Generar:
+
+- clases
+- secuencia
+- componentes
+- estados
+- casos de uso
+
+## Procesos empresariales
+
+Crear workflows y BPMN.
+
+## Educación
+
+Crear diagramas explicativos y animarlos paso a paso.
+
+## Ingeniería
+
+Modelar sistemas complejos.
+
+## Presentaciones
+
+Transformar diagramas técnicos en visualizaciones ejecutivas.
+
+## Documentación
+
+Generar documentación automáticamente a partir del diagrama.
+
+---
+
+# IA como analista
+
+La IA debería poder analizar un diagrama, no solamente modificarlo.
+
+Por ejemplo:
+
+"Revisá esta arquitectura."
+
+Y responder:
+
+- existe un posible single point of failure
+- Redis no tiene redundancia
+- no existe sistema de observabilidad
+- falta estrategia de backups
+- la base de datos está expuesta directamente
+- no existe rate limiting
+
+Las observaciones podrían aparecer directamente sobre el canvas.
+
+---
+
+# Modos de IA
+
+Podrían existir distintos modos.
+
+### Create
+
+Crear desde cero.
+
+### Edit
+
+Modificar el canvas.
+
+### Explain
+
+Explicar lo que existe.
+
+### Review
+
+Analizar y encontrar problemas.
+
+### Transform
+
+Convertir el diagrama.
+
+### Animate
+
+Crear animaciones.
+
+### Document
+
+Generar documentación.
+
+---
+
+# Modelo de IA gratuito
+
+Quiero incluir una capa gratuita de IA dentro del producto.
+
+No debería ser IA ilimitada.
+
+La estrategia inicial podría ser:
+
+Free:
+
+- modelo económico
+- cantidad limitada de prompts diarios
+- contexto limitado
+- generación de diagramas pequeños
+- edición básica
+- explicación básica
+
+Pro:
+
+- modelos superiores
+- contexto mayor
+- diagramas grandes
+- auditoría
+- animaciones
+- documentación
+- integraciones
+- mayor cantidad de prompts
+
+El backend debe abstraer el proveedor.
+
+Arquitectura aproximada:
+
+```text
+Canvas
+↓
+AI Orchestrator
+↓
+Context Builder
+↓
+LLM Router
+↓
+Structured Actions
+↓
+Validator
+↓
+Canvas Engine
+```
+
+Esto permitiría cambiar fácilmente entre OpenAI, Gemini, Claude, modelos locales u otros proveedores.
+
+---
+
+# Arquitectura técnica inicial
+
+Frontend:
+
+- React
+- TypeScript
+- motor de canvas
+- state manager
+- WebSocket para colaboración futura
+- panel lateral de IA
+- timeline
+
+El motor visual podría partir de tecnologías como:
+
+- React Flow
+- tldraw
+- Konva
+- PixiJS
+- SVG/Canvas/WebGL según la necesidad
+
+Backend:
+
+- API
+- autenticación
+- almacenamiento de documentos
+- almacenamiento de versiones
+- sistema de permisos
+- AI Gateway
+- usage tracking
+- colaboración futura
+
+Base de datos:
+
+- users
+- projects
+- diagrams
+- diagram_versions
+- diagram_elements
+- ai_actions
+- ai_conversations
+- ai_usage
+
+---
+
+# Formato interno
+
+Una parte crítica del proyecto será diseñar un esquema propio.
+
+Conceptualmente:
+
+```text
+Project
+ └── Diagram
+      ├── Zones
+      ├── Nodes
+      ├── Edges
+      ├── Groups
+      ├── Assets
+      ├── Animations
+      ├── Frames
+      ├── Variables
+      └── Metadata
+```
+
+Este formato debería convertirse en uno de los principales activos del producto.
+
+---
+
+# Visión futura
+
+A largo plazo quiero que el producto pueda funcionar también como una especie de IDE visual.
+
+Por ejemplo:
+
+Una IA podría leer un repositorio y generar automáticamente:
+
+- arquitectura
+- dependencias
+- servicios
+- APIs
+- bases de datos
+- módulos
+- flujos
+
+Y también podría ocurrir el camino contrario:
+
+diagrama → especificación → código inicial.
+
+El canvas podría convertirse en una interfaz visual entre humanos e inteligencia artificial.
+
+---
+
+# Hipótesis central del producto
+
+Los diagramadores actuales fueron diseñados principalmente para humanos y posteriormente recibieron funciones de IA.
+
+Este producto debería diseñarse desde el comienzo para que humanos e IA puedan operar sobre la misma representación.
+
+El humano trabaja visualmente.
+
+La IA trabaja estructuralmente.
+
+Ambos modifican el mismo documento.
+
+Por eso considero conceptos como:
+
+**Semantic Canvas**
+
+**Diagram-as-Code**
+
+**AI-native Canvas**
+
+**Living Diagrams**
+
+como formas adecuadas de explicar la filosofía del producto.
+
+---
+
+# Preguntas que quiero evaluar
+
+Quiero que analices este producto desde un punto de vista técnico y empresarial.
+
+Evaluá especialmente:
+
+1. Viabilidad técnica.
+2. Complejidad real del desarrollo.
+3. Qué partes son difíciles.
+4. Qué partes son relativamente fáciles.
+5. Qué arquitectura recomendarías.
+6. Qué motor de canvas utilizarías.
+7. Cómo diseñarías el formato interno.
+8. Cómo harías la interacción entre IA y canvas.
+9. Cómo resolverías el layout automático.
+10. Cómo manejarías zonas y marcadores.
+11. Cómo implementarías animaciones.
+12. Qué tan diferente es realmente de Draw.io, Miro, Figma, Lucidchart, Excalidraw y Mermaid.
+13. Qué competidores actuales se acercan a esta idea.
+14. Qué funcionalidades deberían entrar en el MVP.
+15. Qué funcionalidades deberían quedar fuera.
+16. Qué riesgos técnicos ves.
+17. Qué riesgos comerciales ves.
+18. Qué modelo de negocio utilizarías.
+19. Cómo ofrecerías IA gratuita sin que el costo sea insostenible.
+20. Qué mercado atacarías inicialmente.
+21. Qué nombre o posicionamiento le darías.
+22. Qué moat o barrera competitiva podría construir.
+23. Cómo harías que el producto sea extremadamente compatible con futuras inteligencias artificiales.
+24. Si considerás que existe una oportunidad real de convertir esto en un producto SaaS competitivo.

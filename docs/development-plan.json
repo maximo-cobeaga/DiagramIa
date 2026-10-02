@@ -1,0 +1,516 @@
+{
+  "version": 1,
+  "phases": [
+    {
+      "id": "P0",
+      "title": "Base y contratos",
+      "dependsOn": [],
+      "microphases": [
+        {
+          "id": "P0.1",
+          "title": "Auditar y ejecutar el starter",
+          "scope": "Instalar con npm ci, correr check y schemas; abrir los tres fixtures. Registrar límites reales, no regenerar el repo.",
+          "paths": [
+            "packages/core",
+            "apps/editor",
+            "apps/mcp"
+          ],
+          "acceptance": "Build limpio, 14 tests existentes aprobados y revisión visual registrada.",
+          "status": "verified",
+          "evidence": "npm ci + check + schemas en Windows 11/Node 22; los tres ejemplos abiertos en Chrome headless (npm run smoke, capturas en state/smoke)."
+        },
+        {
+          "id": "P0.2",
+          "title": "Versionado y migraciones",
+          "scope": "Agregar migración formal desde schema 1.0.0, capabilities y pruebas de fixtures anteriores.",
+          "paths": [
+            "packages/core",
+            "schemas",
+            "docs/05_CONTRATOS.md"
+          ],
+          "acceptance": "Documento viejo migrado sin cambiar IDs; versión desconocida rechazada con recuperación/exportación.",
+          "status": "verified",
+          "evidence": "Schema 1.1.0, openDocument con migración 1.0.0→1.1.0, CAPABILITIES; tests de fixtures v1.0.0 y versión desconocida; smoke de recuperación."
+        },
+        {
+          "id": "P0.3",
+          "title": "Estado y persistencia recuperable",
+          "scope": "Separar DocumentStore, ViewStore, SelectionStore y PlaybackStore. Guardado con estados/fallo/recuperación; historia acotada sin pérdida silenciosa.",
+          "paths": [
+            "apps/editor/src/store",
+            "packages/core"
+          ],
+          "acceptance": "Recarga conserva el documento; almacenamiento lleno produce aviso y export disponible; undo/redo no cambia playhead.",
+          "status": "verified",
+          "evidence": "Stores separados; guardado con estados, fallo de almacenamiento y recuperación comprobados en smoke; undo no mueve el playhead."
+        }
+      ]
+    },
+    {
+      "id": "P1",
+      "title": "Editor semántico completo",
+      "dependsOn": [
+        "P0"
+      ],
+      "microphases": [
+        {
+          "id": "P1.1",
+          "title": "Interacción de canvas",
+          "scope": "Pan, zoom al cursor, fit, selección rectangular, handles, resize, clipboard y atajos documentados.",
+          "paths": [
+            "apps/editor/src/canvas"
+          ],
+          "acceptance": "Arrastrar/zoom no desplaza nodos erróneamente; teclado y móvil operables; fit incluye todo sin labels ilegibles.",
+          "status": "implemented",
+          "evidence": "Pan, zoom al cursor, encuadre legible, marquee, manijas, clipboard y atajos. Smoke cubre arrastre, zoom, marquee, nudge y resize; pan, clipboard, pinch y táctil sin prueba automática."
+        },
+        {
+          "id": "P1.2",
+          "title": "Zonas y marcadores",
+          "scope": "Herramientas dibujables, edición de límites/labels, anchors/ports, selección por zona y reglas de membership.",
+          "paths": [
+            "packages/core",
+            "apps/editor/src/tools"
+          ],
+          "acceptance": "Agregar dentro de zona mantiene pertenencia; zona duplicada por label necesita desambiguación; límites incompatibles visibles.",
+          "status": "implemented",
+          "evidence": "Zonas dibujables, límites/labels, puertos, selección por zona, pertenencia por centro, desambiguación por label y marcadores de anotaciones sobre nodos, conexiones, zonas y frames. Smoke de zona y de anotaciones."
+        },
+        {
+          "id": "P1.3",
+          "title": "Grupos, frames y assets",
+          "scope": "Modelar/renderizar grupos anidados, frames, texto, iconos e imágenes; schema/migración y sanitización de assets.",
+          "paths": [
+            "packages/core",
+            "apps/editor/src/assets"
+          ],
+          "acceptance": "Grupo se mueve sin perder referencias; frame tiene bounds; SVG externo no ejecuta scripts; no prometer image antes de renderizarlo.",
+          "status": "implemented",
+          "evidence": "Grupos anidados, frames, texto, iconos (10 glifos) e imágenes PNG/JPEG/WebP/SVG como assets dentro del documento, con verificación de formato, SVG estático obligatorio y render por <image>. Tests de core y smoke de alta/rechazo/baja. Sin almacenamiento externo: tope de 400 KB por imagen (P4.3 lo reemplaza)."
+        },
+        {
+          "id": "P1.4",
+          "title": "Routing y layout determinista",
+          "scope": "Conectores con ports y evasión de obstáculos; relative placement, align/distribute y auto-layout local.",
+          "paths": [
+            "packages/core/src/layout",
+            "apps/editor/src/canvas"
+          ],
+          "acceptance": "Mismo input da mismo resultado; ordenar selección no mueve elementos externos; constraints imposibles se explican.",
+          "status": "implemented",
+          "evidence": "Routing ortogonal con puertos, enganches libres, líneas rectas/curvas y evasión de nodos; align/distribute, auto-layout por capas y placement con colisiones. Schema 1.3.0 agrega formas y estilos editables. El layout reserva ancho para etiquetas; test de etiquetas largas y creación real con 0 incidencias detectadas. Rutas manuales/curvas y cruces entre conexiones aún no tienen garantía general."
+        },
+        {
+          "id": "P1.5",
+          "title": "Componentes reutilizables",
+          "scope": "Biblioteca inicial arquitectura SaaS/cloud y procesos; componentes parametrizados con IDs nuevos sólo al instanciar.",
+          "paths": [
+            "packages/core",
+            "apps/editor/src/library"
+          ],
+          "acceptance": "Instanciar dos veces no colisiona IDs; editar una instancia no modifica otra; biblioteca se importa/exporta.",
+          "status": "implemented",
+          "evidence": "Biblioteca base (6 componentes), instanciación con IDs nuevos, biblioteca propia import/export; test y smoke."
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "title": "Animaciones y presentación",
+      "dependsOn": [
+        "P1"
+      ],
+      "microphases": [
+        {
+          "id": "P2.1",
+          "title": "Timeline editable",
+          "scope": "Editar duración/orden/caption, agregar/borrar pasos, repetir y recorrer; cambios pasan por acciones.",
+          "paths": [
+            "packages/core",
+            "apps/editor/src/timeline"
+          ],
+          "acceptance": "Seek al límite de cada paso exacto; editar/reabrir conserva pasos; undo de edición funciona separado de playback.",
+          "status": "implemented",
+          "evidence": "Timeline editable por acciones (ADD/UPDATE/MOVE/DELETE_STEP), repetir, recorrer; tests de core y smoke parcial (edición de pasos por UI sin prueba automática)."
+        },
+        {
+          "id": "P2.2",
+          "title": "Ramas, estados y paralelismo",
+          "scope": "Variables/triggers, escenarios explícitos, highlight y recorrido simultáneo. Runtime determinista sin ejecutar sistemas reales.",
+          "paths": [
+            "packages/core/src/animation"
+          ],
+          "acceptance": "Compra normal y rechazo cambian topología/recorrido; reintento no duplica pedido; cancelación explica liberación de stock.",
+          "status": "implemented",
+          "evidence": "Escenarios explícitos por animación, pasos por rama, estados de nodo acumulados y paralelismo por paso; runtime determinista (resolveScenario, statesAt). Ejemplo de rechazo con ramas «recuperado» y «vencido». Tests de topología/estados y smoke. No hay variables ni triggers con expresiones: se eligieron ramas con nombre (ADR 020)."
+        },
+        {
+          "id": "P2.3",
+          "title": "Cámara y presentación",
+          "scope": "Frames, focus, pan/zoom de cámara, secuencias y modo presentación con controles accesibles.",
+          "paths": [
+            "apps/editor/src/presentation"
+          ],
+          "acceptance": "Presentación funciona con teclado, pausa y reduced-motion; salir vuelve al canvas sin modificar contenido.",
+          "status": "implemented",
+          "evidence": "Frames, encuadre por paso, modo presentación con teclado, reduced-motion y pantalla completa; smoke de entrar/navegar/salir sin cambios."
+        },
+        {
+          "id": "P2.4",
+          "title": "Plantillas de explicación",
+          "scope": "Templates de login, SaaS y flujo comercial; editor de tracks básico y export de timeline estructurada.",
+          "paths": [
+            "examples",
+            "apps/editor/src/timeline"
+          ],
+          "acceptance": "Animación editable ligada a IDs; borrar nodo detecta/poda referencias con aviso de captions; varios tracks sincronizados.",
+          "status": "implemented",
+          "evidence": "Plantillas de login, SaaS y flujo comercial; schema 1.5.0 con pistas de resaltado, texto y cámara ligadas a IDs de paso; editor en grilla, reproducción/presentación sincronizadas y export de timeline JSON/Markdown. Borrado de elementos o pasos poda referencias y avisa. Tests core de migración, referencias y ramas; npm run check 81/81 y smoke Chromium 32/32. Falta revisión manual de la interfaz."
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "title": "IA real y observable",
+      "dependsOn": [
+        "P2"
+      ],
+      "microphases": [
+        {
+          "id": "P3.1",
+          "title": "Gateway local y adapters",
+          "scope": "Crear apps/api local para inference; provider interface, secrets en servidor, timeouts y capabilities. No exponer gateway sin auth.",
+          "paths": [
+            "apps/api",
+            "packages/providers"
+          ],
+          "acceptance": "Un provider real y uno local compatible funcionan con credenciales disponibles; error sin clave visible; mock marcado separado.",
+          "status": "implemented",
+          "evidence": "Gateway + adapters. Proveedor local REAL comprobado (Ollama, qwen2.5-coder:7b) con npm run smoke:ai: 6/6 en tres corridas seguidas. Error sin clave visible y demostración marcada. FALTA SÓLO: correr «npm run smoke:ai -- anthropic» cuando exista ANTHROPIC_API_KEY."
+        },
+        {
+          "id": "P3.2",
+          "title": "Contexto selectivo",
+          "scope": "Selección, zona, vecindario, límites de tokens y reglas semánticas; contexto no incluye claves.",
+          "paths": [
+            "packages/core/src/context",
+            "apps/api"
+          ],
+          "acceptance": "Editar API seleccionada conserva el resto; zonas homónimas no se adivinan; documento grande respeta presupuesto.",
+          "status": "verified",
+          "evidence": "Contexto de selección con vecinos, zonas homónimas resueltas por código antes de llamar al modelo y recorte por presupuesto; tests de gateway (documento de 600 nodos) y smoke real local."
+        },
+        {
+          "id": "P3.3",
+          "title": "Propuestas y staging observable",
+          "scope": "Chat lateral, structured actions, reparación acotada, preview/diff, staged steps, aceptar/rechazar y cancelar.",
+          "paths": [
+            "apps/editor/src/assistant",
+            "apps/api"
+          ],
+          "acceptance": "Prompt agrega Redis correctamente; rechazo y cancelación no cambian el documento; stale revision no sobreescribe trabajo manual.",
+          "status": "verified",
+          "evidence": "Chat con historial, reparación acotada, vista previa de la propuesta en el canvas paso a paso, diff, aceptar/rechazar/cancelar y revisión obsoleta. Smoke de navegador (cancelar, previsualizar, rechazar, obsoleta, regenerar) y «Agregá Redis…» correcto con un modelo real local."
+        },
+        {
+          "id": "P3.4",
+          "title": "Modos de IA y anotaciones",
+          "scope": "Create/Edit/Explain/Review/Transform/Animate/Document con salidas apropiadas y evidencia referenciada.",
+          "paths": [
+            "apps/editor",
+            "apps/api",
+            "packages/core"
+          ],
+          "acceptance": "Review crea observaciones localizadas; Explain no muta canvas; Animate produce steps válidos; Document exporta texto consistente.",
+          "status": "implemented",
+          "evidence": "Siete modos. Editar, Explicar, Revisar y Crear comprobados con un modelo real local; Review se guarda como anotaciones. Un login de Crear falló por kind no canónico: el prompt ahora enumera valores válidos y el gateway traduce sólo alias conocidos. El mismo pedido pasó en un intento con cuatro nodos canónicos y cinco conexiones; kind desconocido sigue rechazado. Transformar, Animar y Documentar aún no tienen prueba con modelo real."
+        },
+        {
+          "id": "P3.5",
+          "title": "Uso, presupuesto y resiliencia",
+          "scope": "Rate limits, budget máximo por solicitud, reservation/settlement, retries con idempotencia y cancelación.",
+          "paths": [
+            "apps/api/src/usage"
+          ],
+          "acceptance": "Timeout no dispara loops de gasto; retries no duplican acciones; costo real/estimado diferenciado; corte de gasto comprobado.",
+          "status": "verified",
+          "evidence": "Rate limit, presupuesto diario con reserva/liquidación y corte antes del proveedor, idempotencia por requestId, timeout sin reintentos, cancelación y costo estimado diferenciado del real; tests de gateway y reintento idempotente en el smoke real. Recibos en memoria hasta P4.2."
+        }
+      ]
+    },
+    {
+      "id": "P4",
+      "title": "SaaS y persistencia",
+      "dependsOn": [
+        "P3"
+      ],
+      "microphases": [
+        {
+          "id": "P4.1",
+          "title": "Identidad y proyectos",
+          "scope": "OIDC mantenido, proyectos y membresías; elegir proveedor documentado sin desarrollar auth casera.",
+          "paths": [
+            "apps/api",
+            "apps/editor"
+          ],
+          "acceptance": "Usuario A no puede leer ni editar documentos de B; sesiones vencidas retornan error recuperable; secrets fuera de build.",
+          "status": "implemented",
+          "evidence": "OIDC Authorization Code + PKCE con openid-client, state/nonce, firma de ID Token y cookie de sesión HttpOnly; proyectos privados con IDs de almacenamiento opacos, membresía y autorización por cuenta. Tests con issuer OIDC firmado y smoke PostgreSQL real: A no lee ni edita B, sesión vencida 401, mismo ID semántico en proyectos distintos. Falta conexión manual a Auth0 real y revisión en navegador con dos cuentas."
+        },
+        {
+          "id": "P4.2",
+          "title": "Documentos y versiones durables",
+          "scope": "PostgreSQL, CAS, transacciones, versiones/receipts, auditoría, migraciones y recuperación.",
+          "paths": [
+            "apps/api/src/repositories",
+            "migrations"
+          ],
+          "acceptance": "Dos writers misma revision: uno gana y otro obtiene conflicto; versión restaurable; reintentos iguales reconocidos tras reinicio.",
+          "status": "implemented",
+          "evidence": "PostgreSQL con migraciones SQL versionadas/checksum, transacción y CAS por revisión, versiones y auditoría inmutables, recibos durables y restore que crea revisión nueva. smoke:repository real en dos proyectos Docker: carrera con un ganador, rollback, 101 lotes, retry tras reabrir Pool y backup/restore con versiones y recibos. Editor y MCP ya usan el repositorio por un canal local; cuentas privadas y cuotas por proyecto usan la migración 002."
+        },
+        {
+          "id": "P4.3",
+          "title": "Assets y jobs",
+          "scope": "Storage compatible S3, uploads seguros, cuotas, referencias y garbage collection sin borrar assets usados.",
+          "paths": [
+            "apps/api/src/assets",
+            "workers"
+          ],
+          "acceptance": "Assets privados protegidos; formatos/tamaños inválidos rechazados; fallos de worker no dejan jobs eternos.",
+          "status": "pending"
+        },
+        {
+          "id": "P4.4",
+          "title": "Free/Pro y BYOK",
+          "scope": "Entitlements, cuotas reales, usage ledger y billing adapter si se decide cobrar. No publicar Free sin límite de gasto.",
+          "paths": [
+            "apps/api/src/billing",
+            "apps/editor"
+          ],
+          "acceptance": "Quota agotada bloquea solicitud antes de provider; callbacks deduplicados; BYOK aislada/cifrada; no inventar precios o cobros.",
+          "status": "partial",
+          "evidence": "Free por cuenta: máximo 3 documentos, 10 MB por documento incluidas versiones y 30 MB por proyecto; 20 créditos IA mensuales, 6 diarios, Crear cuesta 2 y otros modos 1. Reserva/settlement antes del proveedor, recibos durables y reintentos idempotentes comprobados en PostgreSQL real. Faltan medición económica con proveedor pago, Pro, callbacks de cobro, BYOK cifrada y límite de gasto de operación para publicación."
+        },
+        {
+          "id": "P4.5",
+          "title": "Operación local y CI",
+          "scope": "Docker dev, env, health/readiness, logs, CI, backups y prueba de restore.",
+          "paths": [
+            "infra",
+            ".github/workflows"
+          ],
+          "acceptance": "Clonar + npm ci + servicios locales reproducible; backup se restaura a instancia aislada; no exige secretos para checks unitarios.",
+          "status": "implemented",
+          "evidence": "Compose PostgreSQL 17.11-alpine con puerto loopback, volumen y healthcheck; db:up/down/backup, smoke:db y smoke:repository. Dos proyectos Docker aislados prueban restauración de documentos, versiones, auditoría y recibos. Gateway /health y /ready con comprobación de DB configurada y logs HTTP sin prompt/secret; test de contrato. CI sin credenciales ejecuta check y ambos smokes de DB; ejecución remota de GitHub pendiente porque este árbol no tiene .git."
+        }
+      ]
+    },
+    {
+      "id": "P5",
+      "title": "MCP del producto",
+      "dependsOn": [
+        "P4"
+      ],
+      "microphases": [
+        {
+          "id": "P5.1",
+          "title": "Unificar canal de cambios",
+          "scope": "Conectar MCP, backend y editor al documento compartido; receipt/revision y events/reconnect.",
+          "paths": [
+            "apps/mcp",
+            "apps/api",
+            "apps/editor"
+          ],
+          "acceptance": "Cambio MCP aparece en editor sin importar archivo; edición UI aparece al leer por MCP; no bucles ni sobrescritura silenciosa.",
+          "status": "implemented",
+          "evidence": "Canal editor/API/PostgreSQL/MCP stdio con acciones del core, CAS, recibos, polling de revisiones, cola secuencial, reconexión y conflicto visible con copia local descargable. smoke:repository cubre HTTP/MCP, conflicto y restore; smoke:shared en Chromium cubre MCP→editor, UI→MCP, undo durable, cuenta y recarga. Falta revisión manual entre dos dispositivos. La autorización MCP remota se implementó en P5.2."
+        },
+        {
+          "id": "P5.2",
+          "title": "Transporte remoto y permisos",
+          "scope": "Streamable HTTP + OAuth vigente, scopes, project authorization, resource audience y protección de sesiones.",
+          "paths": [
+            "apps/mcp",
+            "apps/api"
+          ],
+          "acceptance": "Host sin scope de escritura sólo lee; otro tenant no accede; OAuth resource/audience inválido rechazado; stdio local sigue funcionando.",
+          "status": "implemented",
+          "evidence": "Streamable HTTP en /mcp con metadata de recurso protegido, JWT RS256/JWKS, issuer/audience exactos, expiración, scopes read/write, rol viewer y autorización por proyecto. smoke:mcp-remote usa cliente MCP oficial, issuer firmado y PostgreSQL efímeros para rechazo de firma/audience/expiración, host/origin, permisos y aislamiento A/B; npm run check conserva contrato stdio. Configuración y límites en docs/MCP_REMOTO.md. Falta prueba con Auth0, proxy y hosts externos reales."
+        },
+        {
+          "id": "P5.3",
+          "title": "Capacidades y hosts",
+          "scope": "Selection/region, inspect/export/animate, recursos/prompts/schema versionado; probar al menos dos hosts externos.",
+          "paths": [
+            "apps/mcp",
+            "integrations"
+          ],
+          "acceptance": "Read/preview/apply con selección real funciona en ambos hosts; error estructurado y reconnect comprobados; capabilities no anuncian operaciones inexistentes.",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "P6",
+      "title": "Interoperabilidad",
+      "dependsOn": [
+        "P5"
+      ],
+      "microphases": [
+        {
+          "id": "P6.1",
+          "title": "Mermaid y Markdown",
+          "scope": "Import/export de subset de flowchart; reporte de unsupported; documentación desde selección.",
+          "paths": [
+            "packages/interop"
+          ],
+          "acceptance": "Round-trip conserva IDs/labels/edges del subset; sintaxis inválida no borra documento; animaciones no soportadas se reportan.",
+          "status": "implemented",
+          "evidence": "Mermaid flowchart import/export con reporte de pérdidas; Markdown de documento/selección describe también trazos libres por ID/tipo. Tests de round-trip, reporte de líneas omitidas y smoke de import."
+        },
+        {
+          "id": "P6.2",
+          "title": "draw.io y Graphviz",
+          "scope": "XML/DOT con parser seguro y mapping documentado; sin ejecutables ni entidades externas.",
+          "paths": [
+            "packages/interop"
+          ],
+          "acceptance": "Import de fixtures reales; parser limita tamaño/profundidad; pérdidas reportadas; XML externo no hace requests.",
+          "status": "implemented",
+          "evidence": "packages/interop implementa import/export draw.io XML plano o comprimido y Graphviz DOT en subconjuntos documentados; editor ofrece archivos .drawio/.xml/.dot/.gv y export. saxes rechaza XML mal formado, DTD/entidades, tamaño/profundidad excesivos; DOT limita tamaño, tokens y profundidad sin ejecutar Graphviz. Tests con mxGraphModel estilo jgraph, round-trip del ejemplo de arquitectura, página comprimida, XML externo inválido, clusters y cadenas DOT; pérdidas reportadas. Falta revisión manual de archivos de usuarios variados. Los tres exporters notifican la pérdida de dibujos libres."
+        },
+        {
+          "id": "P6.3",
+          "title": "PlantUML, UML y BPMN",
+          "scope": "Subsets definidos por caso de uso, tipos semánticos y reglas de export. No afirmar cobertura total.",
+          "paths": [
+            "packages/interop",
+            "examples"
+          ],
+          "acceptance": "Clases/secuencia/estados y proceso básico importan con informe; unsupported explícito; referencias coherentes.",
+          "status": "implemented",
+          "evidence": "PlantUML: import de clases, secuencias y estados simples y export por cada tipo; BPMN 2.0: primer proceso con eventos, tareas, gateways, sequenceFlow y geometría DI; export de proceso no ejecutable. IDs/referencias validados por core, pérdidas informadas y errores atómicos. Fixtures UML/BPMN en examples; tests de round-trip, namespaces, XML externo y referencias faltantes. npm run smoke: UI importa .puml/.bpmn y exporta ambos formatos en Chromium. Falta revisión manual con archivos variados y BPMN externo complejo; alcance documentado en docs/INTEROP.md."
+        },
+        {
+          "id": "P6.4",
+          "title": "Export visual y artefactos",
+          "scope": "SVG standalone, PNG, PDF y export de presentación/animación con límites y fondos.",
+          "paths": [
+            "packages/interop",
+            "apps/editor"
+          ],
+          "acceptance": "Export coincide con canvas sin UI, fonts/embed seguros, resolución elegible; JSON sigue siendo formato lossless; video no reemplaza documento.",
+          "status": "partial",
+          "evidence": "SVG autónomo con tipografías incrustadas, PNG 1×/2×/3×, PDF A4 rasterizado del diagrama y PDF multipágina de la presentación con escenarios, cámara, resaltados y captions. Límites de 100 páginas y 4096 px por página; smoke Chromium comprueba firmas/tamaños PDF. Sigue parcial: falta un artefacto de animación con tiempo/movimiento (video u otro formato temporal), opciones de resolución para PDF y revisión visual manual de PDFs complejos. JSON es la copia sin pérdidas."
+        }
+      ]
+    },
+    {
+      "id": "P7",
+      "title": "Higgsfield y recursos generativos",
+      "dependsOn": [
+        "P6"
+      ],
+      "microphases": [
+        {
+          "id": "P7.1",
+          "title": "Comprobar acceso y contrato",
+          "scope": "Verificar API/capacidades oficiales, permiso comercial, modelos/costos, formatos y callbacks. Diseñar adapter sin endpoints inventados.",
+          "paths": [
+            "packages/providers/higgsfield",
+            "docs/DECISIONS.md"
+          ],
+          "acceptance": "Evidence de API autorizada; si no existe acceso, adapter + import manual y bloqueo externo explícito, sin fingir integración.",
+          "status": "pending"
+        },
+        {
+          "id": "P7.2",
+          "title": "Jobs y asset pipeline",
+          "scope": "Brief, refs, cost preview, autorización, job idempotente, progreso/cancelación, download validado y provenance.",
+          "paths": [
+            "apps/api",
+            "workers",
+            "packages/providers"
+          ],
+          "acceptance": "Retry no crea render extra; archivo inválido no entra al canvas; claves no llegan al browser; cancelación y costo final honestos.",
+          "status": "pending"
+        },
+        {
+          "id": "P7.3",
+          "title": "Composición editable",
+          "scope": "Usar imagen/video como asset de fondo/escena; overlays técnicos nativos, controles de playback y sincronización.",
+          "paths": [
+            "apps/editor/src/assets",
+            "apps/editor/src/timeline"
+          ],
+          "acceptance": "Asset mejora presentación y sigue editable; labels/flechas no se convierten en pixels; export respeta permisos y licencia.",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "P8",
+      "title": "Cierre de V1",
+      "dependsOn": [
+        "P7"
+      ],
+      "microphases": [
+        {
+          "id": "P8.1",
+          "title": "UX y accesibilidad",
+          "scope": "Revisión visual desktop/tablet/móvil, teclado, foco, reduced-motion, errores vacíos y feedback de usuarios.",
+          "paths": [
+            "apps/editor",
+            "apps/landing"
+          ],
+          "acceptance": "Recorridos de aceptación completos; no clipping; texto y controles legibles; colores no son único indicador.",
+          "status": "partial",
+          "evidence": "Editor con pestañas independientes, modo oscuro, panel plegable, IA primero, chat con burbujas y tutorial modal. Smoke Chrome 30/30 en desktop/tablet/móvil; catálogo móvil plegado deja el canvas en primera pantalla. Falta revisión manual con dispositivos reales, teclado completo, lector de pantalla, zoom de accesibilidad y feedback de usuarios; el zoom inicial móvil todavía puede dejar labels pequeños. Se agregaron herramientas explícitas de línea, flecha libre y dibujo a mano alzada, con persistencia canónica y migración 1.3.0→1.4.0. Falta la revisión manual visual y accesible."
+        },
+        {
+          "id": "P8.2",
+          "title": "Performance y estabilidad",
+          "scope": "Medir fixtures 100/500/2000 nodos, payloads, uso memoria y long tasks; adoptar mejoras según evidencia.",
+          "paths": [
+            "packages/core",
+            "apps/editor",
+            "apps/api"
+          ],
+          "acceptance": "Presupuesto de performance registrado con equipo/browser; no bloqueos críticos; validación no depende de renderer.",
+          "status": "pending"
+        },
+        {
+          "id": "P8.3",
+          "title": "Seguridad y release candidate",
+          "scope": "Permisos, secrets, SSRF/assets, cuotas, licencias, backup/restore y documentación operativa.",
+          "paths": [
+            "infra",
+            "apps/api",
+            "docs"
+          ],
+          "acceptance": "Checks y pruebas de contrato reales; sin claves/build leaks; bloqueos reales abiertos no se ocultan bajo status completed.",
+          "status": "pending"
+        },
+        {
+          "id": "P8.4",
+          "title": "Entrega y despliegue autorizado",
+          "scope": "Runbook de instalación, config, deploy/rollback y demo final; decidir dominio, marca, audiencia y presupuesto.",
+          "paths": [
+            "docs",
+            "infra",
+            "DEVELOPMENT_STATE.md"
+          ],
+          "acceptance": "Release reproducible y reversión probada; desplegar sólo con autorización correspondiente; V1 completa según criterios o bloqueos identificados.",
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "statusValues": {
+    "pending": "sin empezar",
+    "partial": "parte del alcance implementado; el resto se detalla en evidence",
+    "implemented": "alcance implementado con checks automáticos; falta la revisión manual del usuario o una prueba real bloqueada",
+    "verified": "criterio de salida comprobado con evidencia registrada"
+  }
+}

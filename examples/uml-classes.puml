@@ -1,0 +1,13 @@
+@startuml
+title Acceso de usuarios
+class "Usuario" as User {
+  +id: UUID
+  +email: String
+}
+class "Sesión" as Session {
+  +expiresAt: Date
+}
+interface "Repositorio" as Repository
+User --> Session : inicia
+Session --> Repository : se guarda en
+@enduml

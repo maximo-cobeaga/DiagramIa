@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_USER: diagramia
+      POSTGRES_DB: diagramia
+      POSTGRES_PASSWORD: ${DIAGRAMIA_DB_PASSWORD:-diagramia-local-only}
+    ports:
+      - "127.0.0.1:${DIAGRAMIA_DB_PORT:-5433}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    shm_size: 128mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    stop_grace_period: 30s
+
+volumes:
+  pg_data:

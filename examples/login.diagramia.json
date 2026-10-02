@@ -1,0 +1,506 @@
+{
+  "schemaVersion": "1.5.0",
+  "id": "login-flow",
+  "title": "Inicio de sesión",
+  "revision": 0,
+  "nodes": [
+    {
+      "id": "user",
+      "kind": "actor",
+      "label": "Usuario",
+      "position": {
+        "x": 80,
+        "y": 240
+      },
+      "size": {
+        "width": 160,
+        "height": 80
+      },
+      "zoneId": "client-zone",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": null,
+      "shape": "actor",
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "frontend",
+      "kind": "service",
+      "label": "Frontend",
+      "position": {
+        "x": 260,
+        "y": 240
+      },
+      "size": {
+        "width": 160,
+        "height": 80
+      },
+      "zoneId": "client-zone",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "api",
+      "kind": "service",
+      "label": "API de autenticación",
+      "position": {
+        "x": 550,
+        "y": 240
+      },
+      "size": {
+        "width": 160,
+        "height": 80
+      },
+      "zoneId": "backend-zone",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "database",
+      "kind": "database",
+      "label": "Base de usuarios",
+      "position": {
+        "x": 790,
+        "y": 150
+      },
+      "size": {
+        "width": 160,
+        "height": 80
+      },
+      "zoneId": "backend-zone",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "check",
+      "kind": "decision",
+      "label": "¿Credenciales válidas?",
+      "position": {
+        "x": 800,
+        "y": 350
+      },
+      "size": {
+        "width": 160,
+        "height": 80
+      },
+      "zoneId": "backend-zone",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": null,
+      "shape": "diamond",
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "session",
+      "kind": "cache",
+      "label": "Sesión creada",
+      "position": {
+        "x": 1050,
+        "y": 260
+      },
+      "size": {
+        "width": 160,
+        "height": 80
+      },
+      "zoneId": "backend-zone",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "denied",
+      "kind": "note",
+      "label": "Acceso denegado",
+      "position": {
+        "x": 1050,
+        "y": 470
+      },
+      "size": {
+        "width": 160,
+        "height": 80
+      },
+      "zoneId": "backend-zone",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    }
+  ],
+  "edges": [
+    {
+      "id": "user-frontend",
+      "from": "user",
+      "to": "frontend",
+      "label": "Ingresa usuario y contraseña",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {}
+    },
+    {
+      "id": "frontend-api",
+      "from": "frontend",
+      "to": "api",
+      "label": "Envía credenciales",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {}
+    },
+    {
+      "id": "api-database",
+      "from": "api",
+      "to": "database",
+      "label": "Consulta usuario",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {}
+    },
+    {
+      "id": "database-check",
+      "from": "database",
+      "to": "check",
+      "label": "Verificación",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {}
+    },
+    {
+      "id": "check-session",
+      "from": "check",
+      "to": "session",
+      "label": "Sí",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {}
+    },
+    {
+      "id": "session-frontend",
+      "from": "session",
+      "to": "frontend",
+      "label": "Token o cookie",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {}
+    },
+    {
+      "id": "check-denied",
+      "from": "check",
+      "to": "denied",
+      "label": "No",
+      "alternative": true,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {}
+    },
+    {
+      "id": "denied-frontend",
+      "from": "denied",
+      "to": "frontend",
+      "label": "Error visible",
+      "alternative": true,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {}
+    }
+  ],
+  "zones": [
+    {
+      "id": "client-zone",
+      "label": "Cliente",
+      "bounds": {
+        "x": 20,
+        "y": 80,
+        "width": 420,
+        "height": 500
+      },
+      "style": {}
+    },
+    {
+      "id": "backend-zone",
+      "label": "Backend",
+      "bounds": {
+        "x": 500,
+        "y": 80,
+        "width": 760,
+        "height": 580
+      },
+      "style": {}
+    }
+  ],
+  "drawings": [],
+  "groups": [],
+  "frames": [
+    {
+      "id": "backend-focus",
+      "label": "Autenticación",
+      "bounds": {
+        "x": 490,
+        "y": 70,
+        "width": 780,
+        "height": 610
+      }
+    }
+  ],
+  "animations": [
+    {
+      "id": "login-animation",
+      "label": "Inicio de sesión",
+      "scenarios": [
+        {
+          "id": "accepted",
+          "label": "Credenciales correctas",
+          "description": ""
+        },
+        {
+          "id": "rejected",
+          "label": "Credenciales incorrectas",
+          "description": ""
+        }
+      ],
+      "steps": [
+        {
+          "id": "enter",
+          "caption": "El usuario completa el formulario.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "user",
+            "frontend"
+          ],
+          "edgeIds": [
+            "user-frontend"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "send",
+          "caption": "El frontend envía las credenciales.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "frontend",
+            "api"
+          ],
+          "edgeIds": [
+            "frontend-api"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "lookup",
+          "caption": "La API consulta la base de usuarios.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "api",
+            "database"
+          ],
+          "edgeIds": [
+            "api-database"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "decide",
+          "caption": "La API verifica el resultado.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "check"
+          ],
+          "edgeIds": [
+            "database-check"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "allow",
+          "caption": "Se crea una sesión y se devuelve al frontend.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "session",
+            "frontend"
+          ],
+          "edgeIds": [
+            "check-session",
+            "session-frontend"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [
+            "accepted"
+          ],
+          "states": []
+        },
+        {
+          "id": "reject",
+          "caption": "El acceso se rechaza y se informa el error.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "denied",
+            "frontend"
+          ],
+          "edgeIds": [
+            "check-denied",
+            "denied-frontend"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [
+            "rejected"
+          ],
+          "states": []
+        }
+      ],
+      "tracks": [
+        {
+          "id": "focus-track",
+          "label": "Foco técnico",
+          "kind": "highlight",
+          "clips": [
+            {
+              "id": "focus-db",
+              "stepId": "lookup",
+              "nodeIds": [
+                "database"
+              ],
+              "edgeIds": [],
+              "caption": "",
+              "frameId": null
+            },
+            {
+              "id": "focus-check",
+              "stepId": "decide",
+              "nodeIds": [
+                "check"
+              ],
+              "edgeIds": [],
+              "caption": "",
+              "frameId": null
+            }
+          ]
+        },
+        {
+          "id": "caption-track",
+          "label": "Explicación",
+          "kind": "caption",
+          "clips": [
+            {
+              "id": "caption-allow",
+              "stepId": "allow",
+              "nodeIds": [],
+              "edgeIds": [],
+              "caption": "Se entrega una credencial de sesión.",
+              "frameId": null
+            },
+            {
+              "id": "caption-reject",
+              "stepId": "reject",
+              "nodeIds": [],
+              "edgeIds": [],
+              "caption": "No se crea una sesión.",
+              "frameId": null
+            }
+          ]
+        },
+        {
+          "id": "camera-track",
+          "label": "Cámara",
+          "kind": "camera",
+          "clips": [
+            {
+              "id": "camera-lookup",
+              "stepId": "lookup",
+              "nodeIds": [],
+              "edgeIds": [],
+              "caption": "",
+              "frameId": "backend-focus"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assets": [],
+  "annotations": [],
+  "appliedBatches": []
+}

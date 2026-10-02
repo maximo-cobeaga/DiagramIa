@@ -1,0 +1,836 @@
+{
+  "schemaVersion": "1.5.0",
+  "id": "checkout-success",
+  "title": "Compra confirmada",
+  "revision": 0,
+  "nodes": [
+    {
+      "id": "user",
+      "kind": "service",
+      "label": "Usuario",
+      "position": {
+        "x": 24,
+        "y": 250
+      },
+      "size": {
+        "width": 130,
+        "height": 82
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "CHECKOUT",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "api",
+      "kind": "service",
+      "label": "API",
+      "position": {
+        "x": 202,
+        "y": 250
+      },
+      "size": {
+        "width": 130,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "POST /orders",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "identity",
+      "kind": "decision",
+      "label": "Validación",
+      "position": {
+        "x": 380,
+        "y": 250
+      },
+      "size": {
+        "width": 130,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "stock",
+      "kind": "service",
+      "label": "Reservar stock",
+      "position": {
+        "x": 558,
+        "y": 90
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "INVENTORY",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "inventory",
+      "kind": "database",
+      "label": "Inventario",
+      "position": {
+        "x": 780,
+        "y": 90
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "POSTGRESQL",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "gateway",
+      "kind": "service",
+      "label": "Pasarela",
+      "position": {
+        "x": 558,
+        "y": 330
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "PAYMENT",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "decision",
+      "kind": "decision",
+      "label": "¿Autorizado?",
+      "position": {
+        "x": 780,
+        "y": 330
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "order",
+      "kind": "database",
+      "label": "Pedido",
+      "position": {
+        "x": 984,
+        "y": 250
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "CONFIRMED",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "events",
+      "kind": "service",
+      "label": "Eventos",
+      "position": {
+        "x": 984,
+        "y": 440
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "ORDER.CREATED",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "mail",
+      "kind": "service",
+      "label": "Enviar email",
+      "position": {
+        "x": 780,
+        "y": 550
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "NOTIFICATION",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "fulfilment",
+      "kind": "service",
+      "label": "Preparar envío",
+      "position": {
+        "x": 558,
+        "y": 550
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "FULFILMENT",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    },
+    {
+      "id": "audit",
+      "kind": "database",
+      "label": "Registrar",
+      "position": {
+        "x": 202,
+        "y": 550
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "AUDIT LOG",
+      "assetId": null,
+      "icon": null,
+      "shape": null,
+      "style": {},
+      "details": ""
+    }
+  ],
+  "edges": [
+    {
+      "id": "request",
+      "from": "user",
+      "to": "api",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 154,
+          "y": 291
+        },
+        {
+          "x": 202,
+          "y": 291
+        }
+      ]
+    },
+    {
+      "id": "validate",
+      "from": "api",
+      "to": "identity",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 332,
+          "y": 291
+        },
+        {
+          "x": 380,
+          "y": 291
+        }
+      ]
+    },
+    {
+      "id": "reserve",
+      "from": "identity",
+      "to": "stock",
+      "label": "Válido",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 445,
+          "y": 250
+        },
+        {
+          "x": 445,
+          "y": 131
+        },
+        {
+          "x": 558,
+          "y": 131
+        }
+      ]
+    },
+    {
+      "id": "query",
+      "from": "stock",
+      "to": "inventory",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 706,
+          "y": 131
+        },
+        {
+          "x": 780,
+          "y": 131
+        }
+      ]
+    },
+    {
+      "id": "stock-ok",
+      "from": "inventory",
+      "to": "gateway",
+      "label": "Disponible",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 854,
+          "y": 172
+        },
+        {
+          "x": 854,
+          "y": 222
+        },
+        {
+          "x": 844,
+          "y": 232
+        },
+        {
+          "x": 642,
+          "y": 232
+        },
+        {
+          "x": 632,
+          "y": 242
+        },
+        {
+          "x": 632,
+          "y": 330
+        }
+      ]
+    },
+    {
+      "id": "authorize",
+      "from": "gateway",
+      "to": "decision",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 706,
+          "y": 371
+        },
+        {
+          "x": 780,
+          "y": 371
+        }
+      ]
+    },
+    {
+      "id": "confirm",
+      "from": "decision",
+      "to": "order",
+      "label": "Sí",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 928,
+          "y": 371
+        },
+        {
+          "x": 952,
+          "y": 371
+        },
+        {
+          "x": 966,
+          "y": 357
+        },
+        {
+          "x": 966,
+          "y": 305
+        },
+        {
+          "x": 980,
+          "y": 291
+        },
+        {
+          "x": 984,
+          "y": 291
+        }
+      ]
+    },
+    {
+      "id": "emit",
+      "from": "order",
+      "to": "events",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 1058,
+          "y": 332
+        },
+        {
+          "x": 1058,
+          "y": 440
+        }
+      ]
+    },
+    {
+      "id": "notify",
+      "from": "events",
+      "to": "mail",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 984,
+          "y": 481
+        },
+        {
+          "x": 966,
+          "y": 481
+        },
+        {
+          "x": 954,
+          "y": 493
+        },
+        {
+          "x": 954,
+          "y": 579
+        },
+        {
+          "x": 942,
+          "y": 591
+        },
+        {
+          "x": 928,
+          "y": 591
+        }
+      ]
+    },
+    {
+      "id": "ship",
+      "from": "events",
+      "to": "fulfilment",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 1058,
+          "y": 522
+        },
+        {
+          "x": 1058,
+          "y": 638
+        },
+        {
+          "x": 632,
+          "y": 638
+        },
+        {
+          "x": 632,
+          "y": 632
+        }
+      ]
+    },
+    {
+      "id": "audit-log",
+      "from": "events",
+      "to": "audit",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 984,
+          "y": 481
+        },
+        {
+          "x": 970,
+          "y": 481
+        },
+        {
+          "x": 970,
+          "y": 526
+        },
+        {
+          "x": 276,
+          "y": 526
+        },
+        {
+          "x": 276,
+          "y": 550
+        }
+      ]
+    },
+    {
+      "id": "request-response",
+      "from": "order",
+      "to": "api",
+      "label": "201 CREATED",
+      "alternative": true,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {},
+      "points": [
+        {
+          "x": 1058,
+          "y": 250
+        },
+        {
+          "x": 1058,
+          "y": 45
+        },
+        {
+          "x": 267,
+          "y": 45
+        },
+        {
+          "x": 267,
+          "y": 250
+        }
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "services",
+      "label": "Servicios",
+      "bounds": {
+        "x": 182,
+        "y": 65,
+        "width": 756,
+        "height": 574
+      },
+      "style": {}
+    }
+  ],
+  "drawings": [],
+  "groups": [],
+  "frames": [],
+  "animations": [
+    {
+      "id": "main-flow",
+      "label": "Recorrido del pedido",
+      "scenarios": [],
+      "steps": [
+        {
+          "id": "step-0",
+          "caption": "El usuario envía el pedido.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "user"
+          ],
+          "edgeIds": [
+            "request"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "step-1",
+          "caption": "La API recibe y valida la solicitud.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "api"
+          ],
+          "edgeIds": [
+            "validate"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "step-2",
+          "caption": "Los datos son válidos. Se reserva stock.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "identity"
+          ],
+          "edgeIds": [
+            "reserve"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "step-3",
+          "caption": "Inventario comprueba la disponibilidad.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "stock"
+          ],
+          "edgeIds": [
+            "query"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "step-4",
+          "caption": "Hay stock. El pedido pasa a la pasarela.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "inventory"
+          ],
+          "edgeIds": [
+            "stock-ok"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [
+            {
+              "nodeId": "inventory",
+              "label": "RESERVADO",
+              "tone": "normal"
+            }
+          ]
+        },
+        {
+          "id": "step-5",
+          "caption": "La pasarela solicita autorización.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "gateway"
+          ],
+          "edgeIds": [
+            "authorize"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "step-6",
+          "caption": "Pago autorizado: se confirma el pedido.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "decision"
+          ],
+          "edgeIds": [
+            "confirm"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "step-7",
+          "caption": "El pedido se guarda y responde al usuario.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "order"
+          ],
+          "edgeIds": [
+            "emit",
+            "request-response"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [
+            {
+              "nodeId": "order",
+              "label": "CONFIRMADO",
+              "tone": "normal"
+            }
+          ]
+        },
+        {
+          "id": "step-8",
+          "caption": "Un evento dispara tres tareas en paralelo.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "events"
+          ],
+          "edgeIds": [
+            "notify",
+            "ship",
+            "audit-log"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        },
+        {
+          "id": "step-9",
+          "caption": "Email, envío y auditoría completan el recorrido.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "mail",
+            "fulfilment",
+            "audit"
+          ],
+          "edgeIds": [],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": []
+        }
+      ],
+      "tracks": []
+    }
+  ],
+  "assets": [],
+  "annotations": [],
+  "appliedBatches": []
+}

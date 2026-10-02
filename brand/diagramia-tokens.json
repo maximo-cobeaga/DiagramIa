@@ -1,0 +1,41 @@
+{
+  "brand": "Diagramia",
+  "version": "1.0",
+  "colors": {
+    "ink": "#141619",
+    "paper": "#F4F6F8",
+    "white": "#FFFFFF",
+    "blue": "#245CF6",
+    "lime": "#D4F246",
+    "muted": "#606975",
+    "line": "#D7DCE2",
+    "error": "#AA3F25"
+  },
+  "fonts": {
+    "primary": "Manrope",
+    "code": "IBM Plex Mono"
+  },
+  "motion": {
+    "uiMs": [
+      160,
+      240
+    ],
+    "sceneMs": [
+      500,
+      900
+    ],
+    "stepMs": [
+      1500,
+      2500
+    ],
+    "ease": "cubic-bezier(.22,1,.36,1)",
+    "respectReducedMotion": true
+  },
+  "spacingBasePx": 8,
+  "logo": {
+    "clearSpaceUnits": 8,
+    "symbolViewBox": 40,
+    "minSymbolPx": 24,
+    "minHorizontalPx": 140
+  }
+}

@@ -1,0 +1,13 @@
+@startuml
+title Inicio de sesión
+actor "Usuario" as User
+participant "Frontend" as Frontend
+participant "API" as API
+database "Base de datos" as Database
+User -> Frontend: Escribe credenciales
+Frontend -> API: Envía login
+API -> Database: Busca cuenta
+Database --> API: Devuelve resultado
+API --> Frontend: Responde sesión
+Frontend --> User: Muestra resultado
+@enduml

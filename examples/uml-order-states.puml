@@ -1,0 +1,8 @@
+@startuml
+title Estado de un pedido
+[*] --> Pendiente
+state "En preparación" as Preparing
+Pendiente --> Preparing : pago aprobado
+Preparing --> Enviado : despacho
+Enviado --> [*] : entrega
+@enduml

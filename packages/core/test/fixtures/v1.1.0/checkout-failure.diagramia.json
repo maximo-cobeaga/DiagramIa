@@ -1,0 +1,785 @@
+{
+  "schemaVersion": "1.1.0",
+  "id": "checkout-failure",
+  "title": "Rechazo y recuperación",
+  "revision": 0,
+  "nodes": [
+    {
+      "id": "user",
+      "kind": "service",
+      "label": "Usuario",
+      "position": {
+        "x": 24,
+        "y": 250
+      },
+      "size": {
+        "width": 130,
+        "height": 82
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "CHECKOUT"
+    },
+    {
+      "id": "api",
+      "kind": "service",
+      "label": "API",
+      "position": {
+        "x": 202,
+        "y": 250
+      },
+      "size": {
+        "width": 130,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "POST /orders"
+    },
+    {
+      "id": "identity",
+      "kind": "decision",
+      "label": "Validación",
+      "position": {
+        "x": 380,
+        "y": 250
+      },
+      "size": {
+        "width": 130,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": ""
+    },
+    {
+      "id": "stock",
+      "kind": "service",
+      "label": "Reservar stock",
+      "position": {
+        "x": 558,
+        "y": 90
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "INVENTORY"
+    },
+    {
+      "id": "inventory",
+      "kind": "database",
+      "label": "Inventario",
+      "position": {
+        "x": 780,
+        "y": 90
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "POSTGRESQL"
+    },
+    {
+      "id": "gateway",
+      "kind": "service",
+      "label": "Pasarela",
+      "position": {
+        "x": 558,
+        "y": 290
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "PAYMENT"
+    },
+    {
+      "id": "decision",
+      "kind": "decision",
+      "label": "¿Autorizado?",
+      "position": {
+        "x": 780,
+        "y": 290
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": ""
+    },
+    {
+      "id": "pending",
+      "kind": "database",
+      "label": "Pendiente",
+      "position": {
+        "x": 984,
+        "y": 290
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "PAYMENT_FAILED"
+    },
+    {
+      "id": "notify",
+      "kind": "service",
+      "label": "Avisar al usuario",
+      "position": {
+        "x": 984,
+        "y": 450
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "ACTION REQUIRED"
+    },
+    {
+      "id": "method",
+      "kind": "service",
+      "label": "Otro medio",
+      "position": {
+        "x": 780,
+        "y": 450
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "PAYMENT METHOD"
+    },
+    {
+      "id": "retry",
+      "kind": "service",
+      "label": "Reintentar",
+      "position": {
+        "x": 558,
+        "y": 450
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "ATTEMPT 02"
+    },
+    {
+      "id": "order",
+      "kind": "database",
+      "label": "Confirmado",
+      "position": {
+        "x": 984,
+        "y": 90
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "RECOVERED"
+    },
+    {
+      "id": "expiry",
+      "kind": "service",
+      "label": "Vence el plazo",
+      "position": {
+        "x": 984,
+        "y": 610
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "15 MIN"
+    },
+    {
+      "id": "cancel",
+      "kind": "service",
+      "label": "Cancelar",
+      "position": {
+        "x": 780,
+        "y": 610
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "ORDER.CANCELLED"
+    },
+    {
+      "id": "release",
+      "kind": "database",
+      "label": "Liberar stock",
+      "position": {
+        "x": 558,
+        "y": 610
+      },
+      "size": {
+        "width": 148,
+        "height": 82
+      },
+      "zoneId": "services",
+      "groupId": null,
+      "subtitle": "INVENTORY"
+    }
+  ],
+  "edges": [
+    {
+      "id": "request",
+      "from": "user",
+      "to": "api",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 154,
+          "y": 291
+        },
+        {
+          "x": 202,
+          "y": 291
+        }
+      ]
+    },
+    {
+      "id": "validate",
+      "from": "api",
+      "to": "identity",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 332,
+          "y": 291
+        },
+        {
+          "x": 380,
+          "y": 291
+        }
+      ]
+    },
+    {
+      "id": "reserve",
+      "from": "identity",
+      "to": "stock",
+      "label": "Válido",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 445,
+          "y": 250
+        },
+        {
+          "x": 445,
+          "y": 131
+        },
+        {
+          "x": 558,
+          "y": 131
+        }
+      ]
+    },
+    {
+      "id": "query",
+      "from": "stock",
+      "to": "inventory",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 706,
+          "y": 131
+        },
+        {
+          "x": 780,
+          "y": 131
+        }
+      ]
+    },
+    {
+      "id": "stock-ok",
+      "from": "inventory",
+      "to": "gateway",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 854,
+          "y": 172
+        },
+        {
+          "x": 854,
+          "y": 186
+        },
+        {
+          "x": 844,
+          "y": 196
+        },
+        {
+          "x": 642,
+          "y": 196
+        },
+        {
+          "x": 632,
+          "y": 206
+        },
+        {
+          "x": 632,
+          "y": 290
+        }
+      ]
+    },
+    {
+      "id": "authorize",
+      "from": "gateway",
+      "to": "decision",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 706,
+          "y": 331
+        },
+        {
+          "x": 780,
+          "y": 331
+        }
+      ]
+    },
+    {
+      "id": "decline",
+      "from": "decision",
+      "to": "pending",
+      "label": "No",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 928,
+          "y": 331
+        },
+        {
+          "x": 984,
+          "y": 331
+        }
+      ]
+    },
+    {
+      "id": "flag",
+      "from": "pending",
+      "to": "notify",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 1058,
+          "y": 372
+        },
+        {
+          "x": 1058,
+          "y": 450
+        }
+      ]
+    },
+    {
+      "id": "choose",
+      "from": "notify",
+      "to": "method",
+      "label": "Cambiar",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 984,
+          "y": 491
+        },
+        {
+          "x": 928,
+          "y": 491
+        }
+      ]
+    },
+    {
+      "id": "retry-payment",
+      "from": "method",
+      "to": "retry",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 780,
+          "y": 491
+        },
+        {
+          "x": 706,
+          "y": 491
+        }
+      ]
+    },
+    {
+      "id": "retry-loop",
+      "from": "retry",
+      "to": "gateway",
+      "label": "Nuevo intento",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 632,
+          "y": 450
+        },
+        {
+          "x": 632,
+          "y": 372
+        }
+      ]
+    },
+    {
+      "id": "recover",
+      "from": "decision",
+      "to": "order",
+      "label": "Sí / intento 02",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 854,
+          "y": 290
+        },
+        {
+          "x": 854,
+          "y": 216
+        },
+        {
+          "x": 864,
+          "y": 206
+        },
+        {
+          "x": 1048,
+          "y": 206
+        },
+        {
+          "x": 1058,
+          "y": 196
+        },
+        {
+          "x": 1058,
+          "y": 172
+        }
+      ]
+    },
+    {
+      "id": "timeout",
+      "from": "notify",
+      "to": "expiry",
+      "label": "Sin respuesta",
+      "alternative": true,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 1058,
+          "y": 532
+        },
+        {
+          "x": 1058,
+          "y": 610
+        }
+      ]
+    },
+    {
+      "id": "cancel-order",
+      "from": "expiry",
+      "to": "cancel",
+      "label": "",
+      "alternative": true,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 984,
+          "y": 651
+        },
+        {
+          "x": 928,
+          "y": 651
+        }
+      ]
+    },
+    {
+      "id": "release-stock",
+      "from": "cancel",
+      "to": "release",
+      "label": "",
+      "alternative": true,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "points": [
+        {
+          "x": 780,
+          "y": 651
+        },
+        {
+          "x": 706,
+          "y": 651
+        }
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "services",
+      "label": "Servicios",
+      "bounds": {
+        "x": 182,
+        "y": 65,
+        "width": 756,
+        "height": 634
+      }
+    }
+  ],
+  "groups": [],
+  "frames": [],
+  "animations": [
+    {
+      "id": "main-flow",
+      "label": "Recorrido del pedido",
+      "steps": [
+        {
+          "id": "step-0",
+          "caption": "El usuario inicia la compra.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "user"
+          ],
+          "edgeIds": [
+            "request"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-1",
+          "caption": "La API valida la solicitud.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "api"
+          ],
+          "edgeIds": [
+            "validate"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-2",
+          "caption": "La solicitud es válida. Se reserva stock.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "identity"
+          ],
+          "edgeIds": [
+            "reserve"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-3",
+          "caption": "Inventario consulta las unidades disponibles.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "stock"
+          ],
+          "edgeIds": [
+            "query"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-4",
+          "caption": "Las unidades quedan reservadas temporalmente.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "inventory"
+          ],
+          "edgeIds": [
+            "stock-ok"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-5",
+          "caption": "Primer intento de autorización.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "gateway"
+          ],
+          "edgeIds": [
+            "authorize"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-6",
+          "caption": "La pasarela rechaza el pago.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "decision"
+          ],
+          "edgeIds": [
+            "decline"
+          ],
+          "tone": "failure",
+          "frameId": null
+        },
+        {
+          "id": "step-7",
+          "caption": "El pedido queda pendiente, no se pierde.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "pending"
+          ],
+          "edgeIds": [
+            "flag"
+          ],
+          "tone": "failure",
+          "frameId": null
+        },
+        {
+          "id": "step-8",
+          "caption": "Se avisa al usuario. Puede cambiar el medio de pago.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "notify"
+          ],
+          "edgeIds": [
+            "choose"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-9",
+          "caption": "El usuario elige otro medio de pago.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "method"
+          ],
+          "edgeIds": [
+            "retry-payment"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-10",
+          "caption": "El flujo vuelve a la pasarela con un nuevo intento.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "retry"
+          ],
+          "edgeIds": [
+            "retry-loop"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-11",
+          "caption": "Segundo intento, sin duplicar el pedido.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "gateway"
+          ],
+          "edgeIds": [
+            "authorize"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-12",
+          "caption": "Esta vez se autoriza el pago.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "decision"
+          ],
+          "edgeIds": [
+            "recover"
+          ],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-13",
+          "caption": "Compra recuperada: el pedido queda confirmado.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "order"
+          ],
+          "edgeIds": [],
+          "tone": "normal",
+          "frameId": null
+        },
+        {
+          "id": "step-14",
+          "caption": "Si nadie responde, la rama alternativa cancela y libera stock.",
+          "durationMs": 1800,
+          "nodeIds": [
+            "order"
+          ],
+          "edgeIds": [],
+          "tone": "normal",
+          "frameId": null
+        }
+      ]
+    }
+  ],
+  "appliedBatches": []
+}

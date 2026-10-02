@@ -1,0 +1,401 @@
+{
+  "fileCount": 99,
+  "files": {
+    ".editorconfig": {
+      "bytes": 114,
+      "sha256": "78dc11bb60364cbb65afecce40c965fa2e395491632a96a5be330a37fe8daad8"
+    },
+    ".env.example": {
+      "bytes": 273,
+      "sha256": "b5437f0fbd300d360e069e076a7e42c91a7cf77bf0afe80f6330bc45d36b6f06"
+    },
+    ".github/workflows/ci.yml": {
+      "bytes": 357,
+      "sha256": "3f73d38c157e8ed41bac6255f19a4d80e18a0e4083c942d386a4346eb998a8c5"
+    },
+    ".gitignore": {
+      "bytes": 199,
+      "sha256": "13d7c68c7294d8577c7abc0f532c2bc3f5df48c569f9bb469fc6a09809626f30"
+    },
+    "AGENTS.md": {
+      "bytes": 4600,
+      "sha256": "5e9a2409fa56bd89fc2219cd46621e9e962674fc68c14cd6c10deb4d1fd7b801"
+    },
+    "BACKLOG.md": {
+      "bytes": 2575,
+      "sha256": "4fb1c6a274ab817da024b577ada3ebdb429384975c48d88ccaec72f1e8ea89c8"
+    },
+    "CLAUDE.md": {
+      "bytes": 195,
+      "sha256": "dcb73685be690ee8f8ad52428f47d0d2b2e9db6c4f1109fa4262562807450045"
+    },
+    "CODE_OWNERSHIP.md": {
+      "bytes": 759,
+      "sha256": "77f94c239a952e6d45987e8036869b1510f9bb457c4ea9ffae9fdd0e2813d6ad"
+    },
+    "DEVELOPMENT_STATE.md": {
+      "bytes": 1735,
+      "sha256": "34e66f0ad9d72f89830fe039fb33bf14a421a649d4b3db5b98b819eed3ce896c"
+    },
+    "LEEME_PRIMERO.md": {
+      "bytes": 3963,
+      "sha256": "e7c92c07f877b63e5e870df1f03d82b33842d7d337ee6d845ebf685a2c7abbec"
+    },
+    "README.md": {
+      "bytes": 2058,
+      "sha256": "c618da714fff9b98d85b58f2a8aacc0eb768984c472894666f86eeea07f4d00c"
+    },
+    "VALIDATION.md": {
+      "bytes": 2182,
+      "sha256": "9d8c751bd34b4f9b9ec78dd6f1dd4af72b5416088ecf2855ea3822999658c698"
+    },
+    "apps/editor/index.html": {
+      "bytes": 341,
+      "sha256": "79dc0fc24dc71669d82d9fc3b516ae5924a4dea2295cc317a71ecc60c0c58dab"
+    },
+    "apps/editor/package.json": {
+      "bytes": 496,
+      "sha256": "13f905bab68aeb5acd734a42e194f3ed443ff8a4b93c156874af18c73b6134e5"
+    },
+    "apps/editor/public/favicon.svg": {
+      "bytes": 335,
+      "sha256": "20d8548244f60c398520d54a21de4995c115ac0bcdbd6a3ac5976b87ed51869e"
+    },
+    "apps/editor/public/fonts/IBMPlexMono-OFL.txt": {
+      "bytes": 4456,
+      "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+    },
+    "apps/editor/public/fonts/IBMPlexMono-Regular.ttf": {
+      "bytes": 135580,
+      "sha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46"
+    },
+    "apps/editor/public/fonts/Manrope-OFL.txt": {
+      "bytes": 4387,
+      "sha256": "58172e0c0fac2cda8a37b348164bb55e44b0e69051e557e92b1d3f6910141f7b"
+    },
+    "apps/editor/public/fonts/Manrope.ttf": {
+      "bytes": 164700,
+      "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6"
+    },
+    "apps/editor/src/main.tsx": {
+      "bytes": 17300,
+      "sha256": "8a79bdc4835dae2085bae2799bdf6a5597af94469627dbe31910735041ff838f"
+    },
+    "apps/editor/src/styles.css": {
+      "bytes": 6009,
+      "sha256": "c26e19b4579ac04be7ec39dcd6051301023c2f7074ff2140b3e50cd4fc5f0488"
+    },
+    "apps/editor/tsconfig.json": {
+      "bytes": 167,
+      "sha256": "a66b15ace845f25eff9592e513f5be00484951a0f8ddce98091e9e6488860ba6"
+    },
+    "apps/editor/vite.config.ts": {
+      "bytes": 165,
+      "sha256": "24badd98dcefb9120a255fa84d0a2105483374c5ad5104e8019c8505edbb30bd"
+    },
+    "apps/landing/Manual_de_marca_Diagramia.pdf": {
+      "bytes": 42874,
+      "sha256": "7e20aab76a62e45197beb8236f95211572dec3d4cfe01e7761ac3749f32a7887"
+    },
+    "apps/landing/app.js": {
+      "bytes": 12916,
+      "sha256": "f9293e002c9a77ad2ff4afd87f1d2f75a030bcfdcf937868335679fb50965b74"
+    },
+    "apps/landing/diagramia-logo.svg": {
+      "bytes": 5239,
+      "sha256": "420f5b09c1ad92b895349381e3884664ec71d0000ff8eebff399ad10738ce3b9"
+    },
+    "apps/landing/favicon.svg": {
+      "bytes": 335,
+      "sha256": "20d8548244f60c398520d54a21de4995c115ac0bcdbd6a3ac5976b87ed51869e"
+    },
+    "apps/landing/flow-data.js": {
+      "bytes": 8283,
+      "sha256": "03c0efc1bf8c3321918b7add12bca28af16645fd59d88f31a39ae919402d00f3"
+    },
+    "apps/landing/fonts/IBMPlexMono-OFL.txt": {
+      "bytes": 4456,
+      "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+    },
+    "apps/landing/fonts/IBMPlexMono-Regular.ttf": {
+      "bytes": 135580,
+      "sha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46"
+    },
+    "apps/landing/fonts/Manrope-OFL.txt": {
+      "bytes": 4387,
+      "sha256": "58172e0c0fac2cda8a37b348164bb55e44b0e69051e557e92b1d3f6910141f7b"
+    },
+    "apps/landing/fonts/Manrope.ttf": {
+      "bytes": 164700,
+      "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6"
+    },
+    "apps/landing/index.html": {
+      "bytes": 17191,
+      "sha256": "60b161070705b968817dc065ba1c9cac77017bfd7aab1b59caf8c234860f62e7"
+    },
+    "apps/landing/styles.css": {
+      "bytes": 22951,
+      "sha256": "1927e9423da169ba3bf470bb5569dc4031b1821eb0751d858fb50e2645942478"
+    },
+    "apps/mcp/package.json": {
+      "bytes": 340,
+      "sha256": "c7a8eaad18759ef2bc6fd6dc5b4ad77f12e9cbf86202c9ae7bd5baf86e868970"
+    },
+    "apps/mcp/src/index.ts": {
+      "bytes": 388,
+      "sha256": "6b7c9fe6a05b10b8e889f8309f54ae60ff3858ec3b9e1f829c0cb368384b5ae5"
+    },
+    "apps/mcp/src/server.ts": {
+      "bytes": 2135,
+      "sha256": "27771d09cf0dad1901f2f8a2e60d3a11cf9d842e120d95703c2e26599e4898b6"
+    },
+    "apps/mcp/src/storage.ts": {
+      "bytes": 1994,
+      "sha256": "6b73c1a9b241bd4d31c814d4ddf08ffa9a14765ae4a4313063e4e79ebb6e2dae"
+    },
+    "apps/mcp/test/protocol.test.ts": {
+      "bytes": 2263,
+      "sha256": "12c750e20da404142d51c6db3de55f32ddb3aa7e5ef8bea2ec73ebc4c4076696"
+    },
+    "apps/mcp/tsconfig.json": {
+      "bytes": 145,
+      "sha256": "de13c968b4221a080e618f284deec4a2a1375eecf825b3e39defb57e12b420e1"
+    },
+    "brand/Manual_de_marca_Diagramia.pdf": {
+      "bytes": 42874,
+      "sha256": "7e20aab76a62e45197beb8236f95211572dec3d4cfe01e7761ac3749f32a7887"
+    },
+    "brand/Manual_de_marca_Diagramia.txt": {
+      "bytes": 9893,
+      "sha256": "1c68509fd4d7714a7d02eaf24cc6346701d324c12d5a924a72a0e714d0dd0415"
+    },
+    "brand/README.txt": {
+      "bytes": 564,
+      "sha256": "768042dec7f32d0a51568e091ab7fd2ebeae52ffa3a9fdbbee100ee810d553f7"
+    },
+    "brand/diagramia-tokens.css": {
+      "bytes": 409,
+      "sha256": "26105b4116017611fc98f5b979a8c6100df610af6ed086e57f398bdbe1029d1f"
+    },
+    "brand/diagramia-tokens.json": {
+      "bytes": 689,
+      "sha256": "5e5e18b1d6a2bf609b6b604ef26ac51413ca5a07baf71fb8c099176700f63cd1"
+    },
+    "brand/fonts/IBMPlexMono-OFL.txt": {
+      "bytes": 4456,
+      "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+    },
+    "brand/fonts/IBMPlexMono-Regular.ttf": {
+      "bytes": 135580,
+      "sha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46"
+    },
+    "brand/fonts/Manrope-Bold.ttf": {
+      "bytes": 98000,
+      "sha256": "df1089641d1481ef01502cc8438c6f8a54d92da3756c1dca5e83764ca0c87d24"
+    },
+    "brand/fonts/Manrope-Medium.ttf": {
+      "bytes": 97412,
+      "sha256": "f528c374ca1061246583a40eab368a0ddbda89493ba947451536a033d6756550"
+    },
+    "brand/fonts/Manrope-OFL.txt": {
+      "bytes": 4387,
+      "sha256": "58172e0c0fac2cda8a37b348164bb55e44b0e69051e557e92b1d3f6910141f7b"
+    },
+    "brand/fonts/Manrope-Regular.ttf": {
+      "bytes": 97508,
+      "sha256": "4a75e26f087becff56f2fa6dbec09d5ff0506cab5a80d270f46c7afba6e97db3"
+    },
+    "brand/fonts/Manrope.ttf": {
+      "bytes": 164700,
+      "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6"
+    },
+    "brand/logos/diagramia-favicon.svg": {
+      "bytes": 335,
+      "sha256": "20d8548244f60c398520d54a21de4995c115ac0bcdbd6a3ac5976b87ed51869e"
+    },
+    "brand/logos/diagramia-logo-azul.svg": {
+      "bytes": 5239,
+      "sha256": "763ade5fb4fa16494a6c2c237ea34a49d8d32c52f5e29c91afc1a4827be336df"
+    },
+    "brand/logos/diagramia-logo-monocromo.svg": {
+      "bytes": 5239,
+      "sha256": "eb446488bf3ca97a7c1d5fe33105b4c2cade29bff269078ec00bf184973186bc"
+    },
+    "brand/logos/diagramia-logo-negativo.svg": {
+      "bytes": 5239,
+      "sha256": "691cc4d3bc1c20ab17124950ba5d3c322f8e6273c8c08320d40e03e57bac9cd9"
+    },
+    "brand/logos/diagramia-logo-principal.svg": {
+      "bytes": 5239,
+      "sha256": "420f5b09c1ad92b895349381e3884664ec71d0000ff8eebff399ad10738ce3b9"
+    },
+    "brand/logos/diagramia-simbolo-azul.svg": {
+      "bytes": 328,
+      "sha256": "a2c0b66e6d8954e48fac975e3d521e9d4f3f800ecbb82ea8f63c836471798c55"
+    },
+    "brand/logos/diagramia-simbolo-monocromo.svg": {
+      "bytes": 328,
+      "sha256": "df3bec98250d8896d5732cdfe9dd41bf56fa765eb75b747687aae0d2d294582b"
+    },
+    "brand/logos/diagramia-simbolo-negativo.svg": {
+      "bytes": 328,
+      "sha256": "e458a9cacbf0ee1556129f7d30efd18660d2dfb463069f7b6223f5cd4df2e694"
+    },
+    "brand/logos/diagramia-simbolo-principal.svg": {
+      "bytes": 328,
+      "sha256": "fc1ada30dbde1e16d11543bed602717ba8c1ac60bdc3ba650fce0295b490223e"
+    },
+    "docs/00_VISION_ORIGINAL.txt": {
+      "bytes": 15490,
+      "sha256": "d8d31904b070d6d4181acc717b540d772be5729a9cabcc24df0f3ff9bc9c78b4"
+    },
+    "docs/01_PRODUCTO.md": {
+      "bytes": 4595,
+      "sha256": "bf4a018c60d33458d33c50c57eab40f28e2d919d242e16fac424a640d6f818ab"
+    },
+    "docs/02_ARQUITECTURA.md": {
+      "bytes": 5436,
+      "sha256": "82cffaf6bc2ece9c5c6f1db3a6a1eedf4ec4f8b7d326db89a3d1c0267da83249"
+    },
+    "docs/03_PLAN_DE_DESARROLLO.md": {
+      "bytes": 19087,
+      "sha256": "3aa5eb29cb2121d1f0fc21d7f50ce2f366ba9a750780e291e8abf1330b19f7c3"
+    },
+    "docs/04_CRITERIOS_DE_ACEPTACION.md": {
+      "bytes": 2954,
+      "sha256": "7eafd3f074c551f4dbcbb0826fdfb59028775f6378383f157fafb21dc1939358"
+    },
+    "docs/05_CONTRATOS.md": {
+      "bytes": 4408,
+      "sha256": "5650f122a6e48bc8d1d941939e21f9398e7a0f35d3c526ef10adf3181264b368"
+    },
+    "docs/06_DISENO_Y_MOVIMIENTO.md": {
+      "bytes": 2654,
+      "sha256": "d1aa8518c23c3b279a6976d724a00c983a5d64ffffc1125738bcec5f5429aa55"
+    },
+    "docs/07_IA_MCP_HIGGSFIELD.md": {
+      "bytes": 4038,
+      "sha256": "47a1e19b8f8e0664e14e681b3213d081dbeeeed06753730f43210d63f390f010"
+    },
+    "docs/08_CALIDAD_Y_OPERACION.md": {
+      "bytes": 3001,
+      "sha256": "745bc5578d427703764693db4bf49a7a37986a871406eeb407e099981fa02e57"
+    },
+    "docs/DECISIONS.md": {
+      "bytes": 1570,
+      "sha256": "0fd1d2302afbf3a554a01ed50586ac49d19b21c5bcfc3c99343536d33b7cbbfd"
+    },
+    "docs/REFERENCIAS.md": {
+      "bytes": 1172,
+      "sha256": "36d372dce46a264504d24236e76dbebbc1b698f2947915b0fa00df056ba78648"
+    },
+    "docs/development-plan.json": {
+      "bytes": 19165,
+      "sha256": "81e2f365fff2035560d2fb406dc52066979b5ac59838df9fc2b10290dde57a99"
+    },
+    "examples/add-redis.actions.json": {
+      "bytes": 693,
+      "sha256": "524e81a3517d038cfb130cbbebafc66080eaa68a57b270a4536ab0a19e604712"
+    },
+    "examples/architecture.diagramia.json": {
+      "bytes": 2996,
+      "sha256": "796c785fb6ef6499385cfcaa688f9411c1e99ef77d21ef49ae2b9885c873e5b6"
+    },
+    "examples/checkout-failure.diagramia.json": {
+      "bytes": 13606,
+      "sha256": "738518311c0fbdacf609837a3e15bd6983fd18afe72234058c78d5bb024b4f1b"
+    },
+    "examples/checkout-success.diagramia.json": {
+      "bytes": 11245,
+      "sha256": "fb945a2ff2ce9903cc97c95174cab596e9029ca62eb5ab0ca6e2b953e2384440"
+    },
+    "integrations/README.md": {
+      "bytes": 2439,
+      "sha256": "7ebed59d35d7f101e983cb3505e7f902b684156f9277444e0541ed535f2e3fe2"
+    },
+    "package-lock.json": {
+      "bytes": 52160,
+      "sha256": "5152abffabe5d61daf7867d27da57657c59cd58e0fc4f9a5adf1484d3d899c0e"
+    },
+    "package.json": {
+      "bytes": 1036,
+      "sha256": "d1d71f3b5b2a089b0941b9de31edba0b5a0968140e622fe94925f57ce01c41f9"
+    },
+    "packages/core/package.json": {
+      "bytes": 300,
+      "sha256": "dd716688768392742c1a56a78c3bcfe055148de0d73c00eea6850e5b7160c51c"
+    },
+    "packages/core/src/index.ts": {
+      "bytes": 10927,
+      "sha256": "fac2fbc6287d22e80adcbb58ec2ad3b538a41ea6ab749a17573dfaeb5a67fef4"
+    },
+    "packages/core/test/engine.test.ts": {
+      "bytes": 4061,
+      "sha256": "7de54e686a3dba79874c7cab94bb3544d1287bdafde9c42d548707ea3c52eb21"
+    },
+    "packages/core/tsconfig.json": {
+      "bytes": 145,
+      "sha256": "de13c968b4221a080e618f284deec4a2a1375eecf825b3e39defb57e12b420e1"
+    },
+    "prompts/01_INICIO.md": {
+      "bytes": 1613,
+      "sha256": "9fdba57b9db925deb48e72588266bc6da89c3358035aa2996028771f77af09e5"
+    },
+    "prompts/02_CONTINUAR.md": {
+      "bytes": 703,
+      "sha256": "92d09b4d3c8e624024e00cd59a67308ad4f93e780dde155e0e6391dcf0123050"
+    },
+    "prompts/03_MICROFASE.md": {
+      "bytes": 677,
+      "sha256": "f543fd1dd8673d096ce6eddcdf4fa0ad91270d0893f5da9aade46e00a1d5e164"
+    },
+    "prompts/04_REVISION.md": {
+      "bytes": 696,
+      "sha256": "c98a9f35120c7e4d79ba350bae00dba4b7752b3f8c71278be86a3f35baa86c91"
+    },
+    "prompts/05_CIERRE_V1.md": {
+      "bytes": 639,
+      "sha256": "5ef4e2bcea2fb2295f1592dbdb4292cb0a5c1669c997f5cde6869f7f946b4cc6"
+    },
+    "prompts/06_SYSTEM_PROMPT_PRODUCTO.md": {
+      "bytes": 1565,
+      "sha256": "9e619c5bd7a1214c0a15274b1a1d1d28a8d49a7e360729c86ccd2c179717adb8"
+    },
+    "schemas/action-batch.schema.json": {
+      "bytes": 20619,
+      "sha256": "41a1b644414dbcec4faece0456c40fa42894c95e860e30d07c3ddd8f2cf32c99"
+    },
+    "schemas/document.schema.json": {
+      "bytes": 8610,
+      "sha256": "bab46f0c8e7af99912983d31297eed8baf917d3f341faf66fd30571db6646f22"
+    },
+    "scripts/export-schemas.ts": {
+      "bytes": 418,
+      "sha256": "8d45937761410feb57aec81ebcb3308fb3b32e51d47393934d80b13ef79b4307"
+    },
+    "scripts/serve-landing.mjs": {
+      "bytes": 896,
+      "sha256": "524279e2f08ca6f624ba5e8f2d01e86440e3268c20e9cd93ad9c2558fee0429d"
+    },
+    "scripts/setup-mcp.mjs": {
+      "bytes": 947,
+      "sha256": "a4092bb0a3c8e06b3302f81c6a6dd9583a951b3475b08fb0ce3445521d0ef85d"
+    },
+    "scripts/start-unix.sh": {
+      "bytes": 83,
+      "sha256": "0a044bef1b281a25473ec95f1ee4264b3d210b49a397123c1dcddb8563e0fbcf"
+    },
+    "scripts/start-windows.ps1": {
+      "bytes": 379,
+      "sha256": "b59b06ec18a8e831d08bf1a96c2d605fde20c149588bacf64490c7188b988af9"
+    },
+    "state/.gitkeep": {
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    "tsconfig.base.json": {
+      "bytes": 361,
+      "sha256": "0fe566a1a8d93e26a1211646e68097314c58fda0ed6a845d77c9f70c09e002c4"
+    }
+  }
+}
