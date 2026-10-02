@@ -27,8 +27,8 @@
     "db:down": "docker compose -f infra/compose.dev.yml down",
     "db:backup": "node scripts/pg-backup.mjs",
     "smoke:db": "node scripts/pg-restore-smoke.mjs",
-    "smoke:repository": "npm run build -w @diagramia/api && npm run build -w @diagramia/mcp && node scripts/pg-repository-smoke.mjs",
-    "smoke:shared": "npm run build -w @diagramia/api && npm run build -w @diagramia/mcp && node scripts/shared-browser-smoke.mjs",
+    "smoke:repository": "npm run build -w @diagramia/mcp && npm run build -w @diagramia/api && node scripts/pg-repository-smoke.mjs",
+    "smoke:shared": "npm run build -w @diagramia/mcp && npm run build -w @diagramia/api && node scripts/shared-browser-smoke.mjs",
     "smoke:mcp-remote": "npm run build -w @diagramia/mcp && npm run build -w @diagramia/api && node scripts/mcp-remote-smoke.mjs"
   },
   "devDependencies": {
