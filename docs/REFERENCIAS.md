@@ -10,7 +10,7 @@ Consultadas el 30/09/2026 (Argentina). Versiones de dependencias verificadas en 
 - Quickstart de servidor v2: https://github.com/modelcontextprotocol/typescript-sdk/tree/main/examples/server-quickstart
 - Documentación v2: https://ts.sdk.modelcontextprotocol.io/v2/
 - Specification MCP: https://modelcontextprotocol.io/specification
-- Higgsfield: https://docs.higgsfield.ai/ (verificar acceso y capacidades concretas antes de integrar)
+- OpenAI GPT-6 Luna (`gpt-6-luna`), consultado el 02/10/2026: https://developers.openai.com/api/docs/models y https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-openai-gpt-6-luna.html (precio, Chat Completions y structured outputs)
 - Manrope: https://github.com/google/fonts/tree/main/ofl/manrope
 - IBM Plex Mono: https://github.com/google/fonts/tree/main/ofl/ibmplexmono
 

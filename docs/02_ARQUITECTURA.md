@@ -62,9 +62,9 @@ El core actual soporta `inside`, `insideLabel`, `below`, `above`, `rightOf` y `l
 
 MCP expone operaciones y contexto a un host de IA; no realiza inferencia por sí mismo. Tools usan core y revisión. stdio local ahora; Streamable HTTP + OAuth y scopes para uso remoto en P5. Host tools no debe bypassar permisos de proyectos. Adapters de OpenAI/Anthropic/Gemini/local se implementan como módulos independientes y declaran structured outputs, streaming, vision y límites que realmente soportan.
 
-## Higgsfield
+## Telemetría
 
-Adapter de jobs, no dependencia del core. Inputs: brief, referencias autorizadas y formato; output: asset con procedencia, estado, versión y uso. Texto, nodos, flechas y estructura técnica siguen siendo nativos. Confirmar API y permisos reales antes de fijar endpoints/modelos. Un plugin instalado en el entorno del agente no otorga automáticamente acceso comercial al SaaS de Diagramia.
+El editor emite eventos tipados por lotes al gateway, que los valida y guarda en PostgreSQL propio (ADR 046); un fallo de ingesta nunca bloquea el editor. Los eventos llevan IDs, tipos y métricas, nunca el texto del diagrama, prompts completos ni secretos. Agregados diarios alimentan el dashboard del fundador y, más adelante, el agente Data/Product.
 
 ## Evolución
 

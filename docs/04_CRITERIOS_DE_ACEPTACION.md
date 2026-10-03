@@ -21,7 +21,7 @@ No confundir starter compilado, MVP local y producto V1. P0–P8 tienen criterio
 | A13 | Dos usuarios/proyectos distintos | Sin lectura/escritura cruzada; validación server-side en cada ruta/tool |
 | A14 | MCP externo modifica documento abierto | UI/MCP ven mismo receipt/revision y contenido; reconnect no duplica |
 | A15 | Se agota cuota gratuita | No se llama al provider; explicación/alternativa y ledger coherente |
-| A16 | Job Higgsfield con retry/fallo/cancelación | Acceso real autorizado; job deduplicado; assets seguros con procedencia y costo |
+| A16 | Usuario anónimo crea un diagrama, se registra al pedir IA y acepta una propuesta | Embudo completo reconstruible desde eventos, sesión anónima vinculada a la cuenta, costo del pedido en USD; ningún evento contiene el texto del diagrama |
 | A17 | Guardado falla o storage queda sin espacio | Aviso y recuperación/export; ninguna falsa confirmación de guardado |
 | A18 | Restaurar backup/version y rollback release | Datos y versión reproducibles; restauración comprobada |
 

@@ -1,6 +1,6 @@
 # Plan de desarrollo: fases y microfases
 
-El orden reduce riesgo: contrato → editor → movimiento → IA → SaaS → MCP conectado → interoperabilidad → multimedia → cierre. La base del ZIP adelanta partes de P0/P1/P2/P5; no declara completas esas fases. Empezar por auditarla y continuar desde sus límites, sin reescribir todo.
+El orden original redujo riesgo: contrato → editor → movimiento → IA → SaaS → MCP conectado → interoperabilidad → medición → cierre. Desde el 02/10/2026 manda la sección «Orden de ejecución», alineada con `DIAGRAMIA_SESION_PRODUCTO_NEGOCIO.md` (Lean Startup). La base del ZIP adelanta partes de P0/P1/P2/P5; no declara completas esas fases. Empezar por auditarla y continuar desde sus límites, sin reescribir todo.
 
 Cada microfase: leer contexto → implementar → checks relevantes → comprobar criterio → actualizar estado/backlog/ADR → continuar. Un acceso externo faltante bloquea su smoke real, no el resto del trabajo. No fusionar fases en una gran promesa sin evidencia.
 
@@ -10,11 +10,28 @@ Cada microfase: leer contexto → implementar → checks relevantes → comproba
 | P1 | Editor semántico completo | 5 |
 | P2 | Animaciones y presentación | 4 |
 | P3 | IA real y observable | 5 |
-| P4 | SaaS y persistencia | 5 |
+| P4 | SaaS y persistencia | 6 |
 | P5 | MCP del producto | 3 |
 | P6 | Interoperabilidad | 4 |
-| P7 | Higgsfield y recursos generativos | 3 |
+| P7 | Medición y aprendizaje | 4 |
 | P8 | Cierre de V1 | 4 |
+
+## Orden de ejecución (decidido el 02/10/2026)
+
+Objetivo: llegar a usuarios reales con la IA Free acotada y medir desde el primer día. Higgsfield se retiró del producto (ADR 044).
+
+**Antes del lanzamiento**
+
+1. **P3.1 — IA Free con GPT-6 Luna** (ADR 045): adapter con structured outputs estrictos, esfuerzo de razonamiento configurable, costo USD por pedido y `npm run smoke:ai` real. Bloqueo externo: `OPENAI_API_KEY`.
+2. **P7.1 y P7.2 — Medición**: eventos del embudo, editor, errores, performance e IA en PostgreSQL propio (ADR 046) y feedback 👍/👎.
+3. **P4.1 y P4.4 — Cuenta real y antiabuso**: tenant Auth0 con Google + email (ADR 047), email verificado, rate limit por IP, tope global de gasto con alerta y corte.
+4. **P8.2 y P8.3 — Performance y seguridad**: release candidate.
+5. **P8.4 — Despliegue autorizado** en el VPS, aislado de ReservApp; landing en el dominio principal y editor en `app.`.
+6. **P7.3 — Dashboard del fundador** con los 10 indicadores iniciales.
+
+**Después del lanzamiento, según datos reales:** P4.6 (billing con Paddle y Pro), P7.4 (agente Data/Product), P4.3 (assets en almacenamiento), P5.3 (MCP en hosts externos) y el resto de P6.4 (export temporal).
+
+**En paralelo:** revisión manual del usuario, pruebas de usabilidad, comunidad y Build in Public.
 
 ## P0 — Base y contratos
 
@@ -201,22 +218,22 @@ Cada microfase: leer contexto → implementar → checks relevantes → comproba
 **Salida verificable:** Dos writers misma revision: uno gana y otro obtiene conflicto; versión restaurable; reintentos iguales reconocidos tras reinicio.
 
 **Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
-### P4.3 — Assets y jobs
+### P4.3 — Assets en almacenamiento
 
-**Implementar:** Storage compatible S3, uploads seguros, cuotas, referencias y garbage collection sin borrar assets usados.
+**Implementar:** Storage compatible S3 para imágenes del documento, uploads seguros, cuotas, referencias y garbage collection sin borrar assets usados. Posterior al lanzamiento; sin jobs de renders generativos.
 
-**Áreas:** `apps/api/src/assets, workers`.
+**Áreas:** `apps/api/src/assets`.
 
-**Salida verificable:** Assets privados protegidos; formatos/tamaños inválidos rechazados; fallos de worker no dejan jobs eternos.
+**Salida verificable:** Assets privados protegidos; formatos/tamaños inválidos rechazados; un asset referenciado nunca se borra; la cuota de 10 MB/30 MB cuenta los assets.
 
 **Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
-### P4.4 — Free/Pro y BYOK
+### P4.4 — Free, cuotas y antiabuso
 
-**Implementar:** Entitlements, cuotas reales, usage ledger y billing adapter si se decide cobrar. No publicar Free sin límite de gasto.
+**Implementar:** IA Free con GPT-6 Luna: cuotas por cuenta, email verificado, rate limit por usuario/IP/endpoint, tope global de gasto con alerta y corte, CAPTCHA adaptativo ante riesgo; señales de dispositivo sólo como riesgo. No publicar Free sin límite de gasto.
 
-**Áreas:** `apps/api/src/billing, apps/editor`.
+**Áreas:** `apps/api, apps/editor`.
 
-**Salida verificable:** Quota agotada bloquea solicitud antes de provider; callbacks deduplicados; BYOK aislada/cifrada; no inventar precios o cobros.
+**Salida verificable:** Cuota agotada bloquea antes del proveedor; cuenta sin email verificado no usa IA; superar el tope global corta la IA Free y alerta; IP compartida no bloquea por sí sola; costo por pedido registrado en USD.
 
 **Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
 ### P4.5 — Operación local y CI
@@ -226,6 +243,15 @@ Cada microfase: leer contexto → implementar → checks relevantes → comproba
 **Áreas:** `infra, .github/workflows`.
 
 **Salida verificable:** Clonar + npm ci + servicios locales reproducible; backup se restaura a instancia aislada; no exige secretos para checks unitarios.
+
+**Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
+### P4.6 — Billing y planes pagos
+
+**Implementar:** Capa de billing propia con eventos internos; Paddle como Merchant of Record inicial y Lemon Squeezy como alternativa; webhooks traducidos a eventos internos; plan Pro; BYOK opcional. Posterior al lanzamiento.
+
+**Áreas:** `apps/api/src/billing, apps/editor`.
+
+**Salida verificable:** Webhooks firmados y deduplicados; el proveedor se reemplaza sin tocar la lógica de planes; no inventar precios; condiciones del MoR verificadas en documentación oficial antes de integrar.
 
 **Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
 
@@ -298,33 +324,44 @@ Cada microfase: leer contexto → implementar → checks relevantes → comproba
 
 **Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
 
-## P7 — Higgsfield y recursos generativos
+## P7 — Medición y aprendizaje
 
-### P7.1 — Comprobar acceso y contrato
+Fuente: `DIAGRAMIA_SESION_PRODUCTO_NEGOCIO.md`. Telemetría propia en PostgreSQL (ADR 046); sin contenido de diagramas, prompts completos ni secretos en los eventos.
 
-**Implementar:** Verificar API/capacidades oficiales, permiso comercial, modelos/costos, formatos y callbacks. Diseñar adapter sin endpoints inventados.
+### P7.1 — Eventos y captura
 
-**Áreas:** `packages/providers/higgsfield, docs/DECISIONS.md`.
+**Implementar:** Contrato de eventos versionado (adquisición, registro, activación, editor, errores y performance); ID anónimo, sesiones, UTMs y referrer; vinculación sesión anónima → usuario; ingesta por lotes hacia PostgreSQL; aviso de privacidad.
 
-**Salida verificable:** Evidence de API autorizada; si no existe acceso, adapter + import manual y bloqueo externo explícito, sin fingir integración.
+**Áreas:** `packages/core, apps/editor, apps/api`.
 
-**Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
-### P7.2 — Jobs y asset pipeline
-
-**Implementar:** Brief, refs, cost preview, autorización, job idempotente, progreso/cancelación, download validado y provenance.
-
-**Áreas:** `apps/api, workers, packages/providers`.
-
-**Salida verificable:** Retry no crea render extra; archivo inválido no entra al canvas; claves no llegan al browser; cancelación y costo final honestos.
+**Salida verificable:** Embudo landing_view → useful_diagram_created reconstruible desde la base; eventos inválidos rechazados; el editor funciona igual si la ingesta falla; ningún evento contiene texto del diagrama, prompts completos ni claves; rate limit de ingesta.
 
 **Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
-### P7.3 — Composición editable
+### P7.2 — Métricas de IA y feedback
 
-**Implementar:** Usar imagen/video como asset de fondo/escena; overlays técnicos nativos, controles de playback y sincronización.
+**Implementar:** Por interacción: modelo, tokens, costo USD, latencia, error/cancelación, regeneración, insertado/descartado, ediciones y undo posteriores; 👍/👎 con motivo después de cada generación.
 
-**Áreas:** `apps/editor/src/assets, apps/editor/src/timeline`.
+**Áreas:** `apps/api, apps/editor`.
 
-**Salida verificable:** Asset mejora presentación y sigue editable; labels/flechas no se convierten en pixels; export respeta permisos y licencia.
+**Salida verificable:** AI Acceptance/Regeneration/Edit/Immediate Undo Rate y costo por usuario y por diagrama útil calculables; el feedback es opcional y no interrumpe.
+
+**Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
+### P7.3 — Agregados y dashboard del fundador
+
+**Implementar:** Agregación diaria, North Star (diagramas útiles por usuario activo por semana), cohortes D1/D7/D30 y los 10 indicadores iniciales en una vista privada.
+
+**Áreas:** `apps/api, apps/editor`.
+
+**Salida verificable:** Los indicadores salen de agregados reproducibles; acceso sólo para administradores; con datos de prueba conocidos los números coinciden.
+
+**Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
+### P7.4 — Agente Data/Product
+
+**Implementar:** Reporte diario o semanal sobre datos preagregados: qué cambió, cuánto, hipótesis y experimento sugerido. Sólo analiza; no decide. Requiere usuarios reales.
+
+**Áreas:** `apps/api, scripts`.
+
+**Salida verificable:** Trabaja sólo con agregados; costo medido menor a USD 5/mes; cada afirmación cita la métrica que la respalda.
 
 **Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
 
@@ -359,11 +396,11 @@ Cada microfase: leer contexto → implementar → checks relevantes → comproba
 **Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
 ### P8.4 — Entrega y despliegue autorizado
 
-**Implementar:** Runbook de instalación, config, deploy/rollback y demo final; decidir dominio, marca, audiencia y presupuesto.
+**Implementar:** Runbook de instalación, config, deploy/rollback y demo final en el VPS Hostinger KVM 2 compartido con ReservApp: contenedores separados con límites de CPU/memoria, reverse proxy con TLS, landing en el dominio principal y editor en `app.`, backups programados. Decidir dominio, audiencia y presupuesto.
 
 **Áreas:** `docs, infra, DEVELOPMENT_STATE.md`.
 
-**Salida verificable:** Release reproducible y reversión probada; desplegar sólo con autorización correspondiente; V1 completa según criterios o bloqueos identificados.
+**Salida verificable:** Release reproducible y reversión probada; Diagramia no degrada a ReservApp bajo carga; desplegar sólo con autorización correspondiente; V1 completa según criterios o bloqueos identificados.
 
 **Cierre:** registrar comandos/evidencia y comportamiento pendiente; comprobar que los tres ejemplos siguen válidos.
 

@@ -49,7 +49,7 @@ No necesitás pegar todos los documentos en cada mensaje: el agente debe leer lo
 
 ## Qué NO está terminado
 
-No hay chatbot conectado a modelos, backend SaaS, cuentas, colaboración, cobros, cuotas gratuitas, biblioteca profesional, layout completo, edición visual de timeline ni integración activa con Higgsfield. El MCP local modifica un archivo: **todavía no sincroniza en vivo con el documento abierto en el navegador**. Para ver sus cambios, importá el archivo actualizado. El editor guarda en localStorage; ese estado tampoco se conecta al archivo automáticamente.
+No hay chatbot conectado a modelos, backend SaaS, cuentas, colaboración, cobros, cuotas gratuitas, biblioteca profesional, layout completo ni edición visual de timeline. El MCP local modifica un archivo: **todavía no sincroniza en vivo con el documento abierto en el navegador**. Para ver sus cambios, importá el archivo actualizado. El editor guarda en localStorage; ese estado tampoco se conecta al archivo automáticamente.
 
 El código es una base real y probada, no el producto final. No alcanza con levantar la landing para declarar que Diagramia está terminado. La definición de producto terminado está en `docs/04_CRITERIOS_DE_ACEPTACION.md`.
 

@@ -186,7 +186,7 @@
           ],
           "acceptance": "Un provider real y uno local compatible funcionan con credenciales disponibles; error sin clave visible; mock marcado separado.",
           "status": "implemented",
-          "evidence": "Gateway + adapters. Proveedor local REAL comprobado (Ollama, qwen2.5-coder:7b) con npm run smoke:ai: 6/6 en tres corridas seguidas. Error sin clave visible y demostración marcada. FALTA SÓLO: correr «npm run smoke:ai -- anthropic» cuando exista ANTHROPIC_API_KEY."
+          "evidence": "Gateway + adapters. Proveedor local REAL comprobado (Ollama, qwen2.5-coder:7b) con npm run smoke:ai: 6/6 en tres corridas seguidas. Error sin clave visible y demostración marcada. FALTA SÓLO: correr «npm run smoke:ai -- anthropic» cuando exista ANTHROPIC_API_KEY. 02/10/2026: el usuario eligió GPT-6 Luna (`gpt-6-luna`, OpenAI) como modelo de la IA Free (ADR 045). Pendiente: adapter con structured outputs estrictos y esfuerzo de razonamiento configurable, costo por pedido y `npm run smoke:ai` real con OPENAI_API_KEY. Claude queda como proveedor alternativo, no bloqueante."
         },
         {
           "id": "P3.2",
@@ -271,26 +271,25 @@
         },
         {
           "id": "P4.3",
-          "title": "Assets y jobs",
-          "scope": "Storage compatible S3, uploads seguros, cuotas, referencias y garbage collection sin borrar assets usados.",
+          "title": "Assets en almacenamiento",
+          "scope": "Storage compatible S3 para imágenes del documento, uploads seguros, cuotas, referencias y garbage collection sin borrar assets usados. Posterior al lanzamiento: hoy las imágenes viajan dentro del documento (400 KB c/u). Sin jobs de renders generativos (Higgsfield retirado, ADR 044).",
           "paths": [
-            "apps/api/src/assets",
-            "workers"
+            "apps/api/src/assets"
           ],
-          "acceptance": "Assets privados protegidos; formatos/tamaños inválidos rechazados; fallos de worker no dejan jobs eternos.",
+          "acceptance": "Assets privados protegidos; formatos/tamaños inválidos rechazados; un asset referenciado nunca se borra; la cuota de 10 MB/30 MB cuenta los assets.",
           "status": "pending"
         },
         {
           "id": "P4.4",
-          "title": "Free/Pro y BYOK",
-          "scope": "Entitlements, cuotas reales, usage ledger y billing adapter si se decide cobrar. No publicar Free sin límite de gasto.",
+          "title": "Free, cuotas y antiabuso",
+          "scope": "IA Free con GPT-6 Luna: cuotas por cuenta (20 créditos/mes, 6/día), email verificado, rate limit por usuario/IP/endpoint, tope global de gasto con alerta y corte, CAPTCHA adaptativo ante señales de riesgo y señales de dispositivo sólo como riesgo. Pro, billing y BYOK pasan a P4.6.",
           "paths": [
-            "apps/api/src/billing",
+            "apps/api",
             "apps/editor"
           ],
-          "acceptance": "Quota agotada bloquea solicitud antes de provider; callbacks deduplicados; BYOK aislada/cifrada; no inventar precios o cobros.",
+          "acceptance": "Cuota agotada bloquea antes del proveedor; cuenta sin email verificado no usa IA; superar el tope global corta la IA Free y alerta; IP compartida no bloquea por sí sola; costo por pedido registrado en USD.",
           "status": "partial",
-          "evidence": "Free por cuenta: máximo 3 documentos, 10 MB por documento incluidas versiones y 30 MB por proyecto; 20 créditos IA mensuales, 6 diarios, Crear cuesta 2 y otros modos 1. Reserva/settlement antes del proveedor, recibos durables y reintentos idempotentes comprobados en PostgreSQL real. Faltan medición económica con proveedor pago, Pro, callbacks de cobro, BYOK cifrada y límite de gasto de operación para publicación."
+          "evidence": "Free por cuenta: máximo 3 documentos, 10 MB por documento incluidas versiones y 30 MB por proyecto; 20 créditos IA mensuales, 6 diarios, Crear cuesta 2 y otros modos 1. Reserva/settlement antes del proveedor, recibos durables y reintentos idempotentes comprobados en PostgreSQL real. Pro, cobros y BYOK se movieron a P4.6 (02/10/2026). Falta: medición económica con GPT-6 Luna, email verificado, rate limit por IP, tope global de gasto en USD con alerta/corte y CAPTCHA adaptativo."
         },
         {
           "id": "P4.5",
@@ -303,6 +302,17 @@
           "acceptance": "Clonar + npm ci + servicios locales reproducible; backup se restaura a instancia aislada; no exige secretos para checks unitarios.",
           "status": "verified",
           "evidence": "Compose PostgreSQL 17.11-alpine con puerto loopback, volumen y healthcheck; db:up/down/backup, smoke:db y smoke:repository. Dos proyectos Docker aislados prueban restauración de documentos, versiones, auditoría y recibos. Gateway /health y /ready con comprobación de DB configurada y logs HTTP sin prompt/secret; test de contrato. GitHub Actions de 65baaf9 ejecutó npm ci, check, schemas, backup/restore y smoke:repository sin secretos: jobs check y database aprobados."
+        },
+        {
+          "id": "P4.6",
+          "title": "Billing y planes pagos",
+          "scope": "Capa de billing propia con eventos internos (subscription_started, payment_failed, plan_upgraded…); Paddle como Merchant of Record inicial y Lemon Squeezy como alternativa; webhooks traducidos a eventos internos; plan Pro; BYOK opcional. Posterior al lanzamiento, con datos de costo y conversión.",
+          "paths": [
+            "apps/api/src/billing",
+            "apps/editor"
+          ],
+          "acceptance": "Webhooks firmados y deduplicados; el proveedor se reemplaza sin tocar la lógica de planes; no inventar precios; condiciones del MoR verificadas en documentación oficial antes de integrar.",
+          "status": "pending"
         }
       ]
     },
@@ -408,43 +418,55 @@
     },
     {
       "id": "P7",
-      "title": "Higgsfield y recursos generativos",
+      "title": "Medición y aprendizaje",
       "dependsOn": [
-        "P6"
+        "P3",
+        "P4"
       ],
       "microphases": [
         {
           "id": "P7.1",
-          "title": "Comprobar acceso y contrato",
-          "scope": "Verificar API/capacidades oficiales, permiso comercial, modelos/costos, formatos y callbacks. Diseñar adapter sin endpoints inventados.",
+          "title": "Eventos y captura",
+          "scope": "Contrato de eventos versionado (adquisición, registro, activación, editor, errores y performance); ID anónimo, sesiones, UTMs y referrer; vinculación sesión anónima → usuario al registrarse; ingesta por lotes en el gateway hacia PostgreSQL propio (ADR 046); aviso de privacidad. Nunca el contenido de los diagramas ni secretos.",
           "paths": [
-            "packages/providers/higgsfield",
-            "docs/DECISIONS.md"
+            "packages/core",
+            "apps/editor",
+            "apps/api"
           ],
-          "acceptance": "Evidence de API autorizada; si no existe acceso, adapter + import manual y bloqueo externo explícito, sin fingir integración.",
+          "acceptance": "Embudo landing_view → useful_diagram_created reconstruible desde la base; eventos inválidos rechazados; el editor funciona igual si la ingesta falla; ningún evento contiene texto del diagrama, prompts completos ni claves; rate limit de ingesta.",
           "status": "pending"
         },
         {
           "id": "P7.2",
-          "title": "Jobs y asset pipeline",
-          "scope": "Brief, refs, cost preview, autorización, job idempotente, progreso/cancelación, download validado y provenance.",
+          "title": "Métricas de IA y feedback",
+          "scope": "Por interacción: modelo, tokens, costo USD, latencia, error/cancelación, regeneración, insertado/descartado, ediciones y undo posteriores; 👍/👎 con motivo después de cada generación.",
           "paths": [
             "apps/api",
-            "workers",
-            "packages/providers"
+            "apps/editor"
           ],
-          "acceptance": "Retry no crea render extra; archivo inválido no entra al canvas; claves no llegan al browser; cancelación y costo final honestos.",
+          "acceptance": "AI Acceptance/Regeneration/Edit/Immediate Undo Rate y costo por usuario y por diagrama útil calculables; el feedback es opcional y no interrumpe.",
           "status": "pending"
         },
         {
           "id": "P7.3",
-          "title": "Composición editable",
-          "scope": "Usar imagen/video como asset de fondo/escena; overlays técnicos nativos, controles de playback y sincronización.",
+          "title": "Agregados y dashboard del fundador",
+          "scope": "Agregación diaria, North Star (diagramas útiles por usuario activo por semana), cohortes D1/D7/D30 y los 10 indicadores iniciales en una vista privada.",
           "paths": [
-            "apps/editor/src/assets",
-            "apps/editor/src/timeline"
+            "apps/api",
+            "apps/editor"
           ],
-          "acceptance": "Asset mejora presentación y sigue editable; labels/flechas no se convierten en pixels; export respeta permisos y licencia.",
+          "acceptance": "Los 10 indicadores salen de agregados reproducibles; acceso sólo para administradores; con datos de prueba conocidos los números coinciden.",
+          "status": "pending"
+        },
+        {
+          "id": "P7.4",
+          "title": "Agente Data/Product",
+          "scope": "Reporte diario o semanal sobre datos preagregados: qué cambió, cuánto, hipótesis y experimento sugerido. Sólo analiza; no toma decisiones. Requiere datos de usuarios reales.",
+          "paths": [
+            "apps/api",
+            "scripts"
+          ],
+          "acceptance": "Trabaja sólo con agregados; costo medido menor a USD 5/mes; cada afirmación cita la métrica que la respalda.",
           "status": "pending"
         }
       ]
@@ -495,13 +517,13 @@
         {
           "id": "P8.4",
           "title": "Entrega y despliegue autorizado",
-          "scope": "Runbook de instalación, config, deploy/rollback y demo final; decidir dominio, marca, audiencia y presupuesto.",
+          "scope": "Runbook de instalación, config, deploy/rollback y demo final en el VPS Hostinger KVM 2 compartido con ReservApp: contenedores separados con límites de CPU/memoria, reverse proxy con TLS, landing en el dominio principal y editor en app.; backups programados. Decidir dominio, audiencia y presupuesto.",
           "paths": [
             "docs",
             "infra",
             "DEVELOPMENT_STATE.md"
           ],
-          "acceptance": "Release reproducible y reversión probada; desplegar sólo con autorización correspondiente; V1 completa según criterios o bloqueos identificados.",
+          "acceptance": "Release reproducible y reversión probada; Diagramia no degrada a ReservApp bajo carga; desplegar sólo con autorización correspondiente; V1 completa según criterios o bloqueos identificados.",
           "status": "pending"
         }
       ]
@@ -512,5 +534,27 @@
     "partial": "parte del alcance implementado; el resto se detalla en evidence",
     "implemented": "alcance implementado con checks automáticos; falta la revisión manual del usuario o una prueba real bloqueada",
     "verified": "criterio de salida comprobado con evidencia registrada"
+  },
+  "executionOrder": {
+    "decidedOn": "2026-10-02",
+    "note": "Lean: llegar a usuarios reales midiendo desde el día uno. Ver docs/03_PLAN_DE_DESARROLLO.md, sección «Orden de ejecución».",
+    "beforeLaunch": [
+      "P3.1",
+      "P7.1",
+      "P7.2",
+      "P4.1",
+      "P4.4",
+      "P8.2",
+      "P8.3",
+      "P8.4",
+      "P7.3"
+    ],
+    "afterLaunch": [
+      "P4.6",
+      "P7.4",
+      "P4.3",
+      "P5.3",
+      "P6.4"
+    ]
   }
 }

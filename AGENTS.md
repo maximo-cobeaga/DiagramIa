@@ -34,7 +34,7 @@ Orden de autoridad: instrucciones actuales del usuario → este contrato → esp
 - La representación visual debe conservar su editabilidad; un video o imagen generada no reemplaza la estructura técnica.
 - No agregar claves de proveedores al frontend ni usar prefijos VITE_ para secretos.
 - No presentar mocks como integración real. MCP no es un modelo y no ofrece el «100% del potencial» automáticamente.
-- Higgsfield requiere capacidad/API autorizada comprobada; no suponer acceso a todas sus funciones ni a una API privada.
+- La telemetría mide comportamiento, no contenido: ningún evento guarda texto de diagramas, prompts completos ni secretos.
 
 ## Diseño
 

@@ -10,4 +10,4 @@ logos/: maestros SVG con logotipo convertido a trazados.
 diagramia-tokens.css y diagramia-tokens.json: tokens de diseño.
 fonts/: fuentes y licencias SIL OFL.
 
-La landing es un prototipo narrativo independiente. No contiene conexiones activas con IA, MCP o Higgsfield.
+La landing es un prototipo narrativo independiente. No contiene conexiones activas con IA o MCP.

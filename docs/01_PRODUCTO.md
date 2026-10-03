@@ -40,7 +40,7 @@ Son hipótesis de valor. La integración por sí sola es replicable y no garanti
 | Interoperabilidad | JSON/SVG/PNG/PDF/Markdown; subconjuntos documentados de Mermaid, draw.io, DOT, PlantUML y BPMN/UML |
 | MCP | Lectura, selección, contexto, schemas, tools y acciones; permisos y revisión consistentes |
 | SaaS | Cuentas, proyectos, permisos, almacenamiento, versiones, uso, cuotas y manejo de errores |
-| Recursos generativos | Higgsfield opcional cuando exista acceso autorizado y API/capacidades verificadas |
+| Medición | Telemetría propia de adquisición, activación, editor e IA; feedback contextual y dashboard del fundador |
 
 No prometemos round-trip perfecto en formatos cuyo modelo no representa nuestras animaciones o zonas. Toda conversión debe emitir un reporte de pérdidas.
 

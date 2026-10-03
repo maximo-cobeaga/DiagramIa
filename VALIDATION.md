@@ -22,7 +22,7 @@ No se ejecutó prueba visual/end-to-end del editor en navegador: el entorno no t
 
 No se probó en Windows/macOS, ni en hosts Codex/Claude instalados. El protocolo stdio se verificó con un cliente real de SDK; instalar el bloque en un host y su gestión de permisos es una prueba adicional. Los scripts y rutas generadas son portables, pero deben comprobarse en cada plataforma.
 
-No se llamó a modelos, APIs de Higgsfield, cuentas, cobros o infraestructura externa. Esas funciones están planificadas, no activas. La sincronización MCP-editor en vivo tampoco existe todavía.
+No se llamó a modelos, cuentas, cobros o infraestructura externa. Esas funciones están planificadas, no activas. La sincronización MCP-editor en vivo tampoco existe todavía.
 
 El producto completo no está terminado. El paquete entrega una base reproducible para desarrollarlo con agentes y criterios para verificar cada etapa.
 
@@ -51,7 +51,7 @@ Windows 11 Pro, Node 22.23.1, npm 11.10.0. Chrome instalado (usado en modo headl
 - El smoke es headless y con una sola resolución de escritorio (1440×900) más tablet y móvil emulados. No cubre 1920×1080, pan, portapapeles, pinch/táctil real, edición de pasos desde la UI, pantalla completa, lector de pantalla, escalado al 200% ni Firefox/Safari.
 - Las capturas se revisaron a ojo en esta sesión; no hay comparación visual automática.
 - No se probó en macOS/Linux en esta sesión, ni el MCP dentro de un host instalado.
-- Sin backend, auth, DB, Higgsfield ni despliegue: no hay nada que verificar ahí todavía.
+- Sin backend, auth, DB ni despliegue: no hay nada que verificar ahí todavía.
 
 ## Para probar a mano
 

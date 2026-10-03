@@ -38,21 +38,22 @@ $paragraphs = @(
   (New-Paragraph '• Importar varios formatos de diagramas y exportar JSON, imágenes y PDF. Algunas conversiones pierden detalles y lo informan.')
 
   (New-Paragraph 'Qué falta para lanzar la primera versión' 'Heading1')
-  (New-Paragraph '• Almacenar imágenes y otros archivos de forma segura en la nube; completar tareas largas y su recuperación si fallan.')
+  (New-Paragraph '• Conectar GPT-6 Luna como IA del plan Gratis y medir su costo real por pedido.')
+  (New-Paragraph '• Medir el uso desde el primer día: embudo de registro, uso del editor y de la IA, errores y opinión de los usuarios.')
   (New-Paragraph '• Probar el inicio de sesión con Auth0 real, dos dispositivos y dos aplicaciones externas conectadas por MCP.')
-  (New-Paragraph '• Medir el costo real de la IA y cerrar el plan Gratis, Pro, pagos y uso de claves propias. Hoy los cupos son de prueba.')
+  (New-Paragraph '• Protección contra abuso del plan Gratis: email verificado, límites por IP y un tope global de gasto. Pagos y plan Pro, después del lanzamiento.')
   (New-Paragraph '• Terminar y revisar accesibilidad, velocidad, seguridad y exportación con movimiento. El PDF actual muestra imágenes fijas.')
 
   (New-Paragraph 'Decisiones a tomar' 'Heading1')
   (New-Paragraph '1. Lanzamiento: ¿alcanza con animaciones dentro de Diagramia y PDF fijo, o el video exportable es obligatorio? Sugerencia: lanzar con la primera opción y sumar video después.')
-  (New-Paragraph '2. IA y precios: elegir el modelo y los límites finales cuando haya mediciones reales. Los 20 créditos al mes y 6 al día son una hipótesis, no una promesa comercial.')
-  (New-Paragraph '3. Higgsfield: confirmar acceso y contrato antes de integrarlo. Sugerencia: dejarlo como complemento posterior; el producto principal no depende de él.')
+  (New-Paragraph '2. Límites de IA: el modelo ya está elegido (GPT-6 Luna). Los 20 créditos al mes y 6 al día son una hipótesis; ajustarlos con el costo medido.')
+  (New-Paragraph '3. Despliegue: autorizar el uso del VPS compartido con ReservApp y elegir el dominio.')
 
   (New-Paragraph 'Cómo se vería el producto terminado' 'Heading1')
   (New-Paragraph 'Una persona entra y dibuja sin cuenta. Si inicia sesión, guarda en la nube, pide a la IA que cree o cambie sólo una parte del diagrama, revisa el resultado y lo acepta. Luego arma una explicación animada, la presenta y la exporta. Sus archivos se mantienen privados, puede recuperar versiones y conoce sus límites de uso.')
 
   (New-Paragraph 'Próximo paso' 'Heading1')
-  (New-Paragraph 'Construir el almacenamiento de archivos y las tareas durables. Después, conectar servicios reales y hacer una ronda de pruebas de uso y seguridad. El código pasó 88 pruebas automáticas y 33 recorridos de navegador; eso todavía no reemplaza las pruebas de lanzamiento.')
+  (New-Paragraph 'Conectar GPT-6 Luna y construir la medición de uso. Después, conectar Auth0 real, revisar seguridad y desplegar. El código pasó 88 pruebas automáticas y 33 recorridos de navegador; eso todavía no reemplaza las pruebas de lanzamiento.')
 )
 
 $document = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +

@@ -19,7 +19,7 @@
 
 ## IA y plan gratuito
 
-- **Modelo preferido para el MVP: GPT Luna**, por su costo. Antes de integrarlo, confirmar el identificador y el acceso de API disponibles; medir costo, calidad y correcciones y mantener una capa de integración que permita cambiar de modelo.
+- **Modelo de la IA Free: GPT-6 Luna** (`gpt-6-luna`, OpenAI), decidido el 02/10/2026 por su costo (ADR 045). Identificador y API confirmados en documentación oficial; falta medir costo, calidad y correcciones con uso real. La capa de integración permite cambiar de modelo.
 - La IA debe interpretar el tipo de diagrama, las etapas, decisiones, excepciones y participantes (“calles” o *swimlanes*), y devolver una estructura validable que la pizarra renderiza. Ejemplo: compra con calles Cliente, Carrito, Vendedor y Mercado Pago.
 - **Cuota inicial a probar:** 20 créditos de IA al mes, máximo 6 al día; crear un diagrama cuesta 2 créditos y editar o explicar uno cuesta 1. Reinicio mensual y límites aplicados en servidor. Ajustar tras medir uso real y costo por sesión.
 - Los tres diagramas son el límite de **guardado en nube**, no una prohibición de crear o exportar más diagramas localmente.

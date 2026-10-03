@@ -325,8 +325,6 @@ IBM Plex Mono
 github.com/google/fonts/tree/main/ofl/ibmplexmono
 MCP
 modelcontextprotocol.io/docs/learn/server-concepts
-Higgsfield
-docs.higgsfield.ai/docs/llms.txt
 Las referencias describen fuentes y posibilidades técnicas. No acreditan
 disponibilidad del nombre, asociación con proveedores ni integraciones
 implementadas.

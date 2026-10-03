@@ -6,6 +6,8 @@ Para una lectura rápida del proyecto y las decisiones abiertas: `docs/Estado_Di
 
 El código está publicado en `maximo-cobeaga/DiagramIa` (GitHub, público). El CI remoto de `check` y `database` pasó el 02/10/2026; esto no equivale a desplegar el producto ni cambia los estados de las microfases pendientes.
 
+Orden de ejecución (02/10/2026, ADR 048): **P3.1 con GPT-6 Luna → P7.1/P7.2 medición → P4.1/P4.4 cuenta real y antiabuso → P8.2/P8.3 → P8.4 despliegue → P7.3 dashboard**. Después del lanzamiento: P4.6, P7.4, P4.3, P5.3 y P6.4. Higgsfield se retiró del producto (ADR 044).
+
 Estados: **verificada** = criterio de salida comprobado; **implementada** = alcance hecho con checks automáticos, falta revisión manual del usuario o una prueba real bloqueada; **parcial** = falta alcance (ver evidence); **pendiente** = sin empezar.
 
 | ID | Tarea | Estado |
@@ -29,9 +31,10 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 | P3.5 | Uso, presupuesto y resiliencia | verificada |
 | P4.1 | Identidad y proyectos | implementada |
 | P4.2 | Documentos y versiones durables | implementada |
-| P4.3 | Assets y jobs | pendiente |
-| P4.4 | Free/Pro y BYOK | parcial |
+| P4.3 | Assets en almacenamiento (post-lanzamiento) | pendiente |
+| P4.4 | Free, cuotas y antiabuso | parcial |
 | P4.5 | Operación local y CI | verificada |
+| P4.6 | Billing y planes pagos (post-lanzamiento) | pendiente |
 | P5.1 | Unificar canal de cambios | implementada |
 | P5.2 | Transporte remoto y permisos | implementada |
 | P5.3 | Capacidades y hosts | pendiente |
@@ -39,9 +42,10 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 | P6.2 | draw.io y Graphviz | implementada |
 | P6.3 | PlantUML, UML y BPMN | implementada |
 | P6.4 | Export visual y artefactos | parcial |
-| P7.1 | Comprobar acceso y contrato | pendiente |
-| P7.2 | Jobs y asset pipeline | pendiente |
-| P7.3 | Composición editable | pendiente |
+| P7.1 | Eventos y captura | pendiente |
+| P7.2 | Métricas de IA y feedback | pendiente |
+| P7.3 | Agregados y dashboard del fundador | pendiente |
+| P7.4 | Agente Data/Product (post-lanzamiento) | pendiente |
 | P8.1 | UX y accesibilidad | parcial |
 | P8.2 | Performance y estabilidad | pendiente |
 | P8.3 | Seguridad y release candidate | pendiente |
@@ -59,12 +63,12 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 - Durante prueba manual, el modelo local emitió `kind` no canónicos para un login y recibió 422 sin alterar el documento. El gateway ahora enumera los tipos válidos y traduce alias semánticos cerrados sólo en Crear; el mismo pedido pasó con el modelo real (4 nodos, 5 conexiones, 0 reparaciones). Esto no garantiza todos los pedidos libres.
 - Un modelo chico (7B) acierta el pedido de referencia pero tarda 10–20 s por pedido y depende de la reparación del engine; no es una referencia de calidad para el producto.
 - El presupuesto global del gateway es por proceso; las cuentas agregan créditos por usuario y recibos durables. No equivale todavía a un límite de gasto de producción medido con un proveedor pago.
-- Decisiones del MVP en `DiagramIa_Decisiones_MVP.md`: invitado con pizarra y borrador local, IA/nube con cuenta y nube Free de 3 documentos (10 MB cada uno y 30 MB totales). Se implementó la cuota inicial de 20 créditos por mes y 6 por día; falta medirla y completar Pro/BYOK/facturación. «GPT Luna» todavía requiere identificar modelo/API y medir costo.
+- Decisiones del MVP en `DiagramIa_Decisiones_MVP.md`: invitado con pizarra y borrador local, IA/nube con cuenta y nube Free de 3 documentos (10 MB cada uno y 30 MB totales). Se implementó la cuota inicial de 20 créditos por mes y 6 por día; falta medirla y completar Pro/BYOK/facturación. El modelo Free es GPT-6 Luna (`gpt-6-luna`, ADR 045): identificador y API confirmados, falta el adapter con structured outputs y medir costo real.
 - Schema 1.5.0 conserva los trazos libres independientes (línea, flecha y mano alzada) y agrega pistas de animación. SVG conserva los trazos; Mermaid, DOT y draw.io informan su pérdida. Falta revisar visualmente mouse y táctil.
 - Los recibos del gateway siguen en memoria en modo local; las cuentas guardan recibos de crédito durables y reintentos por usuario. Los recibos de lotes PostgreSQL sobreviven al límite de 100 del documento.
 - Historial de undo sólo de sesión (100 pasos, con aviso al descartar).
 - Export: PDF raster del diagrama y PDF por páginas de la presentación; no hay video con tiempo/movimiento. Mermaid y DOT pierden posiciones; draw.io conserva geometría del subset. Los tres formatos reportan lo que no representan. JSON sigue siendo el formato completo.
-- PostgreSQL local y el repositorio de documentos pasaron backup/restore aislado con versiones y recibos. Cuentas, proyectos, aislamiento, cuotas, sync local y MCP remoto se probaron con proveedor OIDC/OAuth simulado y PostgreSQL efímero; faltan Auth0 real, hosts MCP externos, billing, BYOK e Higgsfield. draw.io, DOT, PlantUML y BPMN cubren sólo los subconjuntos documentados en `docs/INTEROP.md`.
+- PostgreSQL local y el repositorio de documentos pasaron backup/restore aislado con versiones y recibos. Cuentas, proyectos, aislamiento, cuotas, sync local y MCP remoto se probaron con proveedor OIDC/OAuth simulado y PostgreSQL efímero; faltan Auth0 real, hosts MCP externos, billing y BYOK. draw.io, DOT, PlantUML y BPMN cubren sólo los subconjuntos documentados en `docs/INTEROP.md`.
 - PlantUML importa clases/secuencia/estados simples y exporta cada tipo; BPMN importa/exporta un proceso básico no ejecutable. Los elementos avanzados se informan o hacen fallar la importación si dejarían referencias rotas. Falta revisión manual con archivos ajenos variados.
 - Pan, portapapeles, pinch/táctil, edición de pasos por UI y lector de pantalla no tienen prueba automática: revisarlos a mano. El catálogo móvil se pliega para mostrar el canvas, pero el zoom inicial puede dejar texto pequeño.
 - MANIFEST.json describe el ZIP original; no se regeneró y sus hashes ya no coinciden con el árbol actual.
