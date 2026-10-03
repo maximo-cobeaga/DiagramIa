@@ -58,4 +58,8 @@ FROM telemetry_events WHERE origin = 'server' AND name = 'ai_request' AND occurr
 GROUP BY user_id ORDER BY usd DESC NULLS LAST;
 ```
 
-Los agregados diarios y el dashboard del fundador son P7.3.
+## Dashboard del fundador (P7.3)
+
+Abrí el editor en `/#fundador` con una cuenta cuyo email verificado esté en `DIAGRAMIA_ADMIN_EMAILS` (separados por comas). Muestra los 10 indicadores de la sección 12 de la sesión de negocio para la semana UTC actual contra la anterior, más costo de IA, fricción y una tabla de los últimos 14 días. Definiciones: ADR 053. API: `GET /v1/admin/dashboard?to=AAAA-MM-DD`.
+
+`npm run smoke:dashboard` siembra cinco visitantes en dos semanas y comprueba que los 10 valores coinciden con los calculados a mano, que los agregados son idempotentes, que otra cuenta recibe 403 y que la vista no desborda en escritorio ni en móvil.

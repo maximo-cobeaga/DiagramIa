@@ -9,6 +9,7 @@ import {AccountRepository} from './repositories/accounts.js';
 import {OidcAuthenticator} from './auth/oidc.js';
 import {RemoteMcpService} from './mcp.js';
 import {TelemetryRepository} from './repositories/telemetry.js';
+import {FounderDashboard} from './repositories/dashboard.js';
 
 const root=fileURLToPath(new URL('../../../',import.meta.url));
 // Carga opcional de .env en la raíz del repo (el archivo está en .gitignore). Las variables ya definidas tienen prioridad.
@@ -50,6 +51,8 @@ async function start(){
       accounts,remoteMcp,
       // Telemetría propia (ADR 046): requiere PostgreSQL; DIAGRAMIA_TELEMETRY=0 la apaga.
       telemetry:pool&&env.DIAGRAMIA_TELEMETRY!=='0'?new TelemetryRepository(pool):undefined,
+      dashboard:pool&&env.DIAGRAMIA_TELEMETRY!=='0'?new FounderDashboard(pool):undefined,
+      adminEmails:(env.DIAGRAMIA_ADMIN_EMAILS??'').split(',').map(email=>email.trim()).filter(Boolean),
       eventsPerMinute:number('DIAGRAMIA_EVENTS_PER_MINUTE',60),trustProxy:env.DIAGRAMIA_TRUST_PROXY==='1',
       requireVerifiedEmail:env.DIAGRAMIA_REQUIRE_VERIFIED_EMAIL!=='0',aiPerIpPerMinute:number('DIAGRAMIA_AI_PER_IP_PER_MINUTE',20),aiPerUserPerMinute:number('DIAGRAMIA_AI_PER_USER_PER_MINUTE',6),
       // Plan Free: GPT-6 Luna por defecto (ADR 045). Lista separada por comas de IDs de proveedor.

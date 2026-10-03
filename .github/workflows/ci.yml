@@ -26,3 +26,4 @@ jobs:
       - run: docker compose -f infra/compose.dev.yml config -q
       - run: node scripts/pg-restore-smoke.mjs
       - run: npm run smoke:repository
+      - run: npm run smoke:dashboard

@@ -458,7 +458,8 @@
             "apps/editor"
           ],
           "acceptance": "Los 10 indicadores salen de agregados reproducibles; acceso sólo para administradores; con datos de prueba conocidos los números coinciden.",
-          "status": "pending"
+          "status": "implemented",
+          "evidence": "02/10/2026 (ADR 053): vista telemetry_facts con actor resuelto, agregados diarios idempotentes en telemetry_daily, 10 indicadores con semana anterior, costo y fricción; `GET /v1/admin/dashboard` sólo para emails verificados de DIAGRAMIA_ADMIN_EMAILS; vista `#fundador` cargada aparte. `npm run smoke:dashboard` (PostgreSQL Docker + Chromium): valores sembrados coinciden con el cálculo manual, 403 para otras cuentas, capturas 17-founder-dashboard (escritorio y móvil) revisadas sin desborde. Falta: datos reales y revisión manual."
         },
         {
           "id": "P7.4",

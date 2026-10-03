@@ -10,6 +10,7 @@ import {AccountRepository,CreditError} from './repositories/accounts.js';
 import {OidcAuthenticator} from './auth/oidc.js';
 import {RemoteMcpService} from './mcp.js';
 import {RateLimiter,TelemetryRepository} from './repositories/telemetry.js';
+import {FounderDashboard} from './repositories/dashboard.js';
 
 export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistConfig;productPrompt:string;allowedOrigins:string[];token:string|null;documents?:PostgresDocumentRepository;documentToken?:string;localWorkspace?:boolean;accounts?:AccountRepository;oidc?:OidcAuthenticator;remoteMcp?:RemoteMcpService;
   /** IDs de proveedor que puede usar una cuenta (plan Free). Sin lista, todos los configurados. */
@@ -19,6 +20,8 @@ export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistCon
   /** Detrás de un reverse proxy propio: la IP del cliente es la última de X-Forwarded-For. */
   trustProxy?:boolean;
   /** Antiabuso de la IA incluida (P4.4). Por defecto exige email verificado y limita 20 pedidos/min por IP y 6 por cuenta. */
+  /** Dashboard del fundador (P7.3): sólo para cuentas con email verificado incluido en adminEmails. */
+  dashboard?:FounderDashboard;adminEmails?:string[];
   requireVerifiedEmail?:boolean;aiPerIpPerMinute?:number;aiPerUserPerMinute?:number;ready?:()=>Promise<boolean>;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void};
 const MAX_BODY=4_000_000;
 const MAX_DOCUMENT_BODY=10_500_000;
@@ -192,6 +195,14 @@ export function createApp(options:AppOptions):Server{
       }
       const session=options.accounts?await options.accounts.readSession(cookie(req,'diagramia_session')):null;
       if(options.token&&!session&&!sameToken(String(req.headers.authorization??''),`Bearer ${options.token}`))return fail(401,'UNAUTHORIZED','Token del gateway inválido o ausente.');
+      if(path==='/v1/admin/dashboard'&&req.method==='GET'){
+        if(!options.dashboard)return fail(503,'DASHBOARD_UNAVAILABLE','El dashboard necesita PostgreSQL con telemetría.');
+        const admins=(options.adminEmails??[]).map(email=>email.toLowerCase());
+        if(!session?.emailVerified||!session.email||!admins.includes(session.email.toLowerCase()))return fail(403,'ADMIN_ONLY','El dashboard es sólo para administradores.');
+        const to=new URL(req.url??'/','http://gateway').searchParams.get('to');
+        if(to!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(to))return fail(400,'INVALID_REQUEST','to debe ser una fecha AAAA-MM-DD.');
+        return send(200,await options.dashboard.report(to??undefined));
+      }
       if(options.accounts&&!session&&['/v1/providers','/v1/usage','/v1/assist'].includes(path))return fail(401,'SESSION_REQUIRED','Iniciá sesión para usar IA.');
       // Una cuenta sólo ve y usa los proveedores de su plan: los créditos Free no pagan un modelo más caro.
       const providers=session&&options.accountProviders?options.providers.filter(p=>options.accountProviders!.includes(p.info().id)):options.providers;

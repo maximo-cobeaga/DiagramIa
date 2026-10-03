@@ -29,7 +29,8 @@
     "smoke:db": "node scripts/pg-restore-smoke.mjs",
     "smoke:repository": "npm run build -w @diagramia/mcp && npm run build -w @diagramia/api && node scripts/pg-repository-smoke.mjs",
     "smoke:shared": "npm run build -w @diagramia/mcp && npm run build -w @diagramia/api && node scripts/shared-browser-smoke.mjs",
-    "smoke:mcp-remote": "npm run build -w @diagramia/mcp && npm run build -w @diagramia/api && node scripts/mcp-remote-smoke.mjs"
+    "smoke:mcp-remote": "npm run build -w @diagramia/mcp && npm run build -w @diagramia/api && node scripts/mcp-remote-smoke.mjs",
+    "smoke:dashboard": "npm run build -w @diagramia/api && node scripts/dashboard-smoke.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3",

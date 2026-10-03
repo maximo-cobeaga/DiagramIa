@@ -190,6 +190,9 @@ function App(){
     {tutorial&&<Tutorial/>}
   </>;
 }
-startTelemetry();
-trackReopened(documentStore.get().doc);
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+// #fundador abre el panel de métricas (sólo administradores). No se mide: no es uso del producto.
+const founder=location.hash==='#fundador';
+const FounderDashboard=React.lazy(()=>import('./founder/FounderDashboard').then(m=>({default:m.FounderDashboard})));
+window.addEventListener('hashchange',()=>{if((location.hash==='#fundador')!==founder)location.reload();});
+if(!founder){startTelemetry();trackReopened(documentStore.get().doc);}
+createRoot(document.getElementById('root')!).render(<React.StrictMode>{founder?<React.Suspense fallback={null}><FounderDashboard/></React.Suspense>:<App/>}</React.StrictMode>);

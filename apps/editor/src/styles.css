@@ -345,3 +345,21 @@ ol.staged li.shown{color:var(--blue)}
 .feedback small,.feedback-done{font-size:12px;color:var(--muted)}
 .feedback .quiet{min-width:36px;min-height:32px}
 .feedback-done{display:block;margin-top:10px}
+/* Panel del fundador: números grandes en tinta, comparación en texto; nada se lee sólo por color. */
+.founder{max-width:1200px;margin:0 auto;padding:32px 24px 64px;color:var(--ink);background:var(--paper);min-height:100vh;overflow:auto}
+.founder h1{font-size:28px;margin:4px 0 0}
+.founder-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:24px}
+.founder-hero{display:flex;flex-direction:column;gap:4px;padding:24px;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-bottom:16px}
+.founder-hero strong{font-size:48px;line-height:1.1;font-weight:650}
+.founder-hero small,.founder-tile p{font-size:13px;color:var(--muted);margin:0}
+.founder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:16px}
+.founder-tile{display:flex;flex-direction:column;gap:6px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.founder-tile h2{font-size:13px;font-weight:600;margin:0;color:var(--muted)}
+.founder-tile strong{font-size:30px;line-height:1.1;font-weight:650}
+.founder-change{font:12px Plex,monospace;color:var(--ink)}
+.founder-section{font-size:16px;margin:24px 0 8px}
+.founder-table{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.founder-table table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+.founder-table th,.founder-table td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--ink)}
+.founder-table th:first-child{text-align:left}
+.founder-table thead th{color:var(--muted);font-weight:600}
