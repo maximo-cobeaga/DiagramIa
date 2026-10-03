@@ -48,8 +48,8 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 | P7.4 | Agente Data/Product (post-lanzamiento) | pendiente |
 | P8.1 | UX y accesibilidad | parcial |
 | P8.2 | Performance y estabilidad | implementada |
-| P8.3 | Seguridad y release candidate | pendiente |
-| P8.4 | Entrega y despliegue autorizado | pendiente |
+| P8.3 | Seguridad y release candidate | parcial |
+| P8.4 | Entrega y despliegue autorizado | parcial |
 
 ## Límites técnicos conocidos (continuación del 01/10/2026)
 

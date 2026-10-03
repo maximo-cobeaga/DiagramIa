@@ -27,3 +27,5 @@ jobs:
       - run: node scripts/pg-restore-smoke.mjs
       - run: npm run smoke:repository
       - run: npm run smoke:dashboard
+      - run: docker build -f infra/Dockerfile --target api -t diagramia-api:ci .
+      - run: docker build -f infra/Dockerfile --target web --build-arg APP_URL=https://app.example.test/ -t diagramia-web:ci .

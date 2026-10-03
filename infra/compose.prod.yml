@@ -1,0 +1,81 @@
+# Producción en un VPS compartido (P8.4). Sólo el contenedor web publica un puerto, y en loopback: el reverse proxy
+# del VPS (que ya atiende a ReservApp) termina TLS y le reenvía app.<dominio> y <dominio>. Límites de CPU y memoria
+# para que Diagramia no afecte al resto. Uso y variables: infra/DEPLOY.md.
+#   docker compose --env-file .env.production -f infra/compose.prod.yml up -d --build
+name: diagramia
+
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+
+services:
+  db:
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_USER: diagramia
+      POSTGRES_DB: diagramia
+      POSTGRES_PASSWORD: ${DIAGRAMIA_DB_PASSWORD:?Falta DIAGRAMIA_DB_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    shm_size: 128mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    stop_grace_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 768M, pids: 200}
+    logging: *logging
+
+  api:
+    build: {context: .., dockerfile: infra/Dockerfile, target: api}
+    image: diagramia-api:${DIAGRAMIA_RELEASE:-local}
+    env_file: ${DIAGRAMIA_ENV_FILE:-../.env.production}
+    environment:
+      DIAGRAMIA_API_HOST: 0.0.0.0
+      DIAGRAMIA_API_PORT: "8787"
+      DIAGRAMIA_DATABASE_URL: postgres://diagramia:${DIAGRAMIA_DB_PASSWORD}@db:5432/diagramia
+      # Detrás de nginx (que ya resolvió la IP real con real_ip): la IP del visitante viene en X-Forwarded-For.
+      DIAGRAMIA_TRUST_PROXY: "1"
+    depends_on:
+      db: {condition: service_healthy}
+    volumes:
+      - api_state:/app/state
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 512M, pids: 200}
+    logging: *logging
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: web
+      args: {APP_URL: "${DIAGRAMIA_APP_URL:?Falta DIAGRAMIA_APP_URL (https://app.<dominio>/)}"}
+    image: diagramia-web:${DIAGRAMIA_RELEASE:-local}
+    environment:
+      APP_HOST: ${DIAGRAMIA_APP_HOST:?Falta DIAGRAMIA_APP_HOST}
+      SITE_HOST: ${DIAGRAMIA_SITE_HOST:?Falta DIAGRAMIA_SITE_HOST}
+      APP_ORIGIN: ${DIAGRAMIA_APP_ORIGIN:?Falta DIAGRAMIA_APP_ORIGIN}
+    depends_on:
+      api: {condition: service_healthy}
+    ports:
+      - "127.0.0.1:${DIAGRAMIA_WEB_PORT:-8080}:80"
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 128M, pids: 100}
+    logging: *logging
+
+volumes:
+  pg_data:
+  api_state:

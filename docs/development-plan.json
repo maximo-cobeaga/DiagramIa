@@ -516,7 +516,8 @@
             "docs"
           ],
           "acceptance": "Checks y pruebas de contrato reales; sin claves/build leaks; bloqueos reales abiertos no se ocultan bajo status completed.",
-          "status": "pending"
+          "status": "partial",
+          "evidence": "02/10/2026: revisión registrada en docs/SEGURIDAD.md (npm audit sin vulnerabilidades, búsqueda de secretos, sesión, CSRF, aislamiento, antiabuso, telemetría, cabeceras, contenedores, IP detrás de proxy). Corregidos en esta revisión: checksum de migraciones dependiente del fin de línea (habría impedido arrancar al cambiar de Windows a Linux), requestId libre en telemetría y falta de nosniff. Pendiente: Auth0 real, aviso de privacidad y consentimiento UE, licencia del código, canal de la alerta de gasto y revisión externa."
         },
         {
           "id": "P8.4",
@@ -528,7 +529,8 @@
             "DEVELOPMENT_STATE.md"
           ],
           "acceptance": "Release reproducible y reversión probada; Diagramia no degrada a ReservApp bajo carga; desplegar sólo con autorización correspondiente; V1 completa según criterios o bloqueos identificados.",
-          "status": "pending"
+          "status": "partial",
+          "evidence": "02/10/2026 (ADR 055): infra/Dockerfile, compose.prod.yml, nginx.conf, backup.sh, env.production.example y runbook infra/DEPLOY.md. Probado en Docker local: pila sana, CSP por host, IP real a través de dos proxies, smoke 33/33 contra el contenedor, respaldo restaurado en una base nueva y vuelta atrás/adelante entre versiones. CI construye las dos imágenes. Bloqueado: autorización de despliegue, acceso al VPS, dominio, tenant Auth0 y OPENAI_API_KEY."
         }
       ]
     }
