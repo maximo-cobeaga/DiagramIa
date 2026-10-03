@@ -164,15 +164,38 @@ try{
     const corners=[{x,y},{x:x+150,y},{x:x+150,y:y+90},{x,y:y+90},{x,y}],points=[corners[0]];
     for(let j=1;j<corners.length;j++)for(let i=1;i<=8;i++)points.push({x:corners[j-1].x+(corners[j].x-corners[j-1].x)*i/8,y:corners[j-1].y+(corners[j].y-corners[j-1].y)*i/8});
     const before=await saved();await trace(points);await sleep(750);
-    expect((await status()).includes('Rectángulo emprolijado'),'mantener no emprolija el rectángulo');expect((await saved()).revision===before.revision,'el guiado guardó antes de soltar');await shot('35-lapiz-guiado');
+    expect((await status()).includes('Forma emprolijada: Rectángulo'),'mantener no emprolija el rectángulo');expect((await saved()).revision===before.revision,'el guiado guardó antes de soltar');await shot('35-lapiz-guiado');
     await mouse('mouseReleased',x,y);let doc=await saved();expect(doc.drawings[0].points.length===5,'el rectángulo no conserva las cuatro esquinas');
     const circle=Array.from({length:65},(_,i)=>({x:x+225+40*Math.cos(i*Math.PI*2/64),y:y+45+40*Math.sin(i*Math.PI*2/64)}));
-    await trace(circle);await sleep(750);expect((await status()).includes('Círculo emprolijado'),'mantener no emprolija el círculo');await mouse('mouseReleased',circle[0].x,circle[0].y);doc=await saved();expect(doc.drawings.at(-1).points.length===81,'el círculo guiado no se guardó editable');
+    await trace(circle);await sleep(750);expect((await status()).includes('Forma emprolijada: Círculo'),'mantener no emprolija el círculo');await mouse('mouseReleased',circle[0].x,circle[0].y);doc=await saved();expect(doc.drawings.at(-1).points.length===81,'el círculo guiado no se guardó editable');
     await key('Escape');await key('l');await drag({x:x-20,y:y+160},{x:x+100,y:y+167},SHIFT);doc=await saved();const line=doc.drawings.at(-1);
     expect(line.kind==='line'&&Math.abs(line.points[0].y-line.points[1].y)<.01,'Shift no endereza la línea');
     // Esc durante el gesto descarta el borrador, sin agregar un trazo.
     await key('d');const count=doc.drawings.length;await mouse('mousePressed',x,y+210);await mouse('mouseMoved',x+70,y+220);await key('Escape');await mouse('mouseReleased',x+70,y+220);
     expect((await saved()).drawings.length===count,'Esc guardó un trazo que debía cancelar');return 'forma editable, guía sin commit prematuro, línea horizontal y cancelación';
+  });
+  await check('el guiado corrige al soltar sin espera y mantener tolera el temblor de mano',async()=>{
+    await tap('.doc-tab-add');await tap('[aria-label="Cambiar a modo oscuro"]');await key('g');const host=await center('.canvas-host'),x=host.x-130,y=host.top+host.height*.6;
+    const shaky=Array.from({length:61},(_,i)=>({x:x+i*2,y:y+(i===0||i===60?0:Math.sin(i*2.3)*3)}));
+    await trace(shaky);await mouse('mouseReleased',shaky.at(-1).x,shaky.at(-1).y);
+    let doc=await saved();const line=doc.drawings.at(-1);
+    expect(line.points.length===2&&line.style.stroke==='#ffffff','la línea guiada no se enderezó al soltar o perdió el blanco inicial');
+    expect((await status()).includes('Forma emprolijada: Línea'),'no hay feedback de la corrección automática');
+    await key('z',CTRL);expect((await saved()).drawings.length===0,'undo no revierte la forma automática');
+    const circle=Array.from({length:73},(_,i)=>{const a=i*Math.PI*2/72,r=45+Math.sin(i*1.7)*1.5;return {x:x+70+Math.cos(a)*r,y:y+75+Math.sin(a)*r};});
+    await trace(circle);await mouse('mouseReleased',circle.at(-1).x,circle.at(-1).y);doc=await saved();
+    expect(doc.drawings.at(-1).points.length===81&&(await status()).includes('Forma emprolijada: Círculo'),'el círculo necesita mantener presionado para emprolijarse');
+    await shot('39-guiado-automatico');
+    const rect=[{x:x+170,y},{x:x+300,y:y+1},{x:x+302,y:y+90},{x:x+170,y:y+92},{x:x+171,y:y+1}];
+    await trace(rect);const end=rect.at(-1),revision=doc.revision;
+    for(let i=0;i<6;i++){await sleep(100);await mouse('mouseMoved',end.x+(i%2?1:-1),end.y);}
+    expect(await js(`document.querySelector('.pen-tools small').textContent.includes('Rectángulo · Soltá')`),'un temblor pequeño reinicia la vista previa guiada');
+    expect((await saved()).revision===revision,'mantener guardó antes de soltar');await shot('40-guiado-feedback');
+    await mouse('mouseReleased',end.x,end.y);expect((await saved()).drawings.at(-1).points.length===5,'la forma reconocida se perdió al soltar');
+    // El lápiz libre sigue conservando la geometría original.
+    await key('d');await trace(shaky);await mouse('mouseReleased',shaky.at(-1).x,shaky.at(-1).y);
+    expect((await saved()).drawings.at(-1).points.length>30,'la corrección automática invadió el lápiz libre');await key('Escape');await tap('[aria-label="Cambiar a modo claro"]');
+    return 'línea y círculo sin espera; blanco conservado; vista previa tolera temblor; undo y lápiz libre';
   });
   await check('goma y conversión a texto son reversibles y conservan los trazos originales al cancelar',async()=>{
     const before=await saved(),drawing=before.drawings[0],point=drawing.points[0];

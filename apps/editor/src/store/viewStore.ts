@@ -29,7 +29,7 @@ export const viewStore=createStore({
   // El panel lateral abre en IA: es el primer recorrido del producto.
   panel:'assistant' as Panel,sideOpen:true,timelineOpen:false,timelineHeight:300,presenting:false,tutorial:false,theme:initialTheme(),
   startMode:'choose' as 'choose'|'draw'|'examples',focusMode:false,connectFromId:null as string|null,
-  penColor:'#141619',penWidth:2,
+  penColor:'#ffffff',penWidth:2,
   labelFocus:0,editingId:null as string|null,staging:null as Staging|null,flash:null as Flash|null,
   // Recorrido de una explicación que se está presentando: una copia del documento con la animación, nunca guardada.
   tour:null as {doc:DiagramDocument;previousAnimationId:string}|null,

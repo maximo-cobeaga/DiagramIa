@@ -2,6 +2,10 @@
 
 ## Último checkpoint
 
+03/10/2026 (corrección del lápiz guiado; ADR 076). Se atiende el feedback de que parecía un lápiz normal: emprolija líneas, círculos/óvalos y rectángulos reconocibles al soltar, sin espera obligatoria. Suavizado por distancia para reducir temblor conservando extremos/esquinas; mantener 450 ms ofrece vista previa y nombre de forma con tolerancia de 4 px. Color inicial blanco, commit al soltar, cancelación y undo conservados. `npm run check`: 130/130; navegador estable: 50/50, sin errores de consola, con gateway mock aislado. Capturas revisadas `evidencias/ui-guiado-automatico.png` y `ui-guiado-feedback.png`. Corrección implementada en P1.1/P8.1. Próximo paso: revisión manual 27 con los trazos del usuario; reconocimiento/refinamiento automático de letras sigue pendiente. P8.1 parcial, sin schema ni dependencias nuevas. Trabajo local, sin push ni despliegue.
+
+03/10/2026 (ajuste solicitado): el lápiz inicia en blanco (`#ffffff`), tanto en la vista previa como en el trazo guardado. Verificado con `npm run build -w @diagramia/editor` (TypeScript y build correctos). No modifica dibujos existentes. Próximo paso: revisión manual 25–28.
+
 03/10/2026 (Argentina, revisión de inserción, lápiz y color; ADR 073–075). Correcciones y herramientas implementadas en P1.1/P8.1:
 - **Inserción fiel:** forma/icono/color visibles al presionar y mientras se escribe; campo transparente en la caja real del título, compartida con el render. La nota nueva toma el nombre de la plantilla. Selección con contorno externo, sin reemplazar colores de nodos, conexiones o dibujos.
 - **Lápiz libre:** render y estilo iguales durante el gesto y al guardar; sin línea azul punteada. Acepta puntos, círculos cerrados y varios trazos seguidos. Color/grosor antes de dibujar; Esc y pointercancel descartan borradores.

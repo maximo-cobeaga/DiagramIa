@@ -38,7 +38,7 @@ const TOOLS:[Tool,string,string,string][]=[
 ];
 const TOOL_HINTS:Record<Tool,string>={
   select:'Arrastrá para mover. Doble clic escribe el texto. En el fondo, arrastrá para seleccionar varios.',pan:'Arrastrá para desplazar la vista.',
-  node:'Hacé clic en el canvas para ubicar la forma elegida.',connect:'Arrastrá de un nodo a otro para crear una conexión.',line:'Arrastrá una línea. Shift la endereza.',arrow:'Arrastrá una flecha. Shift la endereza.',freehand:'Dibujá o escribí libremente. Esc vuelve a seleccionar.',guided:'Escribí con trazos suaves. Mantené el lápiz quieto para emprolijar una forma.',eraser:'Pasá por los trazos para borrarlos. Deshacer los recupera.',
+  node:'Hacé clic en el canvas para ubicar la forma elegida.',connect:'Arrastrá de un nodo a otro para crear una conexión.',line:'Arrastrá una línea. Shift la endereza.',arrow:'Arrastrá una flecha. Shift la endereza.',freehand:'Dibujá o escribí libremente. Esc vuelve a seleccionar.',guided:'Dibujá con trazos suaves. Las formas se emprolijan al soltar.',eraser:'Pasá por los trazos para borrarlos. Deshacer los recupera.',
   zone:'Arrastrá para dibujar la zona. Adopta los nodos sin zona que queden adentro.',frame:'Arrastrá para dibujar un encuadre de presentación.'
 };
 const PANELS:[Panel,string][]=[['assistant','IA'],['inspector','Propiedades'],['library','Biblioteca'],['history','Cuenta']];

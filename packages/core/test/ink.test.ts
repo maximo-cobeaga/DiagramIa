@@ -25,3 +25,17 @@ test('suavizar conserva extremos y esquinas y Shift restringe la línea a 45 gra
   assert.ok(Math.abs(smooth[1].y)<Math.abs(stroke[1].y));
   const diagonal=straightInk({x:0,y:0},{x:30,y:24},true);assert.ok(Math.abs(diagonal[1].x-diagonal[1].y)<.0001);
 });
+
+test('el guiado tolera temblor de mano sin aplanar curvas deliberadas ni trazos abiertos',()=>{
+  const line=Array.from({length:81},(_,i)=>({x:i*2,y:i===0||i===80?0:Math.sin(i*2.3)*3}));
+  const before=structuredClone(line),guided=guideInk(line);
+  assert.equal(guided?.label,'Línea');assert.deepEqual(guided?.points,[line[0],line.at(-1)]);assert.deepEqual(line,before);
+  const circle=Array.from({length:91},(_,i)=>{const a=i*Math.PI*2/90,r=60+Math.sin(i*1.7)*2;return {x:100+Math.cos(a)*r,y:100+Math.sin(a)*r};});
+  assert.equal(guideInk(circle)?.label,'Círculo');
+  assert.equal(guideInk(circle.slice(0,60)),null);
+  const curve=Array.from({length:81},(_,i)=>({x:i*2,y:35*Math.sin(i*Math.PI/80)}));
+  assert.equal(guideInk(curve),null,'un arco no debe convertirse en línea');
+  const smooth=smoothInk(line),jitter=(ps:typeof line)=>ps.reduce((sum,p)=>sum+Math.abs(p.y),0);
+  assert.ok(jitter(smooth)<jitter(line)*.6,'el suavizado debe reducir de forma perceptible el temblor');
+  assert.deepEqual(smooth[0],line[0]);assert.deepEqual(smooth.at(-1),line.at(-1));
+});

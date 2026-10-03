@@ -23,7 +23,7 @@ type Gesture=
   |{type:'box';kind:'zone'|'frame';id:string;start:Point;dx:number;dy:number}
   |{type:'resize';kind:BoxKind;id:string;handle:string;start:Point;original:Rect;rect:Rect}
   |{type:'draw';kind:'zone'|'frame';start:Point;current:Point}
-  |{type:'stroke';kind:'line'|'arrow'|'freehand';points:Point[];raw:Point[];style:DiagramDrawing['style'];guided:boolean}
+  |{type:'stroke';kind:'line'|'arrow'|'freehand';points:Point[];raw:Point[];style:DiagramDrawing['style'];guided:boolean;guideLabel?:string}
   |{type:'erase';ids:string[]}
   |{type:'place';at:Point}
   |{type:'connect';from:string;fromAnchor:Anchor;current:Point;target:string|null}
@@ -110,10 +110,11 @@ export function Canvas(){
   // enseguida, el estado de React todavía puede ser el anterior. La ref siempre tiene el último valor.
   const gestureRef=useRef<Gesture|null>(null);
   const guideTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
-  const clearGuide=()=>clearTimeout(guideTimer.current);
+  const guideAt=useRef<Point|null>(null);
+  const clearGuide=()=>{clearTimeout(guideTimer.current);guideAt.current=null;};
   const setGesture=(next:Gesture|null)=>{gestureRef.current=next;showGesture(next);};
   useEffect(()=>()=>clearTimeout(guideTimer.current),[]);
-  useEffect(()=>{clearTimeout(guideTimer.current);gestureRef.current=null;showGesture(null);},[tool]);
+  useEffect(()=>{clearTimeout(guideTimer.current);guideAt.current=null;gestureRef.current=null;showGesture(null);},[tool]);
   const hostRef=useRef<HTMLDivElement>(null),svgRef=useRef<SVGSVGElement>(null);
   const pointers=useRef(new Map<number,Point>()),pinch=useRef<{distance:number;zoom:number}|null>(null),lastDown=useRef({id:'',at:0}),fitted=useRef(false),pendingEdit=useRef<string|null>(null);
 
@@ -165,6 +166,7 @@ export function Canvas(){
     cancelCameraMove();
     pointers.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pointers.current.size===2){
+      clearGuide();
       const [a,b]=[...pointers.current.values()];
       pinch.current={distance:Math.hypot(a.x-b.x,a.y-b.y)||1,zoom:viewStore.get().camera.zoom};setGesture(null);return;
     }
@@ -187,6 +189,7 @@ export function Canvas(){
     }
     if(tool==='node'){setGesture({type:'place',at:world});return;}
     if(tool==='line'||tool==='arrow'||tool==='freehand'||tool==='guided'){
+      clearGuide();
       const {penColor,penWidth}=viewStore.get();select([]);
       setGesture({type:'stroke',kind:tool==='guided'?'freehand':tool,points:[world,world],raw:[world,world],style:{stroke:penColor,strokeWidth:penWidth},guided:tool==='guided'});return;
     }
@@ -224,10 +227,13 @@ export function Canvas(){
     if(gestureRef.current){
       const old=gestureRef.current,next=advance(old,e);setGesture(next);
       if(next.type==='stroke'&&next.guided&&old.type==='stroke'&&next.raw!==old.raw){
-        clearGuide();guideTimer.current=setTimeout(()=>{
-          const current=gestureRef.current;if(current?.type!=='stroke'||current!==next)return;
-          const guided=guideInk(current.raw);if(guided){setGesture({...current,points:guided.points});notify(`${guided.label} emprolijado. Soltá para guardarlo; seguí dibujando para conservar tu trazo.`);}
-        },600);
+        const last=next.raw.at(-1)!;
+        if(!guideAt.current||Math.hypot(last.x-guideAt.current.x,last.y-guideAt.current.y)>4/viewStore.get().camera.zoom){
+          clearGuide();guideAt.current=last;guideTimer.current=setTimeout(()=>{
+            const current=gestureRef.current;if(current?.type!=='stroke'||!current.guided)return;
+            const guided=guideInk(current.raw);if(guided){setGesture({...current,points:guided.points,guideLabel:guided.label});notify(`Forma emprolijada: ${guided.label}. Soltá para guardarlo.`);}
+          },450);
+        }
       }
     }
     // Con una forma elegida, la vista previa sigue al puntero (mouse o lápiz; en táctil no hay puntero que seguir).
@@ -249,7 +255,10 @@ export function Canvas(){
           if(Math.hypot(at.x-last.x,at.y-last.y)>=.7/viewStore.get().camera.zoom)raw.push(at);
         }
         if(raw.length===g.raw.length)return g;
-        const limited=limitInk(raw);return {...g,raw:limited,points:g.guided?smoothInk(limited):limited};
+        const limited=limitInk(raw);
+        // Un pequeño temblor no deshace una forma ya reconocida al mantener presionado.
+        if(g.guideLabel&&guideAt.current&&Math.hypot(world.x-guideAt.current.x,world.y-guideAt.current.y)<=4/viewStore.get().camera.zoom)return {...g,raw:limited};
+        return {...g,raw:limited,points:g.guided?smoothInk(limited):limited,guideLabel:undefined};
       }
       case 'erase':{const target=hit(document.elementFromPoint(e.clientX,e.clientY));return target?.type==='drawing'&&!g.ids.includes(target.id)?{...g,ids:[...g.ids,target.id]}:g;}
       case 'move':case 'moveDrawing':case 'box':return {...g,dx:snap(world.x-g.start.x),dy:snap(world.y-g.start.y)};
@@ -276,10 +285,10 @@ export function Canvas(){
     switch(g.type){
       case 'place':placeNode(doc,template,g.at);break;
       case 'stroke':{
-        const points=g.points;
+        const guided=g.guided?guideInk(g.raw):null,points=guided?.points??g.points;
         if(points.length<2||(g.kind!=='freehand'&&inkLength(points)<4/viewStore.get().camera.zoom)){notify('Arrastrá un poco más para dibujar.','warn');break;}
         const id=newId('drawing');
-        if(transact([{type:'ADD_DRAWING',drawing:{id,kind:g.kind,points,style:g.style}}],g.kind==='freehand'?'Trazo dibujado':g.kind==='arrow'?'Flecha libre creada':'Línea creada')){select([id]);if(g.kind!=='freehand')viewStore.set({tool:'select'});}
+        if(transact([{type:'ADD_DRAWING',drawing:{id,kind:g.kind,points,style:g.style}}],guided?`Forma emprolijada: ${guided.label}`:g.kind==='freehand'?'Trazo dibujado':g.kind==='arrow'?'Flecha libre creada':'Línea creada')){select([id]);if(g.kind!=='freehand')viewStore.set({tool:'select'});}
         break;
       }
       case 'erase':if(g.ids.length)transact(g.ids.map(id=>({type:'DELETE_DRAWING',id})),'Trazos borrados');break;
@@ -416,7 +425,7 @@ export function Canvas(){
         {(['from','to'] as const).map(end=>{const p=end==='from'?edgeHandles.points[0]:edgeHandles.points[edgeHandles.points.length-1];return <circle key={end} data-handle={'end-'+end} className="handle endpoint" cx={p.x} cy={p.y} r={6*px} strokeWidth={1.5*px}/>;})}
       </g>}
     </svg>
-    {!staging&&<PenTools/>}
+    {!staging&&<PenTools guideLabel={gesture?.type==='stroke'?gesture.guideLabel:undefined}/>}
     <SelectionToolbar busy={Boolean(gesture)}/>
     {viewStore.get().connectFromId&&tool==='connect'&&<div className="connect-invitation" role="status">Elegí el otro elemento para unirlos.<button onClick={()=>{viewStore.set({connectFromId:null,tool:'select'});notify('Unión cancelada.');}}>Cancelar</button></div>}
     {editing&&<InlineEditor key={editing.id} target={editing} camera={camera}/>}

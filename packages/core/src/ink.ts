@@ -8,14 +8,28 @@ export function limitInk(points:Point[],limit=500):Point[]{
   if(points.length<=limit)return points;
   return Array.from({length:limit},(_,i)=>points[Math.round(i*(points.length-1)/(limit-1))]);
 }
-/** Suavizado leve para escribir: conserva extremos, esquinas y tamaño; no interpreta letras. */
+/** Filtra el temblor por distancia recorrida, no por la cantidad de eventos del dispositivo. */
 export function smoothInk(points:Point[]):Point[]{
   if(points.length<4)return points;
+  const lengths=[0];
+  for(let i=1;i<points.length;i++)lengths.push(lengths[i-1]+distance(points[i-1],points[i]));
+  const length=lengths.at(-1)!;
+  if(!length)return points;
+  const radius=Math.min(10,Math.max(3,length/18));
+  const at=(position:number):Point=>{
+    const target=Math.max(0,Math.min(length,position));let lo=0,hi=lengths.length-1;
+    while(lo<hi){const mid=Math.floor((lo+hi)/2);if(lengths[mid]<target)lo=mid+1;else hi=mid;}
+    if(!lo)return points[0];
+    const a=points[lo-1],b=points[lo],span=lengths[lo]-lengths[lo-1],t=span?(target-lengths[lo-1])/span:0;
+    return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};
+  };
   return points.map((p,i)=>{
     if(i===0||i===points.length-1)return p;
-    const a=points[i-1],b=points[i+1],ab=distance(a,b),travel=distance(a,p)+distance(p,b);
-    if(ab<travel*.85)return p; // Conservar esquinas deliberadas.
-    return {x:(a.x+p.x*2+b.x)/4,y:(a.y+p.y*2+b.y)/4};
+    const window=Math.min(radius,lengths[i],length-lengths[i]),a=at(lengths[i]-window),b=at(lengths[i]+window);
+    if(distance(a,b)<(distance(a,p)+distance(p,b))*.82)return p; // Esquina a escala del trazo, no del temblor.
+    let x=0,y=0;
+    for(let j=-3;j<=3;j++){const sample=at(lengths[i]+j*window/3),weight=4-Math.abs(j);x+=sample.x*weight;y+=sample.y*weight;}
+    return {x:x/16,y:y/16};
   });
 }
 export function straightInk(from:Point,to:Point,constrain=false):Point[]{
@@ -23,12 +37,17 @@ export function straightInk(from:Point,to:Point,constrain=false):Point[]{
   const angle=Math.round(Math.atan2(to.y-from.y,to.x-from.x)/(Math.PI/4))*Math.PI/4,length=distance(from,to);
   return [from,{x:from.x+Math.cos(angle)*length,y:from.y+Math.sin(angle)*length}];
 }
-/** Reconocimiento geométrico conservador, sólo al mantener el lápiz quieto en modo guiado. */
+/** Reconocimiento geométrico conservador para la vista previa y para soltar en modo guiado. */
 export function guideInk(points:Point[]):{label:string;points:Point[]}|null{
   if(points.length<3)return null;
+  points=smoothInk(points);
   const length=inkLength(points),first=points[0],last=points.at(-1)!;
   if(length<8)return null;
-  if(distance(first,last)/length>.96)return {label:'Línea',points:[first,last]};
+  const chord=distance(first,last);
+  if(chord>8&&chord/length>.8){
+    const errors=points.map(p=>Math.abs((last.x-first.x)*(first.y-p.y)-(first.x-p.x)*(last.y-first.y))/chord);
+    if(Math.max(...errors)<chord*.055&&Math.sqrt(errors.reduce((sum,e)=>sum+e*e,0)/errors.length)<chord*.025)return {label:'Línea',points:[first,last]};
+  }
   const x=Math.min(...points.map(p=>p.x)),y=Math.min(...points.map(p=>p.y));
   const w=Math.max(...points.map(p=>p.x))-x,h=Math.max(...points.map(p=>p.y))-y;
   if(w<8||h<8||distance(first,last)>Math.min(w,h)*.3)return null;

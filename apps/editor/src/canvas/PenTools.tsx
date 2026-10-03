@@ -3,7 +3,7 @@ import {ColorPicker} from '../palette/ColorPicker';
 import {useStore} from '../store/createStore';
 import {viewStore} from '../store/viewStore';
 
-export function PenTools(){
+export function PenTools({guideLabel}:{guideLabel?:string}){
   const {tool,penColor,penWidth}=useStore(viewStore),[colors,setColors]=useState(false);
   useEffect(()=>setColors(false),[tool]);
   if(!['freehand','guided','line','arrow','eraser'].includes(tool))return null;
@@ -17,6 +17,6 @@ export function PenTools(){
       <button onClick={()=>viewStore.set({tool:'select'})}>Listo</button>
     </div>
     {colors&&tool!=='eraser'&&<ColorPicker value={penColor} onChange={color=>{viewStore.set({penColor:color});setColors(false);}}/>}
-    <small>{tool==='guided'?'Trazos más suaves. Dibujá una línea, círculo u óvalo o rectángulo y mantené el lápiz quieto para emprolijar la forma.':tool==='eraser'?'Pasá por los trazos para borrarlos. Deshacer los recupera.':pencil?'Dibujá o escribí libremente. Esc vuelve a seleccionar.':'Mantené Shift para líneas horizontales, verticales o a 45°.'}</small>
+    <small aria-live="polite">{tool==='guided'?(guideLabel?`${guideLabel} · Soltá para guardarlo.`:'Suaviza tu trazo y emprolija líneas, círculos, óvalos y rectángulos al soltar. Mantené presionado para ver la forma antes.'):tool==='eraser'?'Pasá por los trazos para borrarlos. Deshacer los recupera.':pencil?'Dibujá o escribí libremente. Esc vuelve a seleccionar.':'Mantené Shift para líneas horizontales, verticales o a 45°.'}</small>
   </div>;
 }
