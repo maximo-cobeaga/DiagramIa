@@ -31,13 +31,14 @@ const TOOLS:[Tool,string,string,string][]=[
   ['select','Mover','V','M3 2l9 5-4 1.5L6.5 13z'],
   ['pan','Mano','H','M8 2v12M2 8h12M8 2 6 4M8 2l2 2M8 14l-2-2M8 14l2-2M2 8l2-2M2 8l2 2M14 8l-2-2M14 8l-2 2'],
   ['connect','Unir','C','M2 12h5V4h6M11 2l2 2-2 2'],
-  ['line','Línea','L','M2 14 14 2'],['arrow','Flecha','A','M2 14 14 2M8 2h6v6'],['freehand','Dibujar','D','M2 12c2-9 4 3 6-3s4 7 6-5'],
+  ['line','Línea','L','M2 14 14 2'],['arrow','Flecha','A','M2 14 14 2M8 2h6v6'],['freehand','Lápiz','D','M11 2.5 13.5 5l-8 8H3v-2.5ZM9.5 4 12 6.5'],
+  ['guided','Guiado','G','M2 12c2-7 4 3 6-3M11 2v5M8.5 4.5h5'],['eraser','Goma','E','M2 9l6-7 6 5-6 7H6zM5 6l6 5M7 14h7'],
   ['zone','Zona','Z','M2.5 3.5h11v9h-11zM5 6.5h3'],
   ['frame','Encuadre','F','M4 1v14M12 1v14M1 4h14M1 12h14']
 ];
 const TOOL_HINTS:Record<Tool,string>={
   select:'Arrastrá para mover. Doble clic escribe el texto. En el fondo, arrastrá para seleccionar varios.',pan:'Arrastrá para desplazar la vista.',
-  node:'Hacé clic en el canvas para ubicar la forma elegida.',connect:'Arrastrá de un nodo a otro para crear una conexión.',line:'Arrastrá sobre el canvas para dibujar una línea libre.',arrow:'Arrastrá sobre el canvas para dibujar una flecha libre.',freehand:'Arrastrá para dibujar a mano alzada.',
+  node:'Hacé clic en el canvas para ubicar la forma elegida.',connect:'Arrastrá de un nodo a otro para crear una conexión.',line:'Arrastrá una línea. Shift la endereza.',arrow:'Arrastrá una flecha. Shift la endereza.',freehand:'Dibujá o escribí libremente. Esc vuelve a seleccionar.',guided:'Escribí con trazos suaves. Mantené el lápiz quieto para emprolijar una forma.',eraser:'Pasá por los trazos para borrarlos. Deshacer los recupera.',
   zone:'Arrastrá para dibujar la zona. Adopta los nodos sin zona que queden adentro.',frame:'Arrastrá para dibujar un encuadre de presentación.'
 };
 const PANELS:[Panel,string][]=[['assistant','IA'],['inspector','Propiedades'],['library','Biblioteca'],['history','Cuenta']];

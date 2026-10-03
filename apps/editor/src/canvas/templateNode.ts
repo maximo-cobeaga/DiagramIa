@@ -1,4 +1,4 @@
-import {emptyDocument,fitSize,type DiagramDocument,type DiagramNode,type Point} from '@diagramia/core';
+import {emptyDocument,fitSize,type DiagramDocument,type DiagramDrawing,type DiagramNode,type Point} from '@diagramia/core';
 import {snap,type NodeTemplate} from '../store/viewStore';
 
 const CLASS_DETAILS='+ atributo: tipo\n--\n+ metodo(): tipo';
@@ -16,3 +16,4 @@ export function templateNode(template:NodeTemplate,at:Point,id='ghost'):DiagramN
 const empty=emptyDocument('preview','Vista previa');
 /** Documento mínimo con un solo nodo, para dibujarlo con el mismo código que el canvas. */
 export const singleNodeDocument=(node:DiagramNode):DiagramDocument=>({...empty,nodes:[node]});
+export const singleDrawingDocument=(drawing:DiagramDrawing):DiagramDocument=>({...empty,drawings:[drawing]});

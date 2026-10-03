@@ -216,6 +216,21 @@ function arrowHead(type:DiagramEdge['endArrow'],tip:Point,from:Point,size:number
   }
 }
 
+/** La edición y el dibujo comparten la caja del título; la forma queda visible mientras se escribe. */
+export function nodeTitleLayout(n:DiagramNode,asset=false){
+  const {x,y}=n.position,{width:w,height:h}=n.size,shape=shapeOf(n);
+  const size=n.style.fontSize??15,lineHeight=Math.round(size*1.2),below=asset||LABEL_BELOW.has(shape),[fw]=usableFraction(shape);
+  const extra=shape==='class'?detailLines(n.details):below?[]:detailBlock(n.details,w*fw-(shape==='pill'&&n.icon?PILL_ICON+10:0)-24);
+  const lead=shape==='pill'&&n.icon?PILL_ICON+10:0,inset=SHAPE_INSET[shape]??{};
+  const align=n.style.align??'center',pad=(shape==='class'?10:12)+lead,tx=align==='left'?x+pad:align==='right'?x+w-12:x+lead+(w-lead)/2,anchorAt=align==='left'?'start':align==='right'?'end':'middle';
+  const ownIcon=OWN_ICON.has(shape),bigIcon=Boolean(n.icon)&&n.style.iconSize==='large'&&!asset&&!below&&shape!=='class'&&!ownIcon,iconShift=bigIcon?(ICON_LARGE+8)/2:0;
+  const width=below?Math.max(w,140):Math.max(40,w*fw-lead-(n.icon&&!bigIcon&&!ownIcon?40:20)),lines=wrapLabel(n.label,width,size,shape==='class'?1:4);
+  const blockHeight=lines.length*lineHeight+(n.subtitle?15:0)+(shape==='class'?0:extra.length*16);
+  const top=below?y+h+size+3:shape==='class'?y+size+6:y+h/2-blockHeight/2+size*.82+iconShift+((inset.top??0)-(inset.bottom??0))/2+(shape==='cylinder'?Math.min(12,h/5)/2:shape==='triangle'?h*.16:0);
+  const textStyle:CSSProperties={fontWeight:n.style.bold?700:undefined,fontStyle:n.style.italic?'italic':undefined};
+  return {size,lineHeight,below,extra,tx,anchorAt:anchorAt as 'start'|'end'|'middle',ownIcon,bigIcon,iconShift,lines,top,textStyle,color:n.style.textColor??(n.style.fill?readableOn(n.style.fill):undefined),box:{x:align==='left'?tx:align==='right'?tx-width:tx-width/2,y:top-size*.82,width,height:Math.max(lineHeight,lines.length*lineHeight)}};
+}
+
 export type LayerProps={
   doc:DiagramDocument;selected?:Set<string>;activeNodes?:Set<string>;activeEdges?:Set<string>;failed?:boolean;
   /** Progreso 0..1 del paso activo; null oculta las partículas. */
@@ -289,19 +304,8 @@ export function DiagramLayer({doc,selected,activeNodes,activeEdges,failed=false,
     })}
     {doc.nodes.map(n=>{
       const {x,y}=n.position,{width:w,height:h}=n.size,active=has(activeNodes,n.id),shape=shapeOf(n),asset=n.assetId?assets.get(n.assetId):undefined,state=states?.get(n.id);
-      const size=n.style.fontSize??15,lineHeight=Math.round(size*1.2),below=Boolean(asset)||LABEL_BELOW.has(shape),[fw]=usableFraction(shape);
-      // El detalle se parte al ancho útil de la forma (en una clase UML, cada renglón es un miembro y no se parte).
-      const extra=shape==='class'?detailLines(n.details):below?[]:detailBlock(n.details,w*fw-(shape==='pill'&&n.icon?PILL_ICON+10:0)-24);
-      // En la píldora, el círculo del icono ocupa la izquierda: el texto se centra en el resto.
-      const lead=shape==='pill'&&n.icon?PILL_ICON+10:0,inset=SHAPE_INSET[shape]??{};
-      const align=n.style.align??'center',pad=(shape==='class'?10:12)+lead,tx=align==='left'?x+pad:align==='right'?x+w-12:x+lead+(w-lead)/2,anchorAt=align==='left'?'start':align==='right'?'end':'middle';
-      const ownIcon=OWN_ICON.has(shape),bigIcon=Boolean(n.icon)&&n.style.iconSize==='large'&&!asset&&!below&&shape!=='class'&&!ownIcon,iconShift=bigIcon?(ICON_LARGE+8)/2:0;
-      const lines=wrapLabel(n.label,below?Math.max(w,140):Math.max(40,w*fw-lead-(n.icon&&!bigIcon&&!ownIcon?40:20)),size,shape==='class'?1:4);
-      // El bloque de texto (título, subtítulo y detalles) se centra en la forma; en una clase UML el título va arriba.
-      const blockHeight=lines.length*lineHeight+(n.subtitle?15:0)+(shape==='class'?0:extra.length*16);
-      const top=below?y+h+size+3:shape==='class'?y+size+6:y+h/2-blockHeight/2+size*.82+iconShift+((inset.top??0)-(inset.bottom??0))/2+(shape==='cylinder'?Math.min(12,h/5)/2:shape==='triangle'?h*.16:0);
+      const {size,lineHeight,below,extra,tx,anchorAt,ownIcon,bigIcon,iconShift,lines,top,textStyle}=nodeTitleLayout(n,Boolean(asset));
       const parts=shapeParts(shape,{x,y,w,h}),dash=n.style.dash?DASH[n.style.dash]:undefined,header=y+lineHeight+12;
-      const textStyle:CSSProperties={fontWeight:n.style.bold?700:undefined,fontStyle:n.style.italic?'italic':undefined};
       return <g key={n.id} data-id={n.id} data-type="node" style={vars(n.style)} strokeDasharray={dash}
         className={`graph-node kind-${n.kind} shape-${shape}${has(selected,n.id)?' selected':''}${has(staged,n.id)?' staged':''}${active?' active':''}${active&&failed?' failed':''}`}
         {...(interactive?{role:'button',tabIndex:0,'aria-label':`${n.label}, ${n.kind}${n.zoneId?', en zona '+(doc.zones.find(z=>z.id===n.zoneId)?.label??n.zoneId):''}`}:{})}>
@@ -347,7 +351,6 @@ export const DIAGRAM_CSS=`
 .free-drawing-path{fill:none;stroke:var(--stroke,var(--d-ink,#141619));stroke-width:var(--sw,2);stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 .free-drawing-hit{fill:none;stroke:transparent;stroke-width:14;pointer-events:stroke;cursor:pointer}
 .drawing-head{fill:var(--stroke,var(--d-ink,#141619));pointer-events:none}
-.free-drawing.selected .free-drawing-path{stroke:#245cf6}.free-drawing.selected .drawing-head{fill:#245cf6}
 .arrow-fill{fill:var(--stroke,var(--d-line,#7b8799));stroke:none}
 .arrow-line{fill:none;stroke:var(--stroke,var(--d-line,#7b8799));stroke-width:var(--sw,2)}
 .arrow-hollow{fill:var(--d-node,#fff);stroke:var(--stroke,var(--d-line,#7b8799));stroke-width:var(--sw,2)}

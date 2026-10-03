@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {anchorAt,contains,documentBounds,fitSize,groupMembers,nodeRect,overlaps,resolveMembership,routeAll,sampleAnimation,sampleTrackEffects,statesAt,unionRects,type ActionInput,type DiagramDocument,type Point,type Rect} from '@diagramia/core';
+import {anchorAt,contains,documentBounds,fitSize,groupMembers,guideInk,inkLength,limitInk,nodeRect,overlaps,resolveMembership,routeAll,sampleAnimation,sampleTrackEffects,smoothInk,statesAt,straightInk,unionRects,type ActionInput,type DiagramDocument,type DiagramDrawing,type Point,type Rect} from '@diagramia/core';
 import {useStore} from '../store/createStore';
 import {documentStore,newId,notify,transact} from '../store/documentStore';
 import {kindOf,select,selectionStore} from '../store/selectionStore';
@@ -7,10 +7,11 @@ import {currentAnimation,playbackStore} from '../store/playbackStore';
 import {cancelCameraMove,snap,viewStore,zoomAt,type Camera,type NodeTemplate} from '../store/viewStore';
 import {connectTo,fitAll,moveActions,selectionUnit} from '../commands';
 import {trackThrottled} from '../telemetry';
-import {DiagramLayer} from './DiagramLayer';
-import {singleNodeDocument,templateNode} from './templateNode';
+import {DiagramLayer,nodeTitleLayout} from './DiagramLayer';
+import {singleDrawingDocument,singleNodeDocument,templateNode} from './templateNode';
 import {Welcome} from '../shell/Welcome';
 import {SelectionToolbar} from './SelectionToolbar';
+import {PenTools} from './PenTools';
 
 type BoxKind='node'|'zone'|'frame';
 type Anchor={x:number;y:number}|null;
@@ -22,7 +23,8 @@ type Gesture=
   |{type:'box';kind:'zone'|'frame';id:string;start:Point;dx:number;dy:number}
   |{type:'resize';kind:BoxKind;id:string;handle:string;start:Point;original:Rect;rect:Rect}
   |{type:'draw';kind:'zone'|'frame';start:Point;current:Point}
-  |{type:'stroke';kind:'line'|'arrow'|'freehand';points:Point[]}
+  |{type:'stroke';kind:'line'|'arrow'|'freehand';points:Point[];raw:Point[];style:DiagramDrawing['style'];guided:boolean}
+  |{type:'erase';ids:string[]}
   |{type:'place';at:Point}
   |{type:'connect';from:string;fromAnchor:Anchor;current:Point;target:string|null}
   |{type:'endpoint';edgeId:string;end:'from'|'to';fixed:Point;current:Point;target:string|null}
@@ -54,6 +56,7 @@ function anchorNear(rect:Rect,point:Point,tolerance:number):Anchor{
 /** Documento tal como se ve durante un gesto. El documento canónico sólo cambia al soltar, con una acción. */
 function withGesture(doc:DiagramDocument,g:Gesture|null):DiagramDocument{
   if(!g)return doc;
+  if(g.type==='erase')return {...doc,drawings:doc.drawings.filter(d=>!g.ids.includes(d.id))};
   const reroute=(moved:Set<string>)=>doc.edges.map(e=>moved.has(e.from)||moved.has(e.to)?{...e,points:undefined}:e);
   const shift=(moved:Set<string>,dx:number,dy:number)=>doc.nodes.map(n=>moved.has(n.id)?{...n,position:{x:n.position.x+dx,y:n.position.y+dy}}:n);
   if(g.type==='move'&&(g.dx||g.dy)){const moved=new Set(g.ids);return {...doc,nodes:shift(moved,g.dx,g.dy),edges:reroute(moved)};}
@@ -81,7 +84,7 @@ function placeNode(doc:DiagramDocument,template:NodeTemplate,at:Point){
   select([node.id]);viewStore.set({tool:'select',editingId:node.id});
 }
 
-type Editable={id:string;kind:'node'|'edge'|'zone'|'frame';value:string;box:Rect;size:number;multiline:boolean};
+type Editable={id:string;kind:'node'|'edge'|'zone'|'frame';value:string;box:Rect;size:number;multiline:boolean;color?:string;align?:'left'|'center'|'right';bold?:boolean;italic?:boolean};
 /** Texto que se edita directamente sobre el canvas. Confirma con Enter o al salir; Esc cancela. */
 function InlineEditor({target,camera}:{target:Editable;camera:Camera}){
   const [value,setValue]=useState(target.value),ref=useRef<HTMLTextAreaElement>(null),done=useRef(false);
@@ -94,7 +97,7 @@ function InlineEditor({target,camera}:{target:Editable;camera:Camera}){
     if(!text&&target.kind!=='edge'){notify('El nombre no puede quedar vacío.','warn');return;}
     transact([target.kind==='node'?{type:'UPDATE_NODE',id:target.id,changes:{label:text}}:target.kind==='edge'?{type:'UPDATE_EDGE',id:target.id,changes:{label:text}}:target.kind==='zone'?{type:'UPDATE_ZONE',id:target.id,changes:{label:text}}:{type:'UPDATE_FRAME',id:target.id,changes:{label:text}}],'Texto cambiado');
   };
-  const {box}=target,style={left:(box.x-camera.x)*camera.zoom,top:(box.y-camera.y)*camera.zoom,width:Math.max(90,box.width*camera.zoom),height:Math.max(28,box.height*camera.zoom),fontSize:Math.max(11,target.size*camera.zoom)};
+  const {box}=target,style={left:(box.x-camera.x)*camera.zoom,top:(box.y-camera.y)*camera.zoom,width:Math.max(target.kind==='node'?40:90,box.width*camera.zoom),height:Math.max(target.kind==='node'?18:28,box.height*camera.zoom),fontSize:Math.max(8,target.size*camera.zoom),color:target.color,textAlign:target.align,fontWeight:target.bold?700:undefined,fontStyle:target.italic?'italic':undefined};
   return <textarea ref={ref} className={'inline-editor kind-'+target.kind} style={style} value={value} maxLength={target.kind==='edge'?160:200} aria-label="Texto del elemento"
     onChange={e=>setValue(e.target.value)} onBlur={()=>finish(true)} onPointerDown={e=>e.stopPropagation()}
     onKeyDown={e=>{e.stopPropagation();if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finish(true);}if(e.key==='Escape'){e.preventDefault();finish(false);}}}/>;
@@ -106,7 +109,11 @@ export function Canvas(){
   // El gesto vigente vive en una ref: los movimientos se renderizan con prioridad baja y, si el botón se suelta
   // enseguida, el estado de React todavía puede ser el anterior. La ref siempre tiene el último valor.
   const gestureRef=useRef<Gesture|null>(null);
+  const guideTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
+  const clearGuide=()=>clearTimeout(guideTimer.current);
   const setGesture=(next:Gesture|null)=>{gestureRef.current=next;showGesture(next);};
+  useEffect(()=>()=>clearTimeout(guideTimer.current),[]);
+  useEffect(()=>{clearTimeout(guideTimer.current);gestureRef.current=null;showGesture(null);},[tool]);
   const hostRef=useRef<HTMLDivElement>(null),svgRef=useRef<SVGSVGElement>(null);
   const pointers=useRef(new Map<number,Point>()),pinch=useRef<{distance:number;zoom:number}|null>(null),lastDown=useRef({id:'',at:0}),fitted=useRef(false),pendingEdit=useRef<string|null>(null);
 
@@ -149,7 +156,7 @@ export function Canvas(){
   // scenarioId no se usa directo: forma parte del estado suscripto para que cambiar de rama vuelva a dibujar.
   void scenarioId;
   const animation=currentAnimation(doc,animationId),sampled=animation?sampleAnimation(animation,time):null,effects=animation?sampleTrackEffects(animation,time):null,showing=sampled&&(time>0||playbackStore.get().cue>0||playbackStore.get().playing);
-  const single=ids.length===1&&!staging?kindOf(doc,ids[0]):null,resizable=single&&single!=='edge'?{kind:single as BoxKind,id:ids[0]}:null;
+  const single=ids.length===1&&!staging?kindOf(doc,ids[0]):null,resizable=single&&(single==='node'||single==='zone'||single==='frame')?{kind:single,id:ids[0]}:null;
   const handleBox=resizable&&boxOf(visible,resizable.kind,resizable.id);
   const px=1/camera.zoom,routes=routeAll(visible);
   const edgeHandles=single==='edge'&&tool==='select'?(()=>{const edge=visible.edges.find(e=>e.id===ids[0]),points=routes.get(ids[0])?.points;return edge&&points&&points.length>1?{edge,points}:null;})():null;
@@ -179,7 +186,11 @@ export function Canvas(){
       setGesture({type:'resize',...resizable,handle,start:world,original,rect:original});return;
     }
     if(tool==='node'){setGesture({type:'place',at:world});return;}
-    if(tool==='line'||tool==='arrow'||tool==='freehand'){setGesture({type:'stroke',kind:tool,points:[world,world]});return;}
+    if(tool==='line'||tool==='arrow'||tool==='freehand'||tool==='guided'){
+      const {penColor,penWidth}=viewStore.get();select([]);
+      setGesture({type:'stroke',kind:tool==='guided'?'freehand':tool,points:[world,world],raw:[world,world],style:{stroke:penColor,strokeWidth:penWidth},guided:tool==='guided'});return;
+    }
+    if(tool==='eraser'){setGesture({type:'erase',ids:target?.type==='drawing'?[target.id]:[]});return;}
     if(tool==='zone'||tool==='frame'){setGesture({type:'draw',kind:tool,start:world,current:world});return;}
     if(tool==='connect'){
       const from=viewStore.get().connectFromId;
@@ -198,7 +209,7 @@ export function Canvas(){
     select(next);
     // Doble clic: el texto se edita en el lugar. El editor se abre al soltar: si se abriera al presionar, el navegador
     // le sacaría el foco enseguida para dárselo al elemento presionado.
-    if(double){select([target.id]);pendingEdit.current=target.id;return;}
+    if(double&&target.type!=='drawing'){select([target.id]);pendingEdit.current=target.id;return;}
     if(target.type==='node'&&next.includes(target.id))setGesture({type:'move',start:world,dx:0,dy:0,ids:next.filter(id=>doc.nodes.some(n=>n.id===id)),unit,shift:e.shiftKey});
     else if(target.type==='drawing'&&next.includes(target.id))setGesture({type:'moveDrawing',start:world,dx:0,dy:0,id:target.id});
     else if(target.type==='zone'||target.type==='frame')setGesture({type:'box',kind:target.type,id:target.id,start:world,dx:0,dy:0});
@@ -210,7 +221,15 @@ export function Canvas(){
       const [a,b]=[...pointers.current.values()],box=svgRef.current!.getBoundingClientRect();
       zoomAt((a.x+b.x)/2-box.left,(a.y+b.y)/2-box.top,pinch.current.zoom*Math.hypot(a.x-b.x,a.y-b.y)/pinch.current.distance);return;
     }
-    if(gestureRef.current)setGesture(advance(gestureRef.current,e));
+    if(gestureRef.current){
+      const old=gestureRef.current,next=advance(old,e);setGesture(next);
+      if(next.type==='stroke'&&next.guided&&old.type==='stroke'&&next.raw!==old.raw){
+        clearGuide();guideTimer.current=setTimeout(()=>{
+          const current=gestureRef.current;if(current?.type!=='stroke'||current!==next)return;
+          const guided=guideInk(current.raw);if(guided){setGesture({...current,points:guided.points});notify(`${guided.label} emprolijado. Soltá para guardarlo; seguí dibujando para conservar tu trazo.`);}
+        },600);
+      }
+    }
     // Con una forma elegida, la vista previa sigue al puntero (mouse o lápiz; en táctil no hay puntero que seguir).
     else if(tool==='node'&&e.pointerType!=='touch')setGhostAt(toWorld(e));
   }
@@ -223,12 +242,16 @@ export function Canvas(){
       case 'pan':trackThrottled('pan',{});viewStore.set({camera:{...g.camera,x:g.camera.x-(e.clientX-g.cx)/g.camera.zoom,y:g.camera.y-(e.clientY-g.cy)/g.camera.zoom}});return g;
       case 'marquee':case 'draw':return {...g,current:world};
       case 'stroke':{
-        const last=g.points[g.points.length-1];
-        if(Math.hypot(world.x-last.x,world.y-last.y)<2/viewStore.get().camera.zoom)return g;
-        if(g.kind!=='freehand')return {...g,points:[g.points[0],world]};
-        const points=[...g.points,world];
-        return {...g,points:points.length>500?[...points.filter((_,i)=>i%2===0).slice(0,-1),world]:points};
+        if(g.kind!=='freehand')return {...g,points:straightInk(g.points[0],world,e.shiftKey)};
+        const samples=e.nativeEvent.getCoalescedEvents?.()??[],raw=[...g.raw];
+        for(const point of [...samples,e]){
+          const at=toWorld(point),last=raw.at(-1)!;
+          if(Math.hypot(at.x-last.x,at.y-last.y)>=.7/viewStore.get().camera.zoom)raw.push(at);
+        }
+        if(raw.length===g.raw.length)return g;
+        const limited=limitInk(raw);return {...g,raw:limited,points:g.guided?smoothInk(limited):limited};
       }
+      case 'erase':{const target=hit(document.elementFromPoint(e.clientX,e.clientY));return target?.type==='drawing'&&!g.ids.includes(target.id)?{...g,ids:[...g.ids,target.id]}:g;}
       case 'move':case 'moveDrawing':case 'box':return {...g,dx:snap(world.x-g.start.x),dy:snap(world.y-g.start.y)};
       case 'resize':return {...g,rect:resizeRect(g.original,g.handle,snap(world.x-g.start.x),snap(world.y-g.start.y),g.kind==='node'?24:100)};
       case 'connect':return {...g,current:world,target:nodeUnder(g.from)};
@@ -243,6 +266,7 @@ export function Canvas(){
   }
 
   function up(e:React.PointerEvent<SVGSVGElement>){
+    clearGuide();
     pointers.current.delete(e.pointerId);
     if(pointers.current.size<2)pinch.current=null;
     const g=gestureRef.current&&advance(gestureRef.current,e);setGesture(null);
@@ -253,11 +277,12 @@ export function Canvas(){
       case 'place':placeNode(doc,template,g.at);break;
       case 'stroke':{
         const points=g.points;
-        if(points.length<2||Math.hypot(points.at(-1)!.x-points[0].x,points.at(-1)!.y-points[0].y)<4/viewStore.get().camera.zoom){notify('Arrastrá un poco más para dibujar.','warn');break;}
+        if(points.length<2||(g.kind!=='freehand'&&inkLength(points)<4/viewStore.get().camera.zoom)){notify('Arrastrá un poco más para dibujar.','warn');break;}
         const id=newId('drawing');
-        if(transact([{type:'ADD_DRAWING',drawing:{id,kind:g.kind,points,style:{}}}],g.kind==='freehand'?'Trazo dibujado':g.kind==='arrow'?'Flecha libre creada':'Línea creada')){select([id]);viewStore.set({tool:'select'});}
+        if(transact([{type:'ADD_DRAWING',drawing:{id,kind:g.kind,points,style:g.style}}],g.kind==='freehand'?'Trazo dibujado':g.kind==='arrow'?'Flecha libre creada':'Línea creada')){select([id]);if(g.kind!=='freehand')viewStore.set({tool:'select'});}
         break;
       }
+      case 'erase':if(g.ids.length)transact(g.ids.map(id=>({type:'DELETE_DRAWING',id})),'Trazos borrados');break;
       case 'draw':{
         const raw=rectOf(g.start,g.current),bounds={x:snap(raw.x),y:snap(raw.y),width:snap(raw.width),height:snap(raw.height)};
         if(bounds.width<100||bounds.height<100){notify('Arrastrá para dibujar el área: el mínimo es 100 × 100.','warn');break;}
@@ -306,7 +331,7 @@ export function Canvas(){
       case 'marquee':{
         const area=rectOf(g.start,g.current);
         if(area.width<3&&area.height<3){if(!g.additive)select([]);break;}
-        const inside=[...doc.nodes.filter(n=>overlaps(area,nodeRect(n))).map(n=>n.id),...[...doc.zones,...doc.frames].filter(x=>contains(area,x.bounds)).map(x=>x.id)];
+        const inside=[...doc.nodes.filter(n=>overlaps(area,nodeRect(n))).map(n=>n.id),...doc.drawings.filter(d=>{const bounds=documentBounds(doc,[d.id]);return bounds&&overlaps(area,bounds);}).map(d=>d.id),...[...doc.zones,...doc.frames].filter(x=>contains(area,x.bounds)).map(x=>x.id)];
         const nodes=new Set(inside);
         select([...(g.additive?ids:[]),...inside,...doc.edges.filter(edge=>nodes.has(edge.from)&&nodes.has(edge.to)).map(edge=>edge.id)]);
         break;
@@ -332,7 +357,8 @@ export function Canvas(){
   const draft=gesture&&(gesture.type==='marquee'||gesture.type==='draw')?rectOf(gesture.start,gesture.current):null;
   // Vista previa del elemento que se va a crear: la plantilla que se arrastra o la elegida en la paleta.
   const ghostTemplate=dragTemplate??(tool==='node'?template:null);
-  const ghost=useMemo(()=>ghostTemplate&&ghostAt&&!staging&&!gesture?singleNodeDocument(templateNode(ghostTemplate,ghostAt)):null,[ghostTemplate,ghostAt,staging,gesture]);
+  const placeAt=gesture?.type==='place'?gesture.at:ghostAt;
+  const ghost=useMemo(()=>ghostTemplate&&placeAt&&!staging&&(!gesture||gesture.type==='place')?singleNodeDocument(templateNode(ghostTemplate,placeAt)):null,[ghostTemplate,placeAt,staging,gesture]);
   const empty=!doc.nodes.length&&!doc.zones.length&&!doc.frames.length&&!doc.drawings.length;
   const cursor=gesture?.type==='pan'?'grabbing':tool==='pan'||spaceHeld||staging?'grab':tool==='select'?'default':'crosshair';
   const wire=gesture?.type==='connect'?{from:(r=>({x:r.x+(gesture.fromAnchor?.x??.5)*r.width,y:r.y+(gesture.fromAnchor?.y??.5)*r.height}))(nodeRect(doc.nodes.find(n=>n.id===gesture.from)!)),to:gesture.current,ready:Boolean(gesture.target)}
@@ -342,7 +368,7 @@ export function Canvas(){
   // Elemento en edición de texto y la caja de pantalla donde se escribe.
   const editing=useMemo(():Editable|null=>{
     if(!editingId||staging)return null;
-    const n=doc.nodes.find(x=>x.id===editingId);if(n)return {id:n.id,kind:'node',value:n.label,box:nodeRect(n),size:n.style.fontSize??15,multiline:true};
+    const n=doc.nodes.find(x=>x.id===editingId);if(n){const layout=nodeTitleLayout(n,Boolean(n.assetId));return {id:n.id,kind:'node',value:n.label,box:layout.box,size:layout.size,multiline:true,color:layout.color,align:n.style.align??'center',bold:n.style.bold,italic:n.style.italic};}
     const e=doc.edges.find(x=>x.id===editingId),routed=routes.get(editingId);
     if(e&&routed){const at=routed.label??routed.points[Math.floor(routed.points.length/2)];return {id:e.id,kind:'edge',value:e.label,box:{x:at.x-80,y:at.y-22,width:160,height:28},size:11,multiline:false};}
     const z=doc.zones.find(x=>x.id===editingId);if(z)return {id:z.id,kind:'zone',value:z.label,box:{x:z.bounds.x+10,y:z.bounds.y+8,width:Math.min(260,z.bounds.width-20),height:26},size:12,multiline:false};
@@ -356,7 +382,7 @@ export function Canvas(){
     onDragLeave={e=>{if(!hostRef.current?.contains(e.relatedTarget as Node|null))setGhostAt(null);}}>
     <svg ref={svgRef} className={`canvas tool-${tool}`} tabIndex={0} style={{cursor}} role="group" aria-label={`Canvas editable: ${doc.nodes.length} nodos, ${doc.edges.length} conexiones`}
       viewBox={`${camera.x} ${camera.y} ${viewport.width/camera.zoom} ${viewport.height/camera.zoom}`}
-      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setGhostAt(null)} onPointerCancel={e=>{pointers.current.delete(e.pointerId);pinch.current=null;setGesture(null);}}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setGhostAt(null)} onPointerCancel={e=>{clearGuide();pointers.current.delete(e.pointerId);pinch.current=null;setGesture(null);}}
       onKeyDown={e=>{const target=hit(e.target);if(target&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();if(viewStore.get().connectFromId&&target.type==='node'&&!staging){connectTo(target.id);return;}select(e.shiftKey?[...ids,target.id]:target.type==='node'?selectionUnit(doc,target.id):[target.id]);}}}>
       <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" className="grid-dot"/></pattern></defs>
       <rect x={camera.x} y={camera.y} width={viewport.width/camera.zoom} height={viewport.height/camera.zoom} fill="url(#grid)" pointerEvents="none"/>
@@ -372,10 +398,10 @@ export function Canvas(){
         {draft&&<rect className={gesture!.type==='marquee'?'marquee':'draft'} {...draft} strokeWidth={px}/>}
         {wireTarget&&<rect className="drop-target" x={wireTarget.x-4} y={wireTarget.y-4} width={wireTarget.width+8} height={wireTarget.height+8} rx="12" strokeWidth={2*px}/>}
         {wire&&<line className={'draft-edge'+(wire.ready?' ready':'')} x1={wire.from.x} y1={wire.from.y} x2={wire.to.x} y2={wire.to.y} strokeWidth={2*px}/>}
-        {gesture?.type==='stroke'&&<polyline className="draft-edge" points={gesture.points.map(p=>`${p.x},${p.y}`).join(' ')} strokeWidth={2*px}/>}
+        {!staging&&ids.map(id=>{const box=documentBounds(visible,[id]);return box&&<rect key={id} className="selection-outline" x={box.x-5*px} y={box.y-5*px} width={box.width+10*px} height={box.height+10*px} rx={5*px} strokeWidth={px}/>;})}
       </g>
+      {gesture?.type==='stroke'&&<g className="ink-preview" pointerEvents="none" aria-hidden="true"><DiagramLayer doc={singleDrawingDocument({id:'ink-preview',kind:gesture.kind,points:gesture.points,style:gesture.style})}/></g>}
       {handleBox&&resizable&&tool==='select'&&<g className="handles">
-        <rect className="selection-outline" {...handleBox} strokeWidth={px} pointerEvents="none"/>
         {HANDLES.map(h=>{
           const cx=handleBox.x+(h.includes('w')?0:h.includes('e')?handleBox.width:handleBox.width/2),cy=handleBox.y+(h.includes('n')?0:h.includes('s')?handleBox.height:handleBox.height/2);
           return <rect key={h} data-handle={h} className="handle" style={{cursor:`${h}-resize`}} x={cx-5*px} y={cy-5*px} width={10*px} height={10*px} strokeWidth={px}/>;
@@ -390,6 +416,7 @@ export function Canvas(){
         {(['from','to'] as const).map(end=>{const p=end==='from'?edgeHandles.points[0]:edgeHandles.points[edgeHandles.points.length-1];return <circle key={end} data-handle={'end-'+end} className="handle endpoint" cx={p.x} cy={p.y} r={6*px} strokeWidth={1.5*px}/>;})}
       </g>}
     </svg>
+    {!staging&&<PenTools/>}
     <SelectionToolbar busy={Boolean(gesture)}/>
     {viewStore.get().connectFromId&&tool==='connect'&&<div className="connect-invitation" role="status">Elegí el otro elemento para unirlos.<button onClick={()=>{viewStore.set({connectFromId:null,tool:'select'});notify('Unión cancelada.');}}>Cancelar</button></div>}
     {editing&&<InlineEditor key={editing.id} target={editing} camera={camera}/>}

@@ -2,6 +2,13 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Revisión de inserción y dibujo (03/10/2026)
+
+- **P1.1/P8.1, alcance implementado (ADR 073–075):** objeto real al insertar/escribir; color exacto con selección externa; lápiz sin guía punteada, círculos cerrados, puntos y trazos continuados; paleta compartida de 24 tonos/muestras propias; grosor, goma, Shift, emprolijar y reutilizar lápiz. Guiado geométrico por mantener y conversión a texto con revisión/undo. Pruebas y capturas en `VALIDATION.md`.
+- **Evidencia:** check 129/129 y navegador 49/49, sin errores de consola; inserción, colores, lápiz/guiado, goma/texto, persistencia/IDs/undo y paleta móvil. Se conservó la regresión de diagramas complejos, modo oscuro, tablet y móvil. Capturas `evidencias/ui-insercion-fiel.png`, `ui-lapiz-color-real.png`, `ui-lapiz-guiado.png`, `ui-color-seleccionado.png`, `ui-lapiz-movil.png`, `ui-escritura-texto.png`.
+- **Reconocimiento de escritura, alcance parcial:** adapter local con contrato, soporte de español y timeout; si el dispositivo no lo ofrece, permite escribir el texto. Reconocimiento automático general/refinamiento de letras como Smart Script necesita motor y validación real; no está certificado por un mock ni por suavizar puntos.
+- **Próximo paso:** revisión manual 25–28 y prueba con mouse/táctil/stylus. Conservar P8.1 parcial por usabilidad y accesibilidad real. No agregar instrumentos sólo para ampliar el catálogo.
+
 ## Inicio, acciones cercanas y concentración (03/10/2026)
 
 - **Orden solicitado implementado, P8.1/P1.1 (ADR 070–072):** bienvenida en un canvas vacío, tres entradas claras y ejemplos cotidianos reales; barra contextual para escribir/colorear/duplicar/conectar; concentración reversible con paneles y contenido conservados. Sin modal obligatorio ni envío automático de IA.

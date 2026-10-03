@@ -16,6 +16,16 @@ Seleccionar muestra las acciones junto al elemento: Escribir, Color, Duplicar, U
 
 Concentrarme (Shift+F) da todo el ancho al canvas, mantiene el reproductor pequeño y oculta los paneles. Volver al editor o Esc restaura sus preferencias sin editar ni reencuadrar el documento. En móvil se conserva el scroll nativo; bienvenida y ejemplos pueden desplazarse dentro del canvas. Continúa pendiente la observación de niños y adultos mayores, lectores de pantalla y dispositivos físicos.
 
+## Dibujo fiel, lápiz y colores (ADR 073–075)
+
+Mientras se ubica una forma se ve esa misma plantilla; al escribir, el campo transparente ocupa el título real. Seleccionar agrega un contorno externo, sin pintar de azul el objeto. El color de dibujos y conexiones debe verse también con la selección activa.
+
+Lápiz (D) permite puntos, círculos cerrados y varios trazos seguidos. Color y grosor se eligen antes de dibujar; preview y resultado usan el mismo render. Guiado (G) suaviza el trazo y, al mantener quieto durante 600 ms, emprolija una línea, círculo/óvalo o rectángulo. Seguir moviendo vuelve al trazo; el lápiz libre no interpreta formas. Goma (E) borra dibujos, con un solo undo por gesto. Shift restringe líneas y flechas; Usar este lápiz continúa con el estilo de una selección. La selección rectangular permite tomar varios trazos para emprolijar o pasar a texto.
+
+El selector compartido ofrece 24 tonos y colores personalizados; Agregar guarda la muestra y aplica el color. La paleta del lápiz se cierra al elegir o cambiar de herramienta para dejar lugar al gesto. En propiedades, cada selector se despliega cuando hace falta. La conversión a texto conserva los originales hasta confirmar y se puede deshacer. Si el dispositivo no reconoce español, se ofrece escribir el texto. El suavizado geométrico no equivale a reconocimiento de letras ni al refinamiento de Smart Script.
+
+Herramientas priorizadas por esta revisión: goma reversible, control previo del grosor, líneas con Shift y reutilización del lápiz. Todas resuelven gestos concretos sin ampliar el contrato. Reconocimiento general de escritura, presión del stylus y otros instrumentos necesitan validación antes de incorporarse.
+
 ## Sistema visual
 
 Tinta #141619, papel #F4F6F8, azul #245CF6, lima #D4F246. Manrope para texto; IBM Plex Mono para código/metadatos. No cambiar logo ni destacar IA en el nombre. Texto normal 16px como objetivo; controles principales 14px; metadata compacta excepcional 12px. Revisar escalado 200%, navegación por teclado, foco, contraste, lector de pantalla y móvil.

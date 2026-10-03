@@ -33,7 +33,7 @@ function el(name:string,shape:Shape,[width,height]:[number,number],tone:Tone|'wh
  */
 export const PALETTE:{title:string;open?:boolean;items:Item[]}[]=[
   {title:'Ideas y notas',open:true,items:[
-    el('Nota adhesiva','sticky',[160,150],'sticky',{kind:'note',label:'Escribí acá',keywords:'post-it sticky nota'}),
+    el('Nota adhesiva','sticky',[160,150],'sticky',{kind:'note',keywords:'post-it sticky nota'}),
     el('Nota verde','sticky',[160,150],'stickyMint',{kind:'note',label:'Otra idea',keywords:'post-it sticky'}),
     el('Idea','cloud',[200,124],'sun',{icon:'idea',large:true,kind:'note',keywords:'bombilla ocurrencia pensamiento'}),
     el('Pregunta','bubble',[200,100],'violet',{icon:'question',label:'¿Cómo lo hacemos?',keywords:'duda consulta'}),

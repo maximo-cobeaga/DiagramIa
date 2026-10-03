@@ -53,7 +53,7 @@ const click=point=>drag(point,point);
 // Dos pulsaciones seguidas, sin movimientos intermedios, para que cuenten como doble clic.
 async function doubleClick(point){for(let i=0;i<2;i++){await mouse('mousePressed',point.x,point.y);await mouse('mouseReleased',point.x,point.y);}await sleep(150);}
 const tap=async selector=>{if(!await js(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;el.click();return true;})()`))throw new Error(`no existe ${selector}`);};
-const KEYS={Enter:['Enter',13],F2:['F2',113],c:['KeyC',67],z:['KeyZ',90],n:['KeyN',78],l:['KeyL',76],p:['KeyP',80],a:['KeyA',65],d:['KeyD',68],f:['KeyF',70],g:['KeyG',71],Escape:['Escape',27],ArrowRight:['ArrowRight',39],ArrowUp:['ArrowUp',38],End:['End',35],Delete:['Delete',46],'1':['Digit1',49]};
+const KEYS={Enter:['Enter',13],F2:['F2',113],c:['KeyC',67],z:['KeyZ',90],n:['KeyN',78],l:['KeyL',76],p:['KeyP',80],a:['KeyA',65],d:['KeyD',68],e:['KeyE',69],f:['KeyF',70],g:['KeyG',71],Escape:['Escape',27],ArrowRight:['ArrowRight',39],ArrowUp:['ArrowUp',38],End:['End',35],Delete:['Delete',46],'1':['Digit1',49]};
 async function key(name,modifiers=0){
   const [code,vk]=KEYS[name],base={key:name,code,windowsVirtualKeyCode:vk,modifiers};
   await send('Input.dispatchKeyEvent',{type:'rawKeyDown',...base});await send('Input.dispatchKeyEvent',{type:'keyUp',...base});await sleep(60);
@@ -74,6 +74,7 @@ async function check(name,fn){
   catch(e){results.push({name,ok:false});console.log(`FAIL ${name} — ${e.message}`);}
 }
 const expect=(condition,message)=>{if(!condition)throw new Error(message);};
+const setValue=(selector,value)=>js(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});const proto=el.tagName==='SELECT'?HTMLSelectElement.prototype:el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));})()`);
 
 try{
   await send('Page.enable');await send('Runtime.enable');
@@ -114,6 +115,76 @@ try{
     await js(`(()=>{const s=document.querySelector('select[aria-label="Cargar ejemplo"]');s.value='6';s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
     const task=await saved();expect(task.id==='plan-task'&&task.nodes.length===4,'falta el ejemplo de tarea');
     return 'idea de tres pasos y tarea de cuatro pasos; documento previo conservado';
+  });
+  await check('insertar y escribir mantiene la forma, el icono y el color elegidos',async()=>{
+    await tap('.doc-tab-add');const host=await center('.canvas-host');
+    for(const [i,name] of ['Nota adhesiva','Idea','Página web','Clase'].entries()){
+      await js(`(()=>{for(const d of document.querySelectorAll('.palette details'))d.open=true;[...document.querySelectorAll('.palette-item')].find(b=>b.querySelector('span').textContent===${JSON.stringify(name)}).click();})()`);
+      const at={x:host.left+host.width*(i%2?.7:.3),y:host.top+host.height*(i<2?.36:.76)};
+      await mouse('mouseMoved',at.x,at.y,{buttons:0});await sleep(80);
+      const preview=await js(`(()=>{const n=document.querySelector('.place-ghost .graph-node');return {shape:[...n.classList].find(c=>c.startsWith('shape-')),fill:getComputedStyle(n.querySelector('.node-shape')).fill,icon:n.querySelector('.node-icon')?.getAttribute('d')};})()`);
+      await mouse('mousePressed',at.x,at.y);await sleep(60);expect(await js(`Boolean(document.querySelector('.place-ghost'))`),'presionar oculta la vista previa real');
+      await mouse('mouseReleased',at.x,at.y);await sleep(80);
+      const doc=await saved(),node=doc.nodes.at(-1),appearance=await js(`(()=>{const n=document.querySelector('[data-id="${node.id}"]'),e=document.querySelector('.inline-editor');return {shape:[...n.classList].find(c=>c.startsWith('shape-')),fill:getComputedStyle(n.querySelector('.node-shape')).fill,icon:n.querySelector('.node-icon')?.getAttribute('d'),editor:getComputedStyle(e).backgroundColor};})()`);
+      expect(appearance.shape===preview.shape&&appearance.fill===preview.fill&&appearance.icon===preview.icon,`${name} se convirtió en otro objeto durante la inserción`);
+      expect(appearance.editor==='rgba(0, 0, 0, 0)','la edición tapa la forma con un fondo genérico');
+      if(i===3)await shot('33-insercion-fiel');await key('Escape');
+    }
+    return 'nota, globo, ventana y clase siguen visibles al escribir';
+  });
+  const trace=async points=>{await mouse('mousePressed',points[0].x,points[0].y);for(const p of points.slice(1))await mouse('mouseMoved',p.x,p.y);};
+  await check('el lápiz guarda círculos, puntos y varios trazos con su color desde la vista previa',async()=>{
+    await tap('.doc-tab-add');await key('d');await clickText('Color','.pen-tools');
+    expect(await js(`document.querySelectorAll('.pen-tools .color-grid .color-dot').length`)===24,'faltan los colores ampliados');
+    await setValue('.pen-tools [aria-label="Código del color"]','invalid');expect(await js(`document.querySelector('.pen-tools .custom-color-entry button').disabled`),'acepta un color inválido');
+    await setValue('.pen-tools [aria-label="Código del color"]','#bb3366');await clickText('＋ Agregar','.pen-tools');await setValue('[aria-label="Grosor del lápiz"]','4');
+    const host=await center('.canvas-host'),cx=host.x,cy=host.top+host.height*.62,points=Array.from({length:65},(_,i)=>({x:cx+50*Math.cos(i*Math.PI*2/64),y:cy+50*Math.sin(i*Math.PI*2/64)}));
+    await trace(points);await sleep(100);
+    const draft=await js(`(()=>{const s=getComputedStyle(document.querySelector('.ink-preview .free-drawing-path'));return {stroke:s.stroke,dash:s.strokeDasharray,width:s.strokeWidth};})()`);
+    expect(draft.stroke==='rgb(187, 51, 102)'&&draft.dash==='none'&&draft.width==='4px',`el trazo cambia durante el gesto: ${JSON.stringify(draft)}`);await shot('34-lapiz-color-real');
+    await mouse('mouseReleased',points[0].x,points[0].y);let doc=await saved(),loop=doc.drawings.at(-1);
+    expect(loop.kind==='freehand'&&loop.points.length>40&&loop.style.stroke==='#bb3366','el círculo cerrado se perdió o cambió de color');
+    await click({x:cx-90,y:cy+80});await drag({x:cx-20,y:cy+95},{x:cx+50,y:cy+95});doc=await saved();expect(doc.drawings.length===3,'el lápiz no permite puntos o varios trazos seguidos');
+    await key('Escape');await click({x:points[0].x,y:points[0].y});await clickText('Color','.selection-toolbar');await tap('.selection-toolbar [aria-label="Color Rojo"]');
+    expect((await saved()).drawings.find(d=>d.id===loop.id).style.stroke==='#d12f45','no se guardó el nuevo color');
+    expect(await js(`getComputedStyle(document.querySelector('[data-id="${loop.id}"] .free-drawing-path')).stroke`)==='rgb(209, 47, 69)','la selección oculta el color real');
+    expect(await js(`Boolean(document.querySelector('.selection-outline'))`),'falta el borde independiente de selección');
+    expect(await js(`(()=>{const b=document.querySelector('.selection-toolbar').getBoundingClientRect(),s=document.querySelector('[data-id="${loop.id}"] .free-drawing-path').getBoundingClientRect();return b.right<=s.left||b.left>=s.right||b.bottom<=s.top||b.top>=s.bottom;})()`),'la paleta tapa el trazo seleccionado aunque hay lugar al costado');await shot('38-color-seleccionado');await key('z',CTRL);
+    expect((await saved()).drawings.find(d=>d.id===loop.id).style.stroke==='#bb3366','undo no restaura el color');
+    await clickText('Emprolijar','.selection-toolbar');expect((await saved()).drawings.find(d=>d.id===loop.id).id===loop.id,'emprolijar cambia el ID');await key('z',CTRL);
+    expect(JSON.stringify((await saved()).drawings.find(d=>d.id===loop.id).points)===JSON.stringify(loop.points),'undo no recupera el trazo antes de emprolijar');
+    await send('Page.reload');await sleep(1000);expect((await saved()).drawings[0].id===loop.id,'recargar cambia el ID');await key('d');await clickText('Color','.pen-tools');
+    expect(await js(`Boolean(document.querySelector('.pen-tools [aria-label="Color guardado #bb3366"]'))`),'el color propio se perdió al recargar');
+    await viewport(390,844);await sleep(180);await js(`document.querySelector('.canvas-host').scrollIntoView({block:'center'})`);
+    expect(await js(`document.documentElement.scrollWidth<=innerWidth&&(()=>{const p=document.querySelector('.pen-tools').getBoundingClientRect(),h=document.querySelector('.canvas-host').getBoundingClientRect();return p.left>=h.left&&p.right<=h.right&&p.bottom<=h.bottom;})()`),'el lápiz o la paleta se salen del canvas móvil');await shot('37-lapiz-movil');await viewport(1440,900);await js(`scrollTo(0,0)`);await key('Escape');
+    return 'círculo cerrado, punto y trazo; color visible seleccionado; muestra propia persistida';
+  });
+  await check('el guiado emprolija un rectángulo al mantener y Shift endereza líneas sin cambiar el color',async()=>{
+    await tap('.doc-tab-add');await key('g');await sleep(100);const host=await center('.canvas-host'),x=host.x-90,y=host.top+host.height*.55;
+    const corners=[{x,y},{x:x+150,y},{x:x+150,y:y+90},{x,y:y+90},{x,y}],points=[corners[0]];
+    for(let j=1;j<corners.length;j++)for(let i=1;i<=8;i++)points.push({x:corners[j-1].x+(corners[j].x-corners[j-1].x)*i/8,y:corners[j-1].y+(corners[j].y-corners[j-1].y)*i/8});
+    const before=await saved();await trace(points);await sleep(750);
+    expect((await status()).includes('Rectángulo emprolijado'),'mantener no emprolija el rectángulo');expect((await saved()).revision===before.revision,'el guiado guardó antes de soltar');await shot('35-lapiz-guiado');
+    await mouse('mouseReleased',x,y);let doc=await saved();expect(doc.drawings[0].points.length===5,'el rectángulo no conserva las cuatro esquinas');
+    const circle=Array.from({length:65},(_,i)=>({x:x+225+40*Math.cos(i*Math.PI*2/64),y:y+45+40*Math.sin(i*Math.PI*2/64)}));
+    await trace(circle);await sleep(750);expect((await status()).includes('Círculo emprolijado'),'mantener no emprolija el círculo');await mouse('mouseReleased',circle[0].x,circle[0].y);doc=await saved();expect(doc.drawings.at(-1).points.length===81,'el círculo guiado no se guardó editable');
+    await key('Escape');await key('l');await drag({x:x-20,y:y+160},{x:x+100,y:y+167},SHIFT);doc=await saved();const line=doc.drawings.at(-1);
+    expect(line.kind==='line'&&Math.abs(line.points[0].y-line.points[1].y)<.01,'Shift no endereza la línea');
+    // Esc durante el gesto descarta el borrador, sin agregar un trazo.
+    await key('d');const count=doc.drawings.length;await mouse('mousePressed',x,y+210);await mouse('mouseMoved',x+70,y+220);await key('Escape');await mouse('mouseReleased',x+70,y+220);
+    expect((await saved()).drawings.length===count,'Esc guardó un trazo que debía cancelar');return 'forma editable, guía sin commit prematuro, línea horizontal y cancelación';
+  });
+  await check('goma y conversión a texto son reversibles y conservan los trazos originales al cancelar',async()=>{
+    const before=await saved(),drawing=before.drawings[0],point=drawing.points[0];
+    const at=await js(`(()=>{const c=document.querySelector('.canvas'),r=c.getBoundingClientRect(),v=c.getAttribute('viewBox').split(/\\s+/).map(Number);return {x:r.left+(${point.x}-v[0])*r.width/v[2],y:r.top+(${point.y}-v[1])*r.height/v[3]};})()`);
+    await key('e');await click(at);expect(!(await saved()).drawings.some(d=>d.id===drawing.id),'la goma no borró el trazo');await key('z',CTRL);expect((await saved()).drawings.some(d=>d.id===drawing.id),'undo no recupera el ID borrado');await key('Escape');
+    await click(at);await clickText('Pasar a texto','.selection-toolbar');await sleep(500);
+    expect(await js(`Boolean(document.querySelector('.handwriting-text'))`),'falta revisar la conversión');
+    const snapshot=JSON.stringify(await saved());await clickText('Cancelar','.handwriting-text');expect(JSON.stringify(await saved())===snapshot,'cancelar la conversión tocó el dibujo');
+    await clickText('Pasar a texto','.selection-toolbar');await sleep(500);await setValue('.handwriting-text input','Mi nota');await shot('36-goma-texto');await clickText('Reemplazar por texto','.handwriting-text');
+    const converted=await saved();expect(converted.nodes.at(-1).kind==='text'&&converted.nodes.at(-1).label==='Mi nota'&&!converted.drawings.some(d=>d.id===drawing.id),'la conversión no es un reemplazo editable');
+    await key('z',CTRL);const restored=await saved();expect(restored.drawings.some(d=>d.id===drawing.id)&&restored.nodes.length===before.nodes.length,'undo no recupera el dibujo original');
+    return 'goma con undo; original intacto hasta confirmar; texto editable y recuperación; API local '+(await js(`Boolean(navigator.createHandwritingRecognizer&&globalThis.HandwritingStroke)`)?'presente, español sin certificar':'no disponible, entrada manual');
   });
   // El resto de la regresión conserva su fixture de arquitectura y no consume pestañas de las pruebas de inicio.
   await js(`(()=>{localStorage.clear();localStorage.setItem('diagramia.tutorial.seen','1');localStorage.setItem('diagramia.theme','light');})()`);await send('Page.reload');await sleep(1200);
@@ -448,7 +519,6 @@ try{
     const sent=await js(`window.__assist.at(-1)`);expect(sent?.history?.length>=2&&sent.mode==='edit','la conversación no recuerda los turnos');
     return 'cancelar, previsualizar, rechazar, obsoleta y regenerar';
   });
-  const setValue=(selector,value)=>js(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});const proto=el.tagName==='SELECT'?HTMLSelectElement.prototype:el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));})()`);
   await check('los escenarios cambian el recorrido y los estados de los nodos',async()=>{
     await send('Page.reload');await sleep(1200);
     await setValue('select[aria-label="Cargar ejemplo"]','2');await sleep(600);
@@ -559,7 +629,7 @@ try{
     doc=await saved();expect(doc.nodes.find(n=>n.id==='api').label==='API pública','el doble clic no editó el texto');
     // Estilo: color de relleno desde Propiedades.
     await click(await center('[data-id="db"]'));expect(await clickText('Propiedades','.tabs'),'falta Propiedades');await sleep(120);
-    await js(`document.querySelector('.color-field .swatch[title="#d4f246"]').click()`);
+    await js(`(()=>{const f=document.querySelector('.color-field');f.open=true;f.querySelector('[aria-label="Color Lima"]').click();})()`);
     doc=await saved();expect(doc.nodes.find(n=>n.id==='db').style.fill==='#d4f246','el relleno no cambió');
     // Flecha enganchada: se suelta cerca del borde superior de PostgreSQL y queda fija en ese punto.
     const user=await center('[data-id="user"] .node-shape'),db=await center('[data-id="db"] .node-shape');

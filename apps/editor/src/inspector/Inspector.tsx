@@ -1,4 +1,4 @@
-import {ARROWS,LINES,PORTS,SHAPES,assetBytes,documentBounds,fitSize,rootGroupId,type ActionInput,type DiagramDocument,type DiagramEdge,type DiagramFrame,type DiagramNode,type DiagramZone,type Rect} from '@diagramia/core';
+import {ARROWS,LINES,PORTS,SHAPES,assetBytes,documentBounds,fitSize,rootGroupId,type ActionInput,type DiagramDocument,type DiagramDrawing,type DiagramEdge,type DiagramFrame,type DiagramNode,type DiagramZone,type Rect} from '@diagramia/core';
 import {useStore} from '../store/createStore';
 import {documentStore,transact} from '../store/documentStore';
 import {kindOf,select,selectionStore} from '../store/selectionStore';
@@ -8,7 +8,7 @@ import {CREATABLE_KINDS,KIND_LABELS,NumberField,SelectField,TextField} from '../
 import {Annotations} from './Annotations';
 import {IconPicker,SaveAsElement,StylePresets} from './Appearance';
 import {LinkPreview} from './LinkPreview';
-import {ARROW_LABELS,EdgeStyleFields,LINE_LABELS,NodeStyleFields,ZoneStyleFields} from './StyleFields';
+import {ARROW_LABELS,ColorField,EdgeStyleFields,LINE_LABELS,NodeStyleFields,ZoneStyleFields} from './StyleFields';
 
 const SHAPE_LABELS:Record<typeof SHAPES[number],string>={rectangle:'Rectángulo',rounded:'Redondeado',ellipse:'Elipse',circle:'Círculo',diamond:'Rombo',triangle:'Triángulo',hexagon:'Hexágono',parallelogram:'Paralelogramo',trapezoid:'Trapecio',star:'Estrella',cloud:'Nube',cylinder:'Cilindro',note:'Nota',text:'Sólo texto',terminator:'Inicio / fin',document:'Documento',predefined:'Subproceso','manual-input':'Entrada manual',delay:'Espera',actor:'Actor (figura)',class:'Clase UML',package:'Paquete',component:'Componente',start:'Inicio (punto)',end:'Fin (diana)',sticky:'Nota adhesiva',card:'Tarjeta con encabezado',bubble:'Globo de diálogo',pill:'Píldora',avatar:'Avatar',badge:'Insignia',ribbon:'Cinta',folder:'Carpeta',browser:'Ventana',chevron:'Paso (chevron)',map:'Mapa'};
 const SHAPE_OPTIONS=[['','Según el tipo'] as const,...SHAPES.map(shape=>[shape,SHAPE_LABELS[shape]] as const)];
@@ -116,6 +116,10 @@ function Arrange({count}:{count:number}){
   </fieldset>;
 }
 
+function DrawingInspector({drawing}:{drawing:DiagramDrawing}){
+  return <><p className="inline-note">{drawing.kind==='freehand'?'Trazo a mano':drawing.kind==='arrow'?'Flecha libre':'Línea'}</p><ColorField label="Color del trazo" value={drawing.style.stroke} fallback="#141619" onChange={stroke=>transact([{type:'UPDATE_DRAWING',id:drawing.id,changes:{style:{...drawing.style,stroke}}}],'Color del trazo cambiado')}/><NumberField label="Grosor del trazo" value={drawing.style.strokeWidth??2} min={.5} max={8} step={.5} onCommit={strokeWidth=>transact([{type:'UPDATE_DRAWING',id:drawing.id,changes:{style:{...drawing.style,strokeWidth}}}],'Grosor del trazo cambiado')}/></>;
+}
+
 export function Inspector(){
   const {doc}=useStore(documentStore),{ids}=useStore(selectionStore),{labelFocus,snap}=useStore(viewStore);
   if(!ids.length)return <div className="panel-body">
@@ -130,11 +134,12 @@ export function Inspector(){
   </div>;
   const kind=ids.length===1?kindOf(doc,ids[0]):null,nodes=doc.nodes.filter(n=>ids.includes(n.id));
   return <div className="panel-body">
-    <span className="eyebrow">{kind?`${kind==='node'?'NODO':kind==='edge'?'CONEXIÓN':kind==='zone'?'ZONA':'FRAME'} / ${ids[0]}`:`SELECCIÓN / ${ids.length} ELEMENTOS`}</span>
+    <span className="eyebrow">{kind?`${kind==='node'?'NODO':kind==='edge'?'CONEXIÓN':kind==='drawing'?'TRAZO':kind==='zone'?'ZONA':'FRAME'} / ${ids[0]}`:`SELECCIÓN / ${ids.length} ELEMENTOS`}</span>
     {kind==='node'&&<NodeInspector key={ids[0]} doc={doc} node={nodes[0]} focusToken={labelFocus}/>}
     {kind==='edge'&&<EdgeInspector key={ids[0]} doc={doc} edge={doc.edges.find(e=>e.id===ids[0])!} focusToken={labelFocus}/>}
     {kind==='zone'&&<ZoneInspector key={ids[0]} doc={doc} zone={doc.zones.find(z=>z.id===ids[0])!} focusToken={labelFocus}/>}
     {kind==='frame'&&<FrameInspector key={ids[0]} frame={doc.frames.find(f=>f.id===ids[0])!} focusToken={labelFocus}/>}
+    {kind==='drawing'&&<DrawingInspector key={ids[0]} drawing={doc.drawings.find(d=>d.id===ids[0])!}/>}
     {nodes.length>1&&<StylePresets nodes={nodes}/>}
     {nodes.length>1&&<Arrange count={nodes.length}/>}
     {nodes.length>0&&<SaveAsElement count={nodes.length}/>}

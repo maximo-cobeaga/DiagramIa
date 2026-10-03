@@ -2,6 +2,14 @@
 
 ## Último checkpoint
 
+03/10/2026 (Argentina, revisión de inserción, lápiz y color; ADR 073–075). Correcciones y herramientas implementadas en P1.1/P8.1:
+- **Inserción fiel:** forma/icono/color visibles al presionar y mientras se escribe; campo transparente en la caja real del título, compartida con el render. La nota nueva toma el nombre de la plantilla. Selección con contorno externo, sin reemplazar colores de nodos, conexiones o dibujos.
+- **Lápiz libre:** render y estilo iguales durante el gesto y al guardar; sin línea azul punteada. Acepta puntos, círculos cerrados y varios trazos seguidos. Color/grosor antes de dibujar; Esc y pointercancel descartan borradores.
+- **Paleta y ayudas:** 24 tonos, HEX/selector nativo y hasta 24 muestras propias persistidas. Goma reversible por gesto, Shift para líneas/flechas rectas, reutilizar estilo, propiedades de dibujo y selección rectangular de trazos.
+- **Guiado:** suavizado leve y formas al mantener 600 ms; originales geométricos conservados al continuar moviendo. Emprolijar sirve para dibujos existentes. Pasar a texto ofrece reconocimiento local en español si el dispositivo lo soporta, edición/revisión y reemplazo atómico con undo; si no, entrada de texto manual. Adapter probado por contrato, sin IA paga. **Límite real:** no hay reconocimiento general ni refinamiento de letras comparable a Smart Script verificado en Windows; falta motor/soporte de dispositivo y prueba real en español.
+- **Pruebas:** `npm run check` 129/129; `npm run smoke` 49/49 sin errores de consola, en Chromium con gateway mock aislado. Inserción fiel, color seleccionado, rectángulo/círculo guiado, cancelación, borrado/conversión/undo y paleta móvil comprobados; capturas revisadas en `evidencias/`. API local de escritura ausente en el Windows probado: entrada manual comprobada, reconocimiento general sin certificar. Detalles en `VALIDATION.md` 25–28. Sin schema ni dependencias nuevas; el core conserva puntos editables y IDs.
+- **Próximo paso inequívoco:** probar 25–28 con el usuario, sobre todo trazo circular, escritura y color seleccionado, más mouse/táctil/stylus físicos. Evaluar reconocimiento general sólo con un motor real disponible; no prometerlo por el suavizado. P8.1 sigue parcial. Trabajo local, sin push ni despliegue.
+
 03/10/2026 (Argentina, inicio guiado → controles contextuales → concentración; ADR 070–072). Implementado el orden autorizado por el usuario, extensión de P8.1/P1.1:
 - **Empezar:** espacio nuevo vacío, tres entradas dentro del lienzo, tutorial opcional y ejemplos reales de idea/tarea/viaje. IA sólo enfoca la entrada; no envía automáticamente. Dibujar permite escribir la primera nota. Ejemplos en otra pestaña y documentos guardados conservados.
 - **Acciones cercanas:** Escribir, Color, Duplicar, Unir y Más junto a la selección. Colores con contraste, undo y duplicación con IDs nuevos. Conectar con dos clics o teclado, cancelar con Esc o botón; staging conserva sólo lectura.

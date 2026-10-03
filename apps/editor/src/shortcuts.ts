@@ -8,6 +8,7 @@ import {copy,cut,deleteSelection,duplicate,fitAll,group,nudge,paste,selectAll,un
 /** Fuente única de los atajos: la ayuda en pantalla se genera desde esta lista. */
 export const SHORTCUTS:[keys:string,action:string][]=[
   ['V · H','Seleccionar · Mano (pan)'],['N · C · Z · F','Última forma · Conector · Zona · Frame'],['Doble clic · F2','Escribir el texto del elemento en el lugar'],
+  ['D · G · E','Lápiz libre · Lápiz guiado · Goma'],
   ['Espacio + arrastrar','Pan temporal (también botón central)'],['Rueda · Ctrl + rueda','Desplazar · Zoom hacia el cursor'],
   ['+ · − · 0 · 1','Acercar · Alejar · 100% · Encuadrar todo'],
   ['Clic · Shift + clic · Alt + clic','Seleccionar · Sumar o quitar · Un nodo dentro de un grupo'],
@@ -19,7 +20,7 @@ export const SHORTCUTS:[keys:string,action:string][]=[
   ['Shift + F','Entrar o salir del modo concentración'],
   ['Esc','Soltar la herramienta o la selección'],['?','Abrir esta ayuda']
 ];
-const TOOLS:Record<string,Tool>={v:'select',h:'pan',n:'node',c:'connect',l:'line',a:'arrow',d:'freehand',z:'zone',f:'frame'};
+const TOOLS:Record<string,Tool>={v:'select',h:'pan',n:'node',c:'connect',l:'line',a:'arrow',d:'freehand',g:'guided',e:'eraser',z:'zone',f:'frame'};
 const typing=(target:EventTarget|null)=>target instanceof HTMLElement&&(target.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(target.tagName));
 
 export function useShortcuts(){

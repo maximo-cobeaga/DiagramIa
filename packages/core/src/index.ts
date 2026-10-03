@@ -10,3 +10,4 @@ export * from './library.js';
 export * from './telemetry.js';
 export * from './design.js';
 export * from './camera.js';
+export * from './ink.js';

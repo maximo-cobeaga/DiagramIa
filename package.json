@@ -15,7 +15,7 @@
     "dev:landing": "node scripts/serve-landing.mjs",
     "build": "npm run build -w @diagramia/core && npm run build -w @diagramia/interop && npm run build -w @diagramia/providers && npm run build -w @diagramia/editor && npm run build -w @diagramia/mcp && npm run build -w @diagramia/api",
     "typecheck": "npm run build -w @diagramia/core && npm run build -w @diagramia/interop && npm run build -w @diagramia/providers && tsc --noEmit -p apps/editor/tsconfig.json && tsc --noEmit -p apps/mcp/tsconfig.json && tsc --noEmit -p apps/api/tsconfig.json",
-    "test": "npm run build -w @diagramia/core && npm run build -w @diagramia/interop && npm run build -w @diagramia/providers && npm run build -w @diagramia/mcp && node --import tsx --test packages/core/test/*.test.ts packages/interop/test/*.test.ts apps/mcp/test/*.test.ts apps/api/test/*.test.ts",
+    "test": "npm run build -w @diagramia/core && npm run build -w @diagramia/interop && npm run build -w @diagramia/providers && npm run build -w @diagramia/mcp && node --import tsx --test packages/core/test/*.test.ts packages/interop/test/*.test.ts apps/editor/test/*.test.ts apps/mcp/test/*.test.ts apps/api/test/*.test.ts",
     "check": "npm run build && npm test",
     "mcp": "node apps/mcp/dist/index.js",
     "schemas": "node --import tsx scripts/export-schemas.ts",

@@ -1,9 +1,8 @@
-import {useEffect,useId,useRef,useState} from 'react';
 import {ARROWS,LINES,type DiagramEdge,type DiagramNode,type DiagramZone} from '@diagramia/core';
 import {NumberField,SelectField} from '../ui';
+import {ColorPicker} from '../palette/ColorPicker';
 
 // Colores de la marca primero; el selector libre queda al lado.
-const SWATCHES=['#ffffff','#f4f6f8','#d4f246','#e5ecff','#fde8e4','#fff4d6','#245cf6','#141619'];
 const DASH_OPTIONS=[['solid','Continua'],['dashed','Discontinua'],['dotted','Punteada']] as const;
 export const ARROW_LABELS:Record<typeof ARROWS[number],string>={none:'Sin punta',arrow:'Flecha',open:'Flecha abierta',triangle:'Triángulo (herencia)',diamond:'Rombo (agregación)','diamond-filled':'Rombo lleno (composición)',circle:'Círculo'};
 export const LINE_LABELS:Record<typeof LINES[number],string>={orthogonal:'En ángulos rectos',straight:'Recta',curved:'Curva'};
@@ -11,18 +10,7 @@ export const LINE_LABELS:Record<typeof LINES[number],string>={orthogonal:'En án
 type ColorProps={label:string;value:string|undefined;fallback:string;onChange:(value:string|undefined)=>void};
 /** Color con muestras rápidas, selector libre y «automático» (vuelve al color del tema). */
 export function ColorField({label,value,fallback,onChange}:ColorProps){
-  const id=useId(),[draft,setDraft]=useState(value??fallback),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
-  useEffect(()=>setDraft(value??fallback),[value,fallback]);
-  useEffect(()=>()=>clearTimeout(timer.current),[]);
-  // El selector nativo emite un cambio por cada movimiento: se confirma al dejar de mover, para que sea un solo paso de undo.
-  const pick=(color:string)=>{setDraft(color);clearTimeout(timer.current);timer.current=setTimeout(()=>onChange(color),350);};
-  return <div className="field color-field"><label htmlFor={id}>{label}</label>
-    <div className="swatches">
-      <input id={id} type="color" value={draft} onChange={e=>pick(e.target.value)}/>
-      {SWATCHES.map(color=><button key={color} className={'swatch'+(value?.toLowerCase()===color?' chosen':'')} style={{background:color}} aria-label={`${label} ${color}`} title={color} onClick={()=>onChange(color)}/>)}
-      <button className="quiet" disabled={!value} onClick={()=>onChange(undefined)} title="Volver al color del tema">Auto</button>
-    </div>
-  </div>;
+  return <details className="field color-field"><summary>{label}<span className="color-indicator" style={{background:value??fallback}}/></summary><ColorPicker value={value??fallback} onChange={onChange}/><button className="quiet" disabled={!value} onClick={()=>onChange(undefined)} title="Volver al color del tema">Auto</button></details>;
 }
 // Un estilo sólo guarda lo que el usuario cambió: quitar una clave la devuelve al valor del tema.
 const merge=<T extends object>(style:T,key:keyof T,value:T[keyof T]|undefined):T=>{const next={...style};if(value===undefined)delete next[key];else next[key]=value;return next;};

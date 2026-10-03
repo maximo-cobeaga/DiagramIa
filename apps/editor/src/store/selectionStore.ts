@@ -13,7 +13,7 @@ export function pruneSelection(d:DiagramDocument){
   const alive=new Set([...d.nodes,...d.edges,...d.drawings,...d.zones,...d.frames].map(x=>x.id)),{ids}=selectionStore.get();
   if(ids.some(id=>!alive.has(id)))selectionStore.set({ids:ids.filter(id=>alive.has(id))});
 }
-export type SelectionKind='node'|'edge'|'zone'|'frame';
+export type SelectionKind='node'|'edge'|'drawing'|'zone'|'frame';
 export function kindOf(d:DiagramDocument,id:string):SelectionKind|null{
-  return d.nodes.some(n=>n.id===id)?'node':d.edges.some(e=>e.id===id)?'edge':d.zones.some(z=>z.id===id)?'zone':d.frames.some(f=>f.id===id)?'frame':null;
+  return d.nodes.some(n=>n.id===id)?'node':d.edges.some(e=>e.id===id)?'edge':d.drawings.some(d=>d.id===id)?'drawing':d.zones.some(z=>z.id===id)?'zone':d.frames.some(f=>f.id===id)?'frame':null;
 }
