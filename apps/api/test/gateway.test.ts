@@ -4,8 +4,9 @@ import {createServer,type Server} from 'node:http';
 import {readFileSync} from 'node:fs';
 import type {AddressInfo} from 'node:net';
 import {applyBatch,emptyDocument,findOverlaps} from '@diagramia/core';
-import {anthropicProvider,openAICompatibleProvider,mockProvider,ProviderError,type Provider,type ProviderRequest} from '@diagramia/providers';
+import {anthropicProvider,openAICompatibleProvider,openAIProvider,mockProvider,ProviderError,type Provider,type ProviderRequest} from '@diagramia/providers';
 import {createApp} from '../src/server.js';
+import {strictSchemaFor} from '../src/assist.js';
 import {UsageLedger} from '../src/usage.js';
 
 const architecture=()=>JSON.parse(readFileSync('examples/architecture.diagramia.json','utf8'));
@@ -336,4 +337,105 @@ test('nulls a model writes where a field should be omitted are dropped instead o
     const body=await(await g.post(g.ask())).json();
     assert.equal(body.kind,'proposal');assert.equal(body.repairs,0);assert.equal(calls.length,1);
   }finally{await g.close();}
+});
+
+/** Servidor que imita /chat/completions de OpenAI: guarda cada pedido y responde con lo que indique `reply`. */
+async function fakeOpenAI(reply:(body:Record<string,any>)=>object){
+  const requests:{url?:string;auth?:string;body:Record<string,any>}[]=[];
+  const upstream=createServer(async(req,res)=>{
+    const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(chunk as Buffer);
+    const body=JSON.parse(Buffer.concat(chunks).toString());requests.push({url:req.url,auth:req.headers.authorization,body});
+    res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify(reply(body)));
+  });
+  return {base:await listen(upstream)+'/v1',requests,close:()=>{upstream.closeAllConnections();return new Promise(resolve=>upstream.close(resolve));}};
+}
+const completion=(content:string)=>({id:'chatcmpl-1',model:'gpt-6-luna',choices:[{finish_reason:'stop',message:{role:'assistant',content,refusal:null}}],usage:{prompt_tokens:1000,completion_tokens:300,prompt_tokens_details:{cached_tokens:800}}});
+
+test('GPT-6 Luna adapter sends max_completion_tokens, reasoning effort and a strict schema only when one is given',async()=>{
+  const upstream=await fakeOpenAI(()=>completion('{}'));
+  const provider=openAIProvider({apiKey:'sk-test',baseURL:upstream.base});
+  const request={system:'s',messages:[{role:'user' as const,content:'x'}],maxOutputTokens:500,signal:new AbortController().signal};
+  const schema={name:'demo',schema:{type:'object',properties:{a:{type:'string'}},required:['a'],additionalProperties:false}};
+  try{
+    const info=provider.info();
+    assert.equal(info.id,'openai');assert.equal(info.model,'gpt-6-luna');assert.equal(info.kind,'remote');assert.equal(info.capabilities.structuredOutput,true);
+    assert.deepEqual(info.pricing,{inputPerMTok:0.10,cachedInputPerMTok:0.01,outputPerMTok:0.50});
+    const result=await provider.generate({...request,json:true,schema});
+    await provider.generate({...request,json:true});await provider.generate(request);
+    const [strict,json,plain]=upstream.requests;
+    assert.equal(strict.url,'/v1/chat/completions');assert.equal(strict.auth,'Bearer sk-test');
+    assert.equal(strict.body.model,'gpt-6-luna');assert.equal(strict.body.max_completion_tokens,500);assert.equal(strict.body.max_tokens,undefined);
+    assert.equal(strict.body.reasoning_effort,'low');
+    assert.deepEqual(strict.body.response_format,{type:'json_schema',json_schema:{name:'demo',strict:true,schema:schema.schema}});
+    assert.deepEqual(json.body.response_format,{type:'json_object'});assert.equal(plain.body.response_format,undefined);
+    assert.deepEqual(result.usage,{inputTokens:1000,outputTokens:300,cachedInputTokens:800});
+  }finally{await upstream.close();}
+});
+test('GPT-6 Luna adapter reports refusals, a missing key and an invalid reasoning effort without calling OpenAI',async()=>{
+  const upstream=await fakeOpenAI(()=>({choices:[{finish_reason:'stop',message:{content:null,refusal:'No puedo ayudar con eso.'}}]}));
+  const request={system:'s',messages:[{role:'user' as const,content:'x'}],maxOutputTokens:10,signal:new AbortController().signal};
+  try{
+    await assert.rejects(openAIProvider({apiKey:'k',baseURL:upstream.base}).generate(request),(e:unknown)=>e instanceof ProviderError&&e.code==='REFUSED');
+    const keyless=openAIProvider({baseURL:upstream.base}),wrong=openAIProvider({apiKey:'k',baseURL:upstream.base,reasoningEffort:'extreme'});
+    assert.equal(keyless.info().configured,false);assert.match(keyless.info().missing!,/OPENAI_API_KEY/);
+    assert.equal(wrong.info().configured,false);assert.match(wrong.info().missing!,/REASONING_EFFORT/);
+    await assert.rejects(wrong.generate(request),(e:unknown)=>e instanceof ProviderError&&e.code==='NOT_CONFIGURED');
+    assert.equal(upstream.requests.length,1,'sólo el pedido con negativa llegó a OpenAI');
+  }finally{await upstream.close();}
+});
+test('strict schemas follow the structured-outputs subset: every property required, no extra properties',()=>{
+  const objects:Record<string,any>[]=[];
+  const walk=(node:unknown):void=>{
+    if(Array.isArray(node))return node.forEach(walk);
+    if(!node||typeof node!=='object')return;
+    const value=node as Record<string,any>;if(value.type==='object')objects.push(value);
+    Object.values(value).forEach(walk);
+  };
+  for(const mode of ['create','review'] as const){
+    const entry=strictSchemaFor(mode);assert.ok(entry,`${mode} tiene schema`);
+    assert.equal(entry!.schema.type,'object','la raíz es un objeto, no una unión');walk(entry!.schema);
+  }
+  assert.ok(objects.length>=8);
+  for(const object of objects){
+    assert.equal(object.additionalProperties,false);
+    assert.deepEqual([...object.required].sort(),Object.keys(object.properties).sort());
+  }
+  assert.equal(strictSchemaFor('edit'),undefined,'las acciones de Editar no se fuerzan con un schema');
+});
+test('create through GPT-6 Luna: strict answers with explicit nulls become canonical actions without a repair, priced with cache',async()=>{
+  const inventory={summary:'Login.',clarification:null,zones:[{id:'backend',label:'Backend'}],
+    nodes:[{id:'user',kind:'actor',label:'Usuario',zoneId:null,shape:null,details:null,style:null},
+      {id:'auth',kind:'service',label:'Auth',zoneId:'backend',shape:null,details:null,style:{fill:'#e8f0ff',stroke:null,textColor:null,strokeWidth:null,dash:null,fontSize:null,bold:true,italic:null,align:null}},
+      {id:'db',kind:'database',label:'Usuarios',zoneId:'backend',shape:null,details:null,style:null}],
+    edges:[{from:'user',to:'auth',label:'credenciales',line:null,startArrow:null,endArrow:null,style:null},{from:'auth',to:'db',label:'consulta',line:'curved',startArrow:null,endArrow:'arrow',style:null}]};
+  const upstream=await fakeOpenAI(()=>completion(JSON.stringify(inventory)));
+  const g=await gateway([openAIProvider({apiKey:'sk-test',baseURL:upstream.base})]);
+  try{
+    const response=await g.post(g.ask({providerId:'openai',mode:'create',prompt:'Diagrama de login',document:emptyDocument('login','Login'),selectedIds:[]})),body=await response.json();
+    assert.equal(response.status,200,JSON.stringify(body));assert.equal(body.kind,'proposal');assert.equal(body.repairs,0);
+    assert.equal(upstream.requests[0].body.response_format.json_schema.name,'diagram_inventory');
+    const after=applyBatch(emptyDocument('login','Login'),body.batch);
+    assert.deepEqual(after.nodes.map(n=>[n.id,n.kind,n.zoneId]).sort(),[['auth','service','backend'],['db','database','backend'],['user','actor',null]]);
+    assert.equal(after.nodes.find(n=>n.id==='auth')!.style.fill,'#e8f0ff');assert.equal(after.edges.length,2);
+    assert.equal(body.usage.cachedInputTokens,800);
+    assert.ok(Math.abs(body.usage.estimatedCostUsd-(200*0.10+800*0.01+300*0.50)/1e6)<1e-12);
+  }finally{await g.close();await upstream.close();}
+});
+test('a signed-in account only sees and uses the providers of its plan; another provider is refused before reserving credits',async()=>{
+  const reserved:string[]=[];
+  const accounts:any={readSession:async(token?:string)=>token==='s1'?{userId:'u1'}:null,creditUsage:async()=>({monthly:0,daily:0}),
+    reserveCredits:async(_user:string,requestId:string)=>{reserved.push(requestId);return {replayed:null};},settleCredits:async()=>{},releaseCredits:async()=>{}};
+  const free=scripted([redis()]),premium:Provider={info:()=>info('premium'),generate:async()=>{throw new Error('no debe llamarse');}};
+  const ledger=new UsageLedger({dailyTokenBudget:1_000_000,dailyUsdBudget:5,requestsPerMinute:100,ledgerPath:null});
+  const server=createApp({providers:[premium,free.provider],ledger,productPrompt:'p',allowedOrigins:[],token:null,accounts,accountProviders:['fake'],config:{maxOutputTokens:2000,maxContextChars:60000,maxRepairs:1,timeoutMs:5000}});
+  const url=await listen(server),headers={'content-type':'application/json','x-diagramia-client':'editor',cookie:'diagramia_session=s1'};
+  const body=(providerId:string,requestId:string)=>JSON.stringify({requestId,providerId,mode:'edit',prompt:'Agregá Redis debajo de API dentro de Backend',document:architecture(),selectedIds:['api']});
+  try{
+    const listing=await(await fetch(url+'/v1/providers',{headers})).json();
+    assert.deepEqual(listing.providers.map((p:{id:string})=>p.id),['fake']);
+    const refused=await fetch(url+'/v1/assist',{method:'POST',headers,body:body('premium','r1')});
+    assert.equal(refused.status,403);assert.equal((await refused.json()).error.code,'PROVIDER_NOT_IN_PLAN');assert.deepEqual(reserved,[]);
+    const allowed=await fetch(url+'/v1/assist',{method:'POST',headers,body:body('fake','r2')});
+    assert.equal(allowed.status,200);assert.deepEqual(reserved,['r2']);assert.equal(free.calls.length,1);
+  }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 });

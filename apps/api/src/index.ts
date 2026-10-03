@@ -44,6 +44,8 @@ async function start(){
       documentToken:pool?env.DIAGRAMIA_DOCUMENTS_TOKEN:undefined,
       localWorkspace:env.DIAGRAMIA_LOCAL_WORKSPACE==='1'&&['127.0.0.1','localhost','::1'].includes(host),
       accounts,remoteMcp,
+      // Plan Free: GPT-6 Luna por defecto (ADR 045). Lista separada por comas de IDs de proveedor.
+      accountProviders:(env.DIAGRAMIA_ACCOUNT_PROVIDERS??'openai').split(',').map(id=>id.trim()).filter(Boolean),
       oidc:configured.length?new OidcAuthenticator({issuer:env.DIAGRAMIA_OIDC_ISSUER!,clientId:env.DIAGRAMIA_OIDC_CLIENT_ID!,clientSecret:env.DIAGRAMIA_OIDC_CLIENT_SECRET!,redirectUri:env.DIAGRAMIA_OIDC_REDIRECT_URI!,homeUrl:env.DIAGRAMIA_OIDC_HOME_URL!}):undefined,
       ready:pool?async()=>{try{await pool.query('SELECT 1');return true;}catch{return false;}}:undefined,
       log:entry=>{if(entry.path!=='/health'&&entry.path!=='/ready')console.log(JSON.stringify(entry));},

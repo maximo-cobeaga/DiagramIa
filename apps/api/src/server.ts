@@ -10,7 +10,9 @@ import {AccountRepository,CreditError} from './repositories/accounts.js';
 import {OidcAuthenticator} from './auth/oidc.js';
 import {RemoteMcpService} from './mcp.js';
 
-export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistConfig;productPrompt:string;allowedOrigins:string[];token:string|null;documents?:PostgresDocumentRepository;documentToken?:string;localWorkspace?:boolean;accounts?:AccountRepository;oidc?:OidcAuthenticator;remoteMcp?:RemoteMcpService;ready?:()=>Promise<boolean>;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void};
+export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistConfig;productPrompt:string;allowedOrigins:string[];token:string|null;documents?:PostgresDocumentRepository;documentToken?:string;localWorkspace?:boolean;accounts?:AccountRepository;oidc?:OidcAuthenticator;remoteMcp?:RemoteMcpService;
+  /** IDs de proveedor que puede usar una cuenta (plan Free). Sin lista, todos los configurados. */
+  accountProviders?:string[];ready?:()=>Promise<boolean>;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void};
 const MAX_BODY=4_000_000;
 const MAX_DOCUMENT_BODY=10_500_000;
 const USAGE_STATUS={RATE_LIMITED:429,BUDGET_EXCEEDED:402,IN_PROGRESS:409,IDEMPOTENCY_CONFLICT:409} as const;
@@ -166,14 +168,17 @@ export function createApp(options:AppOptions):Server{
       const session=options.accounts?await options.accounts.readSession(cookie(req,'diagramia_session')):null;
       if(options.token&&!session&&!sameToken(String(req.headers.authorization??''),`Bearer ${options.token}`))return fail(401,'UNAUTHORIZED','Token del gateway inválido o ausente.');
       if(options.accounts&&!session&&['/v1/providers','/v1/usage','/v1/assist'].includes(path))return fail(401,'SESSION_REQUIRED','Iniciá sesión para usar IA.');
-      if(path==='/v1/providers'&&req.method==='GET')return send(200,{modes:MODES,providers:options.providers.map(p=>p.info()),usage:options.ledger.summary(),credits:session?await options.accounts!.creditUsage(session.userId):null});
+      // Una cuenta sólo ve y usa los proveedores de su plan: los créditos Free no pagan un modelo más caro.
+      const providers=session&&options.accountProviders?options.providers.filter(p=>options.accountProviders!.includes(p.info().id)):options.providers;
+      if(path==='/v1/providers'&&req.method==='GET')return send(200,{modes:MODES,providers:providers.map(p=>p.info()),usage:options.ledger.summary(),credits:session?await options.accounts!.creditUsage(session.userId):null});
       if(path==='/v1/usage'&&req.method==='GET')return send(200,{...options.ledger.summary(),credits:session?await options.accounts!.creditUsage(session.userId):null});
       if(path==='/v1/assist'&&req.method==='POST'){
         const body=await readJson(req),abort=new AbortController();
         // Si el cliente corta la conexión antes de la respuesta, se cancela la llamada al proveedor.
         res.on('close',()=>{if(!res.writableEnded)abort.abort();});
         if(session){
-          const input=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES)}).parse(body),credits=input.mode==='create'?2:1;
+          const input=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES),providerId:z.string().max(40)}).parse(body),credits=input.mode==='create'?2:1;
+          if(!providers.some(p=>p.info().id===input.providerId))return fail(403,'PROVIDER_NOT_IN_PLAN',`El proveedor «${input.providerId}» no está incluido en tu plan.`);
           const fingerprint=createHash('sha256').update(JSON.stringify(body)).digest('hex');
           const reservation=await options.accounts!.reserveCredits(session.userId,input.requestId,fingerprint,credits);
           if(reservation.replayed)return send(200,{...(reservation.replayed as object),replayed:true});
@@ -181,7 +186,7 @@ export function createApp(options:AppOptions):Server{
             // El ledger del proceso es global: su ID interno incluye la cuenta para que dos usuarios
             // que elijan el mismo requestId nunca compartan una respuesta ni un recibo.
             const privateId='acct-'+createHash('sha256').update(session.userId+'\0'+input.requestId).digest('hex').slice(0,32);
-            const answer=await assist({...body as object,requestId:privateId},{providers:options.providers,ledger:options.ledger,config:options.config,system},abort.signal);
+            const answer=await assist({...body as object,requestId:privateId},{providers,ledger:options.ledger,config:options.config,system},abort.signal);
             const publicAnswer={...answer,requestId:input.requestId};
             await options.accounts!.settleCredits(session.userId,input.requestId,publicAnswer);
             return send(200,publicAnswer);

@@ -33,6 +33,25 @@ const ReviewSchema=z.object({summary:Text(2000),findings:z.array(z.object({
   targetId:z.string().max(80),severity:z.enum(['info','warning','risk']).default('info'),observation:z.string().max(1000),evidence:Text(1000),suggestion:Text(1000)
 })).max(50).default([])});
 
+// Schemas estrictos para proveedores con structured outputs: todo campo es requerido y lo opcional admite null,
+// que dropNulls convierte en «no lo indico». Sólo Crear y Revisar: el lote de acciones de los otros modos es una
+// unión demasiado amplia para el subconjunto estricto, así que ahí se pide JSON y el engine valida y repara.
+const strictObject=(properties:Record<string,unknown>)=>({type:'object',properties,required:Object.keys(properties),additionalProperties:false});
+const nullable=(schema:Record<string,unknown>)=>({anyOf:[schema,{type:'null'}]});
+const text={type:'string'},oneOf=(values:readonly string[])=>({type:'string',enum:[...values]}),list=(items:unknown)=>({type:'array',items});
+const color=nullable(text),dash=nullable(oneOf(['solid','dashed','dotted']));
+const STRICT_SCHEMAS:Partial<Record<Mode,{name:string;schema:Record<string,unknown>}>>={
+  create:{name:'diagram_inventory',schema:strictObject({summary:text,clarification:nullable(text),
+    zones:list(strictObject({id:text,label:text})),
+    nodes:list(strictObject({id:text,kind:oneOf(NODE_KINDS),label:text,zoneId:nullable(text),shape:nullable(oneOf(SHAPES)),details:nullable(text),
+      style:nullable(strictObject({fill:color,stroke:color,textColor:color,strokeWidth:nullable({type:'number'}),dash,fontSize:nullable({type:'integer'}),bold:nullable({type:'boolean'}),italic:nullable({type:'boolean'}),align:nullable(oneOf(['left','center','right']))}))})),
+    edges:list(strictObject({from:text,to:text,label:text,line:nullable(oneOf(LINES)),startArrow:nullable(oneOf(ARROWS)),endArrow:nullable(oneOf(ARROWS)),
+      style:nullable(strictObject({stroke:color,textColor:color,strokeWidth:nullable({type:'number'}),dash,fontSize:nullable({type:'integer'})}))}))})},
+  review:{name:'diagram_review',schema:strictObject({summary:text,findings:list(strictObject({targetId:text,severity:oneOf(['info','warning','risk']),observation:text,evidence:text,suggestion:text}))})}
+};
+/** Schema estricto que el gateway entrega al proveedor en este modo, si hay uno. */
+export const strictSchemaFor=(mode:Mode)=>STRICT_SCHEMAS[mode];
+
 export type AssistConfig={maxOutputTokens:number;maxContextChars:number;maxRepairs:number;timeoutMs:number};
 export class AssistError extends Error{constructor(public code:string,message:string,public status=400){super(message);this.name='AssistError';}}
 
@@ -126,7 +145,7 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   const doc=validateDocument(request.document),selectedIds=request.selectedIds;
   const choice=ACTION_MODES.includes(request.mode)?zoneChoice(doc,request.prompt,selectedIds):null,twins=choice&&!choice.chosen?choice.twins:null;
   if(twins)return {requestId:request.requestId,mode:request.mode,provider:'engine',providerKind:info.kind,model:'engine',baseRevision:doc.revision,contextTruncated:false,repairs:0,replayed:false,
-    usage:{inputTokens:0,outputTokens:0,calls:0,estimatedCostUsd:null,costBasis:'none'},kind:'clarification' as const,summary:'',
+    usage:{inputTokens:0,outputTokens:0,cachedInputTokens:0,calls:0,estimatedCostUsd:null,costBasis:'none'},kind:'clarification' as const,summary:'',
     clarification:`Hay ${twins.length} zonas llamadas «${twins[0].label}» (IDs: ${twins.map(z=>z.id).join(', ')}). Seleccioná en el canvas la que querés usar, o un nodo que esté dentro de ella, y volvé a enviar el pedido. No se llamó al modelo.`};
   const context=buildContext(doc,selectedIds,deps.config.maxContextChars);
   // Índices cortos de IDs reales: evitan que el modelo invente identificadores o confunda nombres con IDs.
@@ -142,15 +161,15 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   if(begun)return {...(begun.replay as object),replayed:true};
 
   const timeout=AbortSignal.timeout(deps.config.timeoutMs),signal=AbortSignal.any([clientSignal,timeout]);
-  let inputTokens=0,outputTokens=0,calls=0,model=info.model;
-  const settle=(status:'completed'|'failed'|'cancelled',response?:unknown)=>deps.ledger.settle({requestId:request.requestId,provider:info.id,model,status,billable,inputTokens,outputTokens,costUsd:costOf(info.pricing,inputTokens,outputTokens),calls},response);
-  const usage=()=>({inputTokens,outputTokens,calls,estimatedCostUsd:costOf(info.pricing,inputTokens,outputTokens),costBasis:info.kind==='mock'?'none':info.pricing?'published-price-estimate':info.kind==='local'?'local-no-charge':'unknown-price'});
+  let inputTokens=0,outputTokens=0,cachedInputTokens=0,calls=0,model=info.model;
+  const settle=(status:'completed'|'failed'|'cancelled',response?:unknown)=>deps.ledger.settle({requestId:request.requestId,provider:info.id,model,status,billable,inputTokens,outputTokens,costUsd:costOf(info.pricing,inputTokens,outputTokens,cachedInputTokens),calls},response);
+  const usage=()=>({inputTokens,outputTokens,cachedInputTokens,calls,estimatedCostUsd:costOf(info.pricing,inputTokens,outputTokens,cachedInputTokens),costBasis:info.kind==='mock'?'none':info.pricing?'published-price-estimate':info.kind==='local'?'local-no-charge':'unknown-price'});
   const base=()=>({requestId:request.requestId,mode:request.mode,provider:info.id,providerKind:info.kind,model,baseRevision:doc.revision,contextTruncated:context.truncated,repairs:calls-1,replayed:false,usage:usage()});
   try{
     for(;;){
       if(calls>0&&billable)deps.ledger.reserveMore(request.requestId,callCost(messages));
-      const result=await provider.generate({system:deps.system,messages,maxOutputTokens:deps.config.maxOutputTokens,signal,json:request.mode!=='explain'&&request.mode!=='document'});
-      calls++;inputTokens+=result.usage.inputTokens;outputTokens+=result.usage.outputTokens;model=result.model;
+      const result=await provider.generate({system:deps.system,messages,maxOutputTokens:deps.config.maxOutputTokens,signal,json:request.mode!=='explain'&&request.mode!=='document',schema:strictSchemaFor(request.mode)});
+      calls++;inputTokens+=result.usage.inputTokens;outputTokens+=result.usage.outputTokens;cachedInputTokens+=result.usage.cachedInputTokens??0;model=result.model;
       let problem:string;
       try{
         if(request.mode==='explain'||request.mode==='document'){

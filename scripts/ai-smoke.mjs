@@ -1,7 +1,7 @@
 // Smoke REAL de la IA: llama a un proveedor de verdad a través del gateway y comprueba con el engine lo que devuelve.
 // Consume tokens (o tiempo de un modelo local). Requiere `npm run api` con un proveedor configurado en .env.
 //   npm run smoke:ai              → primer proveedor configurado que no sea la demostración
-//   npm run smoke:ai -- local     → un proveedor concreto (anthropic | local)
+//   npm run smoke:ai -- openai    → un proveedor concreto (openai | anthropic | local | compatible)
 import {readFileSync} from 'node:fs';
 import {applyBatch,emptyDocument,findOverlaps,validateDocument} from '../packages/core/dist/index.js';
 
@@ -21,11 +21,11 @@ if(!provider?.configured){
 if(provider.kind==='mock'){console.error('La demostración no es un modelo: este smoke necesita un proveedor real.');process.exit(2);}
 console.log(`Proveedor: ${provider.label} · ${provider.model} (${provider.kind})\n`);
 
-const run=Date.now().toString(36),totals={inputTokens:0,outputTokens:0,usd:0};
+const run=Date.now().toString(36),totals={inputTokens:0,cachedInputTokens:0,outputTokens:0,usd:0,requests:0};
 async function ask(name,body){
   const started=Date.now(),response=await fetch(GATEWAY+'/v1/assist',{method:'POST',headers,body:JSON.stringify({providerId:provider.id,selectedIds:[],...body,requestId:`smoke-${run}-${name}`})});
   const data=await response.json(),seconds=((Date.now()-started)/1000).toFixed(1);
-  if(response.ok&&!data.replayed){totals.inputTokens+=data.usage.inputTokens;totals.outputTokens+=data.usage.outputTokens;totals.usd+=data.usage.estimatedCostUsd??0;}
+  if(response.ok&&!data.replayed){totals.requests++;totals.inputTokens+=data.usage.inputTokens;totals.cachedInputTokens+=data.usage.cachedInputTokens??0;totals.outputTokens+=data.usage.outputTokens;totals.usd+=data.usage.estimatedCostUsd??0;}
   return {ok:response.ok,status:response.status,data,seconds};
 }
 const results=[];
@@ -104,7 +104,7 @@ await check('Crear: un diagrama completo desde cero, sin nada superpuesto',true,
   return `${result.nodes.length} nodos, ${result.edges.length} conexiones, ${result.zones.length} zona(s), 0 superposiciones · ${r.seconds}s`;
 });
 
-console.log(`\nConsumo: ${totals.inputTokens.toLocaleString('es')} tokens de entrada, ${totals.outputTokens.toLocaleString('es')} de salida${provider.pricing?` · USD ${totals.usd.toFixed(4)} estimados con la tarifa publicada`:provider.kind==='local'?' · modelo local, sin cargo':''}`);
+console.log(`\nConsumo en ${totals.requests} pedido(s): ${totals.inputTokens.toLocaleString('es')} tokens de entrada (${totals.cachedInputTokens.toLocaleString('es')} de caché), ${totals.outputTokens.toLocaleString('es')} de salida${provider.pricing?` · USD ${totals.usd.toFixed(4)} estimados con la tarifa publicada, USD ${(totals.usd/Math.max(1,totals.requests)).toFixed(5)} por pedido`:provider.kind==='local'?' · modelo local, sin cargo':''}`);
 const failed=results.filter(r=>!r.ok&&r.required).length,notes=results.filter(r=>!r.ok&&!r.required).length;
 console.log(`${results.filter(r=>r.ok).length}/${results.length} comprobaciones aprobadas${notes?`, ${notes} nota(s) sobre el comportamiento del modelo`:''}.`);
 process.exit(failed?1:0);

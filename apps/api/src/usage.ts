@@ -11,7 +11,9 @@ export type UsageEvent={requestId:string;at:string;provider:string;model:string;
 type Entry={signature:string;status:'running'|'done';reserved:number;response?:unknown};
 
 const today=(now:number)=>new Date(now).toISOString().slice(0,10);
-export const costOf=(pricing:Pricing,inputTokens:number,outputTokens:number)=>pricing?(inputTokens*pricing.inputPerMTok+outputTokens*pricing.outputPerMTok)/1_000_000:null;
+/** Costo estimado con la tarifa publicada. `cachedInputTokens` es parte de `inputTokens` y se cobra con su tarifa de caché. */
+export const costOf=(pricing:Pricing,inputTokens:number,outputTokens:number,cachedInputTokens=0)=>pricing
+  ?((inputTokens-cachedInputTokens)*pricing.inputPerMTok+cachedInputTokens*(pricing.cachedInputPerMTok??pricing.inputPerMTok)+outputTokens*pricing.outputPerMTok)/1_000_000:null;
 
 /**
  * Presupuesto diario, límite de frecuencia e idempotencia del gateway. El presupuesto se reserva ANTES de llamar

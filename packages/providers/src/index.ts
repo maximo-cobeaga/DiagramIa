@@ -1,10 +1,12 @@
 import {anthropicProvider} from './anthropic.js';
 import {openAICompatibleProvider} from './openaiCompatible.js';
+import {openAIProvider} from './openai.js';
 import {ProviderError,type Provider,type ProviderRequest} from './types.js';
 
 export * from './types.js';
 export {anthropicProvider} from './anthropic.js';
-export {openAICompatibleProvider} from './openaiCompatible.js';
+export {openAICompatibleProvider,type ReasoningEffort} from './openaiCompatible.js';
+export {openAIProvider} from './openai.js';
 
 /**
  * Proveedor de demostración: NO es un modelo. Devuelve siempre la misma propuesta para poder recorrer
@@ -35,6 +37,8 @@ type Env=Record<string,string|undefined>;
 /** Arma los proveedores a partir del entorno del servidor. Ninguna de estas variables debe usar el prefijo VITE_. */
 export function providersFromEnv(env:Env):Provider[]{
   return [
+    // Primero el modelo de la IA Free (ADR 045): el editor elige el primer proveedor configurado.
+    openAIProvider({apiKey:env.OPENAI_API_KEY,model:env.DIAGRAMIA_OPENAI_MODEL,baseURL:env.DIAGRAMIA_OPENAI_BASE_URL,reasoningEffort:env.DIAGRAMIA_OPENAI_REASONING_EFFORT}),
     anthropicProvider({apiKey:env.ANTHROPIC_API_KEY,model:env.DIAGRAMIA_ANTHROPIC_MODEL}),
     openAICompatibleProvider({baseURL:env.DIAGRAMIA_LOCAL_BASE_URL,model:env.DIAGRAMIA_LOCAL_MODEL,apiKey:env.DIAGRAMIA_LOCAL_API_KEY}),
     // Segundo servidor compatible con /chat/completions, para un proveedor remoto con su propia clave. Sólo aparece si se configura.
