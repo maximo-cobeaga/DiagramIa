@@ -27,7 +27,7 @@ export const viewStore=createStore({
   camera:{x:-40,y:-20,zoom:1} as Camera,viewport:{width:1000,height:600},
   tool:'select' as Tool,template:{kind:'service',shape:null,label:'Nuevo componente',size:{width:160,height:80}} as NodeTemplate,snap:true,
   // El panel lateral abre en IA: es el primer recorrido del producto.
-  panel:'assistant' as Panel,sideOpen:true,timelineOpen:true,presenting:false,tutorial:false,theme:initialTheme(),
+  panel:'assistant' as Panel,sideOpen:true,timelineOpen:false,timelineHeight:300,presenting:false,tutorial:false,theme:initialTheme(),
   labelFocus:0,editingId:null as string|null,staging:null as Staging|null,flash:null as Flash|null,
   // Recorrido de una explicación que se está presentando: una copia del documento con la animación, nunca guardada.
   tour:null as {doc:DiagramDocument;previousAnimationId:string}|null,

@@ -159,7 +159,7 @@
           ],
           "acceptance": "Seek al límite de cada paso exacto; editar/reabrir conserva pasos; undo de edición funciona separado de playback.",
           "status": "implemented",
-          "evidence": "Timeline editable por acciones (ADD/UPDATE/MOVE/DELETE_STEP), repetir, recorrer; tests de core y smoke parcial (edición de pasos por UI sin prueba automática)."
+          "evidence": "Timeline editable por acciones (ADD/UPDATE/MOVE/DELETE_STEP), repetir, recorrer; tests de core y smoke parcial (edición de pasos por UI sin prueba automática). 03/10/2026 (ADR 069): reproductor compacto por defecto y edición progresiva de pasos; panel plegable y ajustable, texto/duración en segundos por acciones canónicas y undo separado. Smoke comprueba plegado/altura sin cambios del documento y edición real con teclado. Falta feedback manual de facilidad de uso. Corrida final de Chromium: 41/41, sin errores de consola; capturas revisadas en evidencias/ui-editor-compacto.png y evidencias/ui-animacion-simple.png."
         },
         {
           "id": "P2.2",
@@ -557,7 +557,7 @@
           ],
           "acceptance": "Recorridos de aceptación completos; no clipping; texto y controles legibles; colores no son único indicador.",
           "status": "partial",
-          "evidence": "Editor con pestañas independientes, modo oscuro, panel plegable, IA primero, chat con burbujas y tutorial modal. Smoke Chrome 30/30 en desktop/tablet/móvil; catálogo móvil plegado deja el canvas en primera pantalla. Falta revisión manual con dispositivos reales, teclado completo, lector de pantalla, zoom de accesibilidad y feedback de usuarios; el zoom inicial móvil todavía puede dejar labels pequeños. Se agregaron herramientas explícitas de línea, flecha libre y dibujo a mano alzada, con persistencia canónica y migración 1.3.0→1.4.0. Falta la revisión manual visual y accesible. 03/10/2026: el smoke comprueba que todo control visible de los cuatro paneles tenga nombre accesible y toda imagen texto alternativo (34/34), y se verificó que detecta un botón sin nombre inyectado."
+          "evidence": "Editor con pestañas independientes, modo oscuro, panel plegable, IA primero, chat con burbujas y tutorial modal. Smoke Chrome 30/30 en desktop/tablet/móvil; catálogo móvil plegado deja el canvas en primera pantalla. Falta revisión manual con dispositivos reales, teclado completo, lector de pantalla, zoom de accesibilidad y feedback de usuarios; el zoom inicial móvil todavía puede dejar labels pequeños. Se agregaron herramientas explícitas de línea, flecha libre y dibujo a mano alzada, con persistencia canónica y migración 1.3.0→1.4.0. Falta la revisión manual visual y accesible. 03/10/2026: el smoke comprueba que todo control visible de los cuatro paneles tenga nombre accesible y toda imagen texto alternativo (34/34), y se verificó que detecta un botón sin nombre inyectado. 03/10/2026 (ADR 069): superficies de marca separadas, herramientas y paleta con nombres más legibles, bienvenida del asistente y tutorial actualizados. Barra compacta de 77 px y lienzo de 619 px en 1440×900; altura operable con mouse y teclado. Check 123/123. Continúa pendiente la prueba con niños/adultos mayores, lectores de pantalla y dispositivos físicos. Corrida final de Chromium: 41/41, sin errores de consola; capturas revisadas en evidencias/ui-editor-compacto.png y evidencias/ui-animacion-simple.png."
         },
         {
           "id": "P8.2",

@@ -1,9 +1,10 @@
 # Registro de decisiones
 
-Sesión recuperada el 03/10/2026: cámara narrativa y excepción de uso de IA para el administrador (ADR 067–068).
+Sesiones del 03/10/2026: cámara narrativa y excepción de uso de IA para el administrador (ADR 067–068); simplificación visual y reproductor compacto (ADR 069).
 
 | ADR | Decisión | Motivo y límites |
 |---|---|---|
+| 069 | Reproductor compacto y edición progresiva de animaciones | Por pedido del usuario, P8.1/P2.1 priorizan el lienzo y la comprensión cotidiana. La animación abre plegada; reproducir, pausar y avanzar siguen disponibles. «Editar pasos» abre un panel con tarjetas numeradas, texto, segundos y cámara. «Bajar panel», arrastre del borde o End devuelven espacio; flechas ajustan altura. Editar pausa la reproducción. Pistas, estados, escenarios y encuadres se conservan detrás de opciones avanzadas. Altura y plegado son sólo estado de interfaz; acciones y schema 1.7.0 no cambian. Superficies de la marca, herramientas más legibles y bienvenida/tutoría simplificadas. La facilidad para niños y adultos mayores requiere observar usuarios reales; las pruebas automáticas no la certifican. |
 | 001 | Diagramia; nombre uniforme ES/EN | Marca descriptiva; verificación legal/comercial pendiente |
 | 002 | Monorepo TypeScript con npm workspaces | Contratos compartidos sin depender de servicios para comenzar |
 | 003 | SVG propio en starter | Editabilidad/exportación exacta; medir performance antes de motor alternativo |

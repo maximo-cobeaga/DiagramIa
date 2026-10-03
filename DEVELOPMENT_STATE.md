@@ -2,6 +2,12 @@
 
 ## Último checkpoint
 
+03/10/2026 (Argentina, UI y animación simplificada; ADR 069). Se implementó el alcance pedido en P8.1/P2.1:
+- **Lienzo prioritario:** animación plegada al abrir, reproductor de 77 px y lienzo de 619 px en 1440×900. Reproducir, pausar y avanzar quedan disponibles. «Editar pasos» abre el panel; «Bajar panel», arrastre del borde o End lo pliegan. Flechas ajustan la altura; el foco vuelve al botón al plegar con teclado.
+- **Edición simple:** tarjetas numeradas, texto, duración en segundos, enfoque y transición. Editar pausa la reproducción. Pistas, estados, escenarios y encuadres conservados detrás de opciones avanzadas. Texto/duración siguen usando acciones canónicas y undo; altura/plegado no cambian el documento. Sin cambios de schema ni dependencias.
+- **UI de marca:** superficies separadas y más aire, herramientas y paleta más legibles, «Tu lienzo» en lugar de metadatos técnicos, bienvenida del asistente y tutorial actualizados. Claro/oscuro, desktop/tablet/móvil comprobados.
+- **Próximo paso inequívoco:** probar puntos 20–21 de `VALIDATION.md`, con énfasis en personas sin experiencia. P8.1 sigue parcial: falta usabilidad observada, lectores de pantalla y dispositivos físicos. Trabajo local, sin push ni despliegue.
+
 03/10/2026 (Argentina, recuperación de la última sesión de Claude). Se completaron sus cambios pendientes y se atendió la aclaración del destino del viaje:
 - **P2.3, extensión de cámara (ADR 067):** schema 1.7.0, migración aditiva con IDs y revisión conservados, enfoques por paso y transiciones suave/lenta/corte. Motor compartido por editor, presentación y PDF; prioridad de las pistas de cámara. Pausa, movimiento manual, reduced-motion y cámaras por pestaña comprobados.
 - **P4.4, excepción de admin (ADR 068):** email verificado y configurado en el servidor; sin créditos Free ni límites por minuto de cuenta, IP o ledger. Recibos durables de cero créditos, migración SQL 006 registrada y reintentos idempotentes. Se conservan los topes globales de tokens y gasto. La cuenta admin local está configurada y verificada; no se hizo una llamada de IA paga en esta recuperación.
@@ -92,6 +98,8 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 ## Evidencia
 
+- **03/10/2026 (UI, ADR 069).** `npm run check` **123/123** y `npm run smoke` **41/41**. Chromium: reproductor compacto, altura con mouse/teclado, foco recuperado, plegado mientras sigue reproduciendo y documento intacto; edición con teclado real de texto y 2,5 segundos, dos undo que restauran el paso. Cámara, pistas, escenarios, exports, guardado, claro/oscuro, nombres accesibles, tablet y móvil siguen pasando, sin errores de consola. Capturas revisadas y conservadas en `evidencias/ui-editor-compacto.png` y `evidencias/ui-animacion-simple.png`. Logs locales `state/ux-check.log` y `state/ux-browser.log`. Las primeras corridas detectaron una colisión de claves React en opciones avanzadas (corregida) y supuestos viejos de los tests sobre campos siempre visibles; la corrida final pasó completa.
+
 - **03/10/2026 (recuperación Claude).** `npm run check` **123/123**, `npm run schemas` y `npm run smoke:repository` aprobados. PostgreSQL real: cero créditos para admin, más de seis solicitudes, reintentos tras recrear el repositorio y backup/restore. `npm run smoke` **39/39** en Chromium contra editor/gateway de demostración aislados (5174/8788), sin errores de consola. Capturas 21–24 de `state/smoke/` revisadas; foco, pausa, cámara manual, reduced-motion, presentación, pestañas y ejemplo San Pancho. La corrida final se ejecutó después del build para evitar interferencia de HMR. Logs locales: `state/resume-check.log`, `state/resume-repository.log`, `state/resume-browser.log`.
 
 - **03/10/2026 (tercera vuelta).** `npm run check` **117/117**. `npm run smoke` **37/37** en Chromium contra editor y gateway de demostración aislados (5174/8788), con un paso nuevo que comprueba desde la UI el rechazo de un enlace a `127.0.0.1`. Vista previa real contra example.com, wikipedia.org y github.com. Capturas del editor con el viaje reacomodado y con la tarjeta de vista previa revisadas. `perf:core` sin cambios; peor caso nuevo, 16 zonas y 120 conexiones curvas entre zonas: 0,35 s para ordenar.
@@ -174,7 +182,7 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 ## Próxima acción inequívoca
 
-El próximo paso es la revisión manual de cámara, cuenta admin y viaje San Pancho: puntos 17–19 de `VALIDATION.md`. Abrir el editor habitual, recargar y elegir «San Pancho · viaje de 10 días» en los ejemplos; comparar sus tres escenarios y presentar el recorrido. Las revisiones anteriores siguen registradas. Los pasos 2 (base local) y 3 (Auth0) de `docs/GUIA_PASO_A_PASO.md` ya están hechos. Para el agente:
+El próximo paso es probar la UI y animación simplificada: puntos 20–21 de `VALIDATION.md`. Recargar el editor habitual, reproducir desde la barra compacta, abrir «Editar pasos», cambiar texto/segundos y bajar el panel con botón o arrastre. Observar también a una persona sin experiencia y registrar dónde duda. Las revisiones de cámara, admin y viaje (17–19) siguen disponibles. Los pasos 2 (base local) y 3 (Auth0) de `docs/GUIA_PASO_A_PASO.md` ya están hechos. Para el agente:
 
 0. **Antes de cada commit:** comprobar que `.env.example` no tenga valores reales (el usuario los cargó ahí una vez). El trabajo de esta sesión se commitea local, sin push.
 0b. **Sin bloqueos, si el usuario lo decide:** mapas reales (P1.7). Requiere elegir proveedor de teselas (OpenStreetMap tiene política de uso que no admite tráfico intenso; MapTiler o Stadia son pagos por volumen), ajustar la CSP `img-src` y decidir si el navegador del usuario pide las teselas directo (el proveedor ve su IP) o pasan por el servidor.

@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {SCHEMA_VERSION,openDocument} from '@diagramia/core';
+import {openDocument} from '@diagramia/core';
 import architecture from '../../../examples/architecture.diagramia.json';
 import success from '../../../examples/checkout-success.diagramia.json';
 import failure from '../../../examples/checkout-failure.diagramia.json';
@@ -39,7 +39,7 @@ const TOOLS:[Tool,string,string,string][]=[
   ['connect','Unir','C','M2 12h5V4h6M11 2l2 2-2 2'],
   ['line','Línea','L','M2 14 14 2'],['arrow','Flecha','A','M2 14 14 2M8 2h6v6'],['freehand','Dibujar','D','M2 12c2-9 4 3 6-3s4 7 6-5'],
   ['zone','Zona','Z','M2.5 3.5h11v9h-11zM5 6.5h3'],
-  ['frame','Frame','F','M4 1v14M12 1v14M1 4h14M1 12h14']
+  ['frame','Encuadre','F','M4 1v14M12 1v14M1 4h14M1 12h14']
 ];
 const TOOL_HINTS:Record<Tool,string>={
   select:'Arrastrá para mover. Doble clic escribe el texto. En el fondo, arrastrá para seleccionar varios.',pan:'Arrastrá para desplazar la vista.',
@@ -104,17 +104,18 @@ function Tools(){
   useEffect(()=>{const query=window.matchMedia('(max-width:900px)'),sync=()=>setExpanded(!query.matches);query.addEventListener('change',sync);return()=>query.removeEventListener('change',sync);},[]);
   const elements:[string,string,string][]=[...doc.nodes.map(n=>[n.id,n.label,KIND_LABELS[n.kind]] as [string,string,string]),...doc.drawings.map(d=>[d.id,d.kind==='arrow'?'Flecha libre':d.kind==='line'?'Línea':'Trazo a mano','Dibujo'] as [string,string,string]),...doc.zones.map(z=>[z.id,z.label,'Zona'] as [string,string,string]),...doc.frames.map(f=>[f.id,f.label,'Frame'] as [string,string,string])];
   return <aside className="tools" aria-label="Herramientas y formas">
+    <div className="tools-heading"><span className="eyebrow">CREÁ A TU MANERA</span><strong>Tu caja de ideas</strong></div>
     <div className="tool-grid" role="toolbar" aria-label="Herramienta activa">{TOOLS.map(([id,label,key,icon])=>
       <button key={id} className={tool===id?'chosen':''} aria-pressed={tool===id} title={`${label} (${key})`} onClick={()=>viewStore.set({tool:id})}><svg viewBox="0 0 16 16" aria-hidden="true"><path d={icon}/></svg><span>{label}</span></button>)}
     </div>
     <p className="tool-note">{TOOL_HINTS[tool]}</p>
     <button className="tool-extra-toggle" aria-expanded={expanded} aria-controls="tool-extra" onClick={()=>setExpanded(!expanded)}>{expanded?'Ocultar formas y elementos':'Mostrar formas y elementos'}</button>
     {expanded&&<div className="tool-extra" id="tool-extra">
-    <span className="eyebrow">FORMAS</span>
+    <span className="eyebrow">AGREGÁ UNA IDEA</span>
     <Palette/>
     <button onClick={()=>imageRef.current?.click()}>Agregar imagen…</button>
     <input ref={imageRef} type="file" hidden accept="image/png,image/jpeg,image/webp,image/svg+xml" data-role="image-input" onChange={e=>{const file=e.target.files?.[0];if(file)void addImage(file);e.target.value='';}}/>
-    <span className="eyebrow">DIAGRAMA</span>
+    <span className="eyebrow">PARA EMPEZAR</span>
     <select aria-label="Cargar ejemplo" value="" onChange={e=>{const template=TEMPLATES[+e.target.value];resetPlayback();if(addTab({...openDocument(template[1]).document,appliedBatches:[]}))track('template_used',{template:template[2]});}}><option value="" disabled>Abrir un ejemplo…</option>{TEMPLATES.map(([label],i)=><option key={label} value={i}>{label}</option>)}</select>
     <button disabled={!ids.length} onClick={deleteSelection}>Eliminar selección</button>
     <details className="elements"><summary>Elementos · {elements.length}</summary>
@@ -129,7 +130,7 @@ function Tools(){
 function CanvasToolbar(){
   const {camera,viewport,sideOpen}=useStore(viewStore);
   return <div className="canvas-toolbar">
-    <span className="mono">CANVAS SEMÁNTICO / schema {SCHEMA_VERSION}</span>
+    <span className="canvas-label"><span aria-hidden="true"/>Tu lienzo</span>
     <div>
       <button onClick={()=>zoomBy(1/1.2)} aria-label="Alejar">−</button>
       <button className="zoom-readout" onClick={()=>zoomAt(viewport.width/2,viewport.height/2,1)} title="Volver a 100%">{Math.round(camera.zoom*100)}%</button>

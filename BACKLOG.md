@@ -2,6 +2,13 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## UI más clara y animación compacta (03/10/2026)
+
+- **P8.1/P2.1, mejora implementada (ADR 069):** reproductor pequeño por defecto; «Editar pasos» abre el panel y «Bajar panel» libera el lienzo. Altura ajustable con mouse, táctil o teclado; tarjetas de pasos, duración en segundos y edición habitual separada de opciones avanzadas. Editar pausa la reproducción. Se conservan acciones, undo, pistas, ramas y cámara del documento.
+- **Identidad y legibilidad:** superficies separadas, nombres cotidianos, herramientas y formas con texto más legible, bienvenida del asistente y tutorial actualizados. Desktop/tablet/móvil y modo oscuro conservados.
+- **Evidencia:** `npm run check` 123/123 y `npm run smoke` 41/41; edición de texto/segundos con teclado real y undo, panel ajustable sin cambios del documento, nombres accesibles, claro/oscuro y tamaños desktop/tablet/móvil. Capturas en `evidencias/ui-editor-compacto.png` y `evidencias/ui-animacion-simple.png`.
+- **Próximo paso:** probar los puntos 20–21 de `VALIDATION.md`, especialmente con una persona que no conozca el editor. P8.1 sigue parcial hasta la revisión real de usabilidad, dispositivos y accesibilidad.
+
 ## Recuperación de la última sesión de Claude (03/10/2026)
 
 - **P2.3, extensión implementada (ADR 067):** cámara por paso con enfoque y transición, seguimiento opcional en el editor, presentación y PDF con encuadre compartido; pausa, gestos y pestañas cancelan viajes pendientes; reduced-motion. Schema 1.7.0, migración, contratos y ejemplos actualizados. Falta revisión manual del usuario.

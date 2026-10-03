@@ -22,7 +22,15 @@ Tinta #141619, papel #F4F6F8, azul #245CF6, lima #D4F246. Manrope para texto; IB
 - reduced-motion elimina movimiento automático decorativo; la reproducción explícitamente solicitada sigue accesible.
 - Scroll nativo. No secuestrar rueda, no impedir retroceder, no esconder contenido por falta de JS.
 
-La cámara narrativa se edita en «Ajustes del paso»: enfoque y transición. «Seguir con la cámara» controla el canvas del editor; Presentar usa su cámara independiente. El viaje interpola el centro de la vista y se aleja entre elementos lejanos antes de acercarse al destino. Pausa y movimiento manual cancelan el viaje pendiente; una pestaña nueva no hereda ese movimiento. Con reduced-motion se conserva el encuadre y se elimina la transición.
+La cámara narrativa se edita en «Editar pasos»: enfoque y transición. «Seguir con la cámara» controla el canvas del editor; Presentar usa su cámara independiente. El viaje interpola el centro de la vista y se aleja entre elementos lejanos antes de acercarse al destino. Pausa y movimiento manual cancelan el viaje pendiente; una pestaña nueva no hereda ese movimiento. Con reduced-motion se conserva el encuadre y se elimina la transición.
+
+## Animación para todo público (ADR 069)
+
+El editor abre con un reproductor compacto, sin desplegar los ajustes. Reproducir/pausar y anterior/siguiente están siempre a mano; el texto muestra qué paso está ocurriendo. «Editar pasos» abre un panel separado en la parte inferior del lienzo. «Bajar panel» lo pliega sin detener ni borrar el recorrido. Su borde se arrastra hacia abajo para liberar espacio; flechas arriba/abajo ajustan la altura y End lo pliega, devolviendo el foco al botón de edición.
+
+La edición habitual ofrece tarjetas numeradas, texto, duración en segundos, enfoque y transición. Seleccionar un campo pausa la reproducción. Los segundos se convierten a milisegundos al enviar la acción canónica; undo sigue separado de reproducción y altura del panel. Estados, encuadres, escenarios y pistas quedan disponibles en opciones avanzadas. El desplazamiento automático sólo afecta la tira de pasos para mantener visible el paso actual, nunca el scroll de la página. No hay cambio de schema.
+
+Las superficies conservan Manrope/Plex y tinta/papel/azul/lima, con separación entre lienzo, herramientas y asistente; nombres cotidianos y menos metadatos técnicos a la vista. El tutorial explica el reproductor y cómo recuperar espacio. Se requiere feedback con personas reales antes de afirmar facilidad universal de uso.
 
 ## Escenarios de referencia
 

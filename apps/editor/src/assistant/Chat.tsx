@@ -239,8 +239,11 @@ export function Chat(){
       {offline&&<div className="bubble system">⚠ El gateway de IA no está corriendo. Inicialo con <code>npm run api</code>. <button className="quiet" onClick={()=>void loadProviders()}>Reintentar</button></div>}
       {providers&&!providerId&&<div className="bubble system">{providers.map(p=>p.missing).filter(Boolean).join(' ')} Las claves se configuran en el entorno del gateway, nunca en el navegador.</div>}
       {!turns.length&&!authRequired&&<div className="chat-welcome">
-        <p>Contame qué necesitás, con tus palabras: armar un diagrama, cambiarlo, que te lo explique o que lo revise. Lo que proponga se ve en el canvas y <strong>no se aplica hasta que lo aceptes</strong>.</p>
+        <div className="welcome-mark" aria-hidden="true">✦</div>
+        <h2>¿Qué idea tenés hoy?</h2>
+        <p>Contámela y le damos forma juntos. También podés pedirme que explique o mejore tu diagrama.</p>
         <div className="chips">{SUGGESTIONS.map(text=><button key={text} className="chip-button" onClick={()=>setPrompt(text)}>{text}</button>)}</div>
+        <p className="welcome-control">Vos decidís: cada cambio espera tu aprobación.</p>
       </div>}
       {turns.map(turn=><div key={turn.id} className="exchange">
         <div className={'bubble user'+(turn.shown?' derived':'')}>{turn.shown??turn.prompt}</div>

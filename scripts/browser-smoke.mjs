@@ -53,7 +53,7 @@ const click=point=>drag(point,point);
 // Dos pulsaciones seguidas, sin movimientos intermedios, para que cuenten como doble clic.
 async function doubleClick(point){for(let i=0;i<2;i++){await mouse('mousePressed',point.x,point.y);await mouse('mouseReleased',point.x,point.y);}await sleep(150);}
 const tap=async selector=>{if(!await js(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;el.click();return true;})()`))throw new Error(`no existe ${selector}`);};
-const KEYS={Enter:['Enter',13],F2:['F2',113],c:['KeyC',67],z:['KeyZ',90],n:['KeyN',78],l:['KeyL',76],p:['KeyP',80],a:['KeyA',65],d:['KeyD',68],g:['KeyG',71],Escape:['Escape',27],ArrowRight:['ArrowRight',39],Delete:['Delete',46],'1':['Digit1',49]};
+const KEYS={Enter:['Enter',13],F2:['F2',113],c:['KeyC',67],z:['KeyZ',90],n:['KeyN',78],l:['KeyL',76],p:['KeyP',80],a:['KeyA',65],d:['KeyD',68],g:['KeyG',71],Escape:['Escape',27],ArrowRight:['ArrowRight',39],ArrowUp:['ArrowUp',38],End:['End',35],Delete:['Delete',46],'1':['Digit1',49]};
 async function key(name,modifiers=0){
   const [code,vk]=KEYS[name],base={key:name,code,windowsVirtualKeyCode:vk,modifiers};
   await send('Input.dispatchKeyEvent',{type:'rawKeyDown',...base});await send('Input.dispatchKeyEvent',{type:'keyUp',...base});await sleep(60);
@@ -85,6 +85,26 @@ try{
   await check('carga el ejemplo de arquitectura sin errores',async()=>{
     const count=await js(`document.querySelectorAll('.canvas .graph-node').length`);expect(count===4,`se esperaban 4 nodos, hay ${count}`);
     await shot('01-desktop-architecture');return `${count} nodos`;
+  });
+  await check('el reproductor compacto devuelve espacio al lienzo y su panel se ajusta sin editar el documento',async()=>{
+    const before=JSON.stringify(await saved()),compact=await center('.timeline'),canvas=await center('.canvas-host');
+    expect(compact.height<=96,`barra inicial demasiado alta: ${compact.height}`);
+    expect(!await js(`Boolean(document.querySelector('.motion-editor'))`),'el editor de pasos ocupa espacio al abrir');
+    expect(await clickText('Editar pasos','.timeline'),'falta Editar pasos');await sleep(80);
+    const opened=await center('.timeline'),smaller=await center('.canvas-host');
+    expect(opened.height>compact.height+120&&smaller.height<canvas.height-120,'abrir no intercambió espacio con el lienzo');
+    const handle=await center('.timeline-resize');await drag(handle,{x:handle.x,y:handle.y+65});
+    expect((await center('.timeline')).height<opened.height-40,'arrastrar hacia abajo no redujo el panel');
+    await js(`document.querySelector('.timeline-resize').focus()`);await key('ArrowUp');await key('End');await sleep(80);
+    expect(!await js(`Boolean(document.querySelector('.motion-editor'))`),'End no bajó el panel');
+    expect(await js(`document.activeElement.classList.contains('edit-motion')`),'el foco quedó perdido al plegar');
+    expect((await center('.canvas-host')).height>=canvas.height-1,'no se recuperó el espacio del lienzo');
+    await clickText('Reproducir','.timeline');await sleep(160);await clickText('Editar pasos','.timeline');await tap('.edit-motion');
+    expect(await js(`document.querySelector('.play-button').dataset.playing==='true'`),'bajar el panel detuvo la reproducción');
+    await clickText('Pausar','.timeline');
+    expect(JSON.stringify(await saved())===before,'el reproductor o su altura modificó el contenido');
+    await key('1');await sleep(100);await shot('25-ui-compacta');
+    return `barra ${compact.height}px; lienzo ${canvas.height}px; panel ajustable con mouse y teclado`;
   });
   await check('arrastrar un nodo lo mueve con una acción y Ctrl+Z lo restaura',async()=>{
     const before=await saved()??{revision:0,nodes:[{id:'user',position:{x:40,y:220}}]},from=await center('[data-id="user"]');
@@ -148,6 +168,7 @@ try{
     return `redis en ${JSON.stringify(redis.position)}`;
   });
   await check('la reproducción avanza y deshacer no reinicia el playhead',async()=>{
+    if(!await js(`Boolean(document.querySelector('.motion-editor'))`))await clickText('Editar pasos','.timeline');
     expect(await clickText('Reproducir','.timeline'),'falta Reproducir');await sleep(700);
     const particles=await js(`document.querySelectorAll('.particle').length`);expect(particles>0,'no hay partículas');
     await clickText('Pausar','.timeline');
@@ -185,6 +206,8 @@ try{
     });
   }
   await check('recorrido automático y edición de timeline',async()=>{
+    if(!await js(`Boolean(document.querySelector('.motion-editor'))`))await clickText('Editar pasos','.timeline');
+    await js(`document.querySelector('.timeline-edit').open=true`);
     const before=(await saved()).animations.length;
     expect(await clickText('Crear recorrido','.timeline'),'falta el botón');
     const doc=await saved();expect(doc.animations.length===before+1,'no se creó la animación');
@@ -192,6 +215,17 @@ try{
     expect(await clickText('+ Agregar paso','.timeline'),'falta la acción simple de agregar paso');
     expect((await saved()).animations.at(-1).steps.length===steps+1,'no se agregó el paso');
     return `${steps} pasos automáticos + paso manual`;
+  });
+  await check('editar texto y segundos de un paso se guarda y se deshace separado del reproductor',async()=>{
+    const doc=await saved(),animation=doc.animations.at(-1),index=await js(`[...document.querySelectorAll('.steps button')].findIndex(b=>b.getAttribute('aria-current')==='step')`),step=animation.steps[index];
+    const edit=async(label,value)=>{await js(`(()=>{const field=[...document.querySelectorAll('.step-editor .field')].find(f=>f.querySelector('label')?.textContent===${JSON.stringify(label)}).querySelector('input,textarea');field.focus();field.select();})()`);await send('Input.insertText',{text:value});};
+    await edit('Duración (segundos)','2.5');await sleep(60);await js(`document.activeElement.blur()`);
+    expect((await saved()).animations.at(-1).steps.find(s=>s.id===step.id).durationMs===2500,'los segundos no se guardaron como duración canónica');
+    await edit('Texto del paso '+(index+1),'Una idea fácil de contar');await sleep(60);await js(`document.activeElement.blur()`);
+    expect((await saved()).animations.at(-1).steps.find(s=>s.id===step.id).caption==='Una idea fácil de contar','no guardó el texto');
+    await key('z',CTRL);await key('z',CTRL);
+    const restored=(await saved()).animations.at(-1).steps.find(s=>s.id===step.id);expect(restored.caption===step.caption&&restored.durationMs===step.durationMs,'undo perdió el texto o duración originales');
+    await shot('26-ui-editar-pasos');return 'texto y 2,5 segundos guardados; dos undo restauran el paso';
   });
   await check('la biblioteca inserta componentes con IDs nuevos',async()=>{
     expect(await clickText('Biblioteca','.tabs'),'falta la pestaña');await sleep(80);
@@ -346,6 +380,7 @@ try{
   await check('los escenarios cambian el recorrido y los estados de los nodos',async()=>{
     await send('Page.reload');await sleep(1200);
     await setValue('select[aria-label="Cargar ejemplo"]','2');await sleep(600);
+    await clickText('Editar pasos','.timeline');await sleep(80);
     const all=await js(`document.querySelectorAll('.steps li').length`);
     await setValue('select[aria-label="Recorrido"]','expired');await sleep(200);
     const expired=await js(`document.querySelectorAll('.steps li').length`);
@@ -552,6 +587,7 @@ try{
     const {root}=await send('DOM.getDocument'),{nodeId}=await send('DOM.querySelector',{nodeId:root.nodeId,selector:'header input[type=file]'});
     await send('DOM.setFileInputFiles',{nodeId,files:[fixture]});await sleep(650);
     const before=JSON.stringify(await saved()),box=selector=>js(`document.querySelector(${JSON.stringify(selector)}).getAttribute('viewBox').split(/\\s+/).map(Number)`);
+    if(!await js(`Boolean(document.querySelector('.motion-editor'))`))await clickText('Editar pasos','.timeline');
     const goto=async i=>{await js(`document.querySelectorAll('.timeline .steps button')[${i}].click()`);};
     await goto(0);await sleep(2000);
     const first=await box('.canvas');expect(first[2]<1000,'no se acercó a la salida');
@@ -589,6 +625,7 @@ try{
     const doc=await saved();expect(doc.id==='san-pancho'&&doc.nodes.length===29&&doc.zones.length===6,'falta el viaje completo');
     expect(doc.animations[0].scenarios.length===3,'faltan las tres fechas');
     await setValue('select[aria-label="Recorrido"]','date-feb');await sleep(100);
+    if(!await js(`Boolean(document.querySelector('.motion-editor'))`))await clickText('Editar pasos','.timeline');
     await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
     await js(`document.querySelectorAll('.timeline .steps button')[1].click()`);await sleep(80);
     await key('p');await sleep(150);
@@ -604,7 +641,9 @@ try{
   await check('el ejemplo de login muestra pistas sincronizadas y permite editar una pista',async()=>{
     await setValue('select[aria-label="Cargar ejemplo"]','3');await sleep(700);
     let doc=await saved();expect(doc.id==='login-flow'&&doc.animations[0].tracks.length===3,'falta el ejemplo de login con pistas');
-    expect(await clickText('Pistas (3)','.timeline-bar'),'falta el acceso visible a las pistas');await sleep(100);
+    if(!await js(`Boolean(document.querySelector('.motion-editor'))`))await clickText('Editar pasos','.timeline');
+    await js(`document.querySelector('.timeline-edit').open=true`);
+    expect(await clickText('Pistas (3)','.timeline-edit'),'falta el acceso a las pistas avanzadas');await sleep(100);
     expect(await js(`document.querySelectorAll('.tracks-grid .track-row').length`)===4,'no se dibujaron las tres pistas');
     await js(`document.querySelectorAll('.tracks-grid .track-row')[2].querySelectorAll('.track-cell')[4].click()`);await sleep(150);
     expect((await js(`document.querySelector('.timeline .caption').textContent`)).includes('Se entrega una credencial'),'el texto de pista no sigue el playhead');
