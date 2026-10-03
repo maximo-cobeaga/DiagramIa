@@ -2,6 +2,13 @@
 
 ## Último checkpoint
 
+03/10/2026 (Argentina, inicio guiado → controles contextuales → concentración; ADR 070–072). Implementado el orden autorizado por el usuario, extensión de P8.1/P1.1:
+- **Empezar:** espacio nuevo vacío, tres entradas dentro del lienzo, tutorial opcional y ejemplos reales de idea/tarea/viaje. IA sólo enfoca la entrada; no envía automáticamente. Dibujar permite escribir la primera nota. Ejemplos en otra pestaña y documentos guardados conservados.
+- **Acciones cercanas:** Escribir, Color, Duplicar, Unir y Más junto a la selección. Colores con contraste, undo y duplicación con IDs nuevos. Conectar con dos clics o teclado, cancelar con Esc o botón; staging conserva sólo lectura.
+- **Concentración:** botón y Shift+F; Esc devuelve el editor. Se conservan cámara, documento y preferencias del panel lateral/animación; el reproductor compacto sigue disponible. Lienzo 814×429 → 1414×661 en la prueba desktop.
+- **Verificación:** `npm run check` 123/123 y `npm run smoke` 45/45, sin errores de consola. Capturas desktop/móvil revisadas; claro/oscuro y ejemplos complejos incluidos en la regresión. Gateway mock aislado, sin consumo de IA paga. Recorridos manuales en `VALIDATION.md` 22–24. Sin cambios de schema, dependencias o API.
+- **Próximo paso inequívoco:** probar puntos 22–24 de `VALIDATION.md` con el usuario y una persona sin experiencia, observar dudas y corregirlas. P8.1 continúa parcial por usabilidad real, accesibilidad asistida y dispositivos físicos. Trabajo local, sin push ni despliegue.
+
 03/10/2026 (Argentina, UI y animación simplificada; ADR 069). Se implementó el alcance pedido en P8.1/P2.1:
 - **Lienzo prioritario:** animación plegada al abrir, reproductor de 77 px y lienzo de 619 px en 1440×900. Reproducir, pausar y avanzar quedan disponibles. «Editar pasos» abre el panel; «Bajar panel», arrastre del borde o End lo pliegan. Flechas ajustan la altura; el foco vuelve al botón al plegar con teclado.
 - **Edición simple:** tarjetas numeradas, texto, duración en segundos, enfoque y transición. Editar pausa la reproducción. Pistas, estados, escenarios y encuadres conservados detrás de opciones avanzadas. Texto/duración siguen usando acciones canónicas y undo; altura/plegado no cambian el documento. Sin cambios de schema ni dependencias.

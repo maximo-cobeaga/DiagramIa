@@ -1,0 +1,251 @@
+{
+  "schemaVersion": "1.7.0",
+  "id": "plan-task",
+  "title": "Planificar una tarea",
+  "revision": 2,
+  "nodes": [
+    {
+      "id": "plan-task-1",
+      "kind": "note",
+      "label": "Lo que quiero lograr",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 250,
+        "height": 130
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "target",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "fill": "#eef9c4",
+        "stroke": "#606975",
+        "fontSize": 17
+      },
+      "details": "Escribí un resultado concreto."
+    },
+    {
+      "id": "plan-task-2",
+      "kind": "note",
+      "label": "Lo que necesito",
+      "position": {
+        "x": 320,
+        "y": 0
+      },
+      "size": {
+        "width": 250,
+        "height": 130
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "check",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "fill": "#e5ecff",
+        "stroke": "#606975",
+        "fontSize": 17
+      },
+      "details": "Personas, materiales o tiempo."
+    },
+    {
+      "id": "plan-task-3",
+      "kind": "note",
+      "label": "Manos a la obra",
+      "position": {
+        "x": 0,
+        "y": 190
+      },
+      "size": {
+        "width": 250,
+        "height": 130
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "pencil",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "fill": "#ffe4d6",
+        "stroke": "#606975",
+        "fontSize": 17
+      },
+      "details": "Dividí el trabajo en pasos pequeños."
+    },
+    {
+      "id": "plan-task-4",
+      "kind": "note",
+      "label": "Revisar y compartir",
+      "position": {
+        "x": 320,
+        "y": 190
+      },
+      "size": {
+        "width": 250,
+        "height": 130
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "chat",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "fill": "#ece6ff",
+        "stroke": "#606975",
+        "fontSize": 17
+      },
+      "details": "¿Está listo? Mostralo y pedí una opinión."
+    }
+  ],
+  "edges": [
+    {
+      "id": "plan-task-edge-1",
+      "from": "plan-task-1",
+      "to": "plan-task-2",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "curved",
+      "style": {}
+    },
+    {
+      "id": "plan-task-edge-2",
+      "from": "plan-task-2",
+      "to": "plan-task-3",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "curved",
+      "style": {}
+    },
+    {
+      "id": "plan-task-edge-3",
+      "from": "plan-task-3",
+      "to": "plan-task-4",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "curved",
+      "style": {}
+    }
+  ],
+  "zones": [],
+  "drawings": [],
+  "groups": [],
+  "frames": [],
+  "animations": [
+    {
+      "id": "plan-task-tour",
+      "label": "Contar mi idea",
+      "scenarios": [],
+      "steps": [
+        {
+          "id": "plan-task-tour-1",
+          "caption": "Lo que quiero lograr",
+          "durationMs": 2400,
+          "nodeIds": [
+            "plan-task-1"
+          ],
+          "edgeIds": [],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "slow"
+        },
+        {
+          "id": "plan-task-tour-2",
+          "caption": "Lo que necesito",
+          "durationMs": 2400,
+          "nodeIds": [
+            "plan-task-2"
+          ],
+          "edgeIds": [
+            "plan-task-edge-1"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "smooth"
+        },
+        {
+          "id": "plan-task-tour-3",
+          "caption": "Manos a la obra",
+          "durationMs": 2400,
+          "nodeIds": [
+            "plan-task-3"
+          ],
+          "edgeIds": [
+            "plan-task-edge-2"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "smooth"
+        },
+        {
+          "id": "plan-task-tour-4",
+          "caption": "Revisar y compartir",
+          "durationMs": 2400,
+          "nodeIds": [
+            "plan-task-4"
+          ],
+          "edgeIds": [
+            "plan-task-edge-3"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "smooth"
+        }
+      ],
+      "tracks": []
+    }
+  ],
+  "assets": [],
+  "annotations": [],
+  "appliedBatches": [
+    {
+      "id": "plan-task-build",
+      "signature": "[{\"node\":{\"assetId\":null,\"details\":\"Escribí un resultado concreto.\",\"groupId\":null,\"icon\":\"target\",\"id\":\"plan-task-1\",\"kind\":\"note\",\"label\":\"Lo que quiero lograr\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":130,\"width\":250},\"style\":{\"fill\":\"#eef9c4\",\"fontSize\":17,\"stroke\":\"#606975\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Personas, materiales o tiempo.\",\"groupId\":null,\"icon\":\"check\",\"id\":\"plan-task-2\",\"kind\":\"note\",\"label\":\"Lo que necesito\",\"link\":null,\"position\":{\"x\":320,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":130,\"width\":250},\"style\":{\"fill\":\"#e5ecff\",\"fontSize\":17,\"stroke\":\"#606975\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Dividí el trabajo en pasos pequeños.\",\"groupId\":null,\"icon\":\"pencil\",\"id\":\"plan-task-3\",\"kind\":\"note\",\"label\":\"Manos a la obra\",\"link\":null,\"position\":{\"x\":0,\"y\":190},\"shape\":\"card\",\"size\":{\"height\":130,\"width\":250},\"style\":{\"fill\":\"#ffe4d6\",\"fontSize\":17,\"stroke\":\"#606975\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"¿Está listo? Mostralo y pedí una opinión.\",\"groupId\":null,\"icon\":\"chat\",\"id\":\"plan-task-4\",\"kind\":\"note\",\"label\":\"Revisar y compartir\",\"link\":null,\"position\":{\"x\":320,\"y\":190},\"shape\":\"card\",\"size\":{\"height\":130,\"width\":250},\"style\":{\"fill\":\"#ece6ff\",\"fontSize\":17,\"stroke\":\"#606975\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"plan-task-1\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"plan-task-edge-1\",\"label\":\"\",\"line\":\"curved\",\"startArrow\":\"none\",\"style\":{},\"to\":\"plan-task-2\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"plan-task-2\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"plan-task-edge-2\",\"label\":\"\",\"line\":\"curved\",\"startArrow\":\"none\",\"style\":{},\"to\":\"plan-task-3\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"plan-task-3\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"plan-task-edge-3\",\"label\":\"\",\"line\":\"curved\",\"startArrow\":\"none\",\"style\":{},\"to\":\"plan-task-4\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"}]"
+    },
+    {
+      "id": "plan-task-motion",
+      "signature": "[{\"animation\":{\"id\":\"plan-task-tour\",\"label\":\"Contar mi idea\",\"scenarios\":[],\"steps\":[{\"caption\":\"Lo que quiero lograr\",\"durationMs\":2400,\"edgeIds\":[],\"focus\":\"medium\",\"frameId\":null,\"id\":\"plan-task-tour-1\",\"nodeIds\":[\"plan-task-1\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"slow\"},{\"caption\":\"Lo que necesito\",\"durationMs\":2400,\"edgeIds\":[\"plan-task-edge-1\"],\"focus\":\"medium\",\"frameId\":null,\"id\":\"plan-task-tour-2\",\"nodeIds\":[\"plan-task-2\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"},{\"caption\":\"Manos a la obra\",\"durationMs\":2400,\"edgeIds\":[\"plan-task-edge-2\"],\"focus\":\"medium\",\"frameId\":null,\"id\":\"plan-task-tour-3\",\"nodeIds\":[\"plan-task-3\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"},{\"caption\":\"Revisar y compartir\",\"durationMs\":2400,\"edgeIds\":[\"plan-task-edge-3\"],\"focus\":\"medium\",\"frameId\":null,\"id\":\"plan-task-tour-4\",\"nodeIds\":[\"plan-task-4\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"}],\"tracks\":[]},\"type\":\"CREATE_ANIMATION\"}]"
+    }
+  ]
+}

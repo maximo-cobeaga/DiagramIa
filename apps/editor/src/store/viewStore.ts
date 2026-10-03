@@ -28,6 +28,7 @@ export const viewStore=createStore({
   tool:'select' as Tool,template:{kind:'service',shape:null,label:'Nuevo componente',size:{width:160,height:80}} as NodeTemplate,snap:true,
   // El panel lateral abre en IA: es el primer recorrido del producto.
   panel:'assistant' as Panel,sideOpen:true,timelineOpen:false,timelineHeight:300,presenting:false,tutorial:false,theme:initialTheme(),
+  startMode:'choose' as 'choose'|'draw'|'examples',focusMode:false,connectFromId:null as string|null,
   labelFocus:0,editingId:null as string|null,staging:null as Staging|null,flash:null as Flash|null,
   // Recorrido de una explicación que se está presentando: una copia del documento con la animación, nunca guardada.
   tour:null as {doc:DiagramDocument;previousAnimationId:string}|null,
@@ -35,10 +36,16 @@ export const viewStore=createStore({
   dragTemplate:null as NodeTemplate|null
 });
 
+// Elegir otra herramienta cancela el origen de una unión pendiente, incluso desde la paleta.
+viewStore.subscribe(()=>{const {tool,connectFromId}=viewStore.get();if(tool!=='connect'&&connectFromId)viewStore.set({connectFromId:null});});
+
 export function setTheme(theme:Theme){
   viewStore.set({theme});
   try{localStorage.setItem(THEME_KEY,theme);}catch{/* la preferencia vale para esta sesión */}
 }
+
+/** Concentración conserva las preferencias de paneles: sólo cambia qué superficies se muestran. */
+export function setFocusMode(focusMode:boolean){viewStore.set({focusMode});}
 // El tema se aplica al documento entero para que también cambien el fondo de página y los controles nativos.
 const applyTheme=()=>{if(typeof document!=='undefined')document.documentElement.dataset.theme=viewStore.get().theme;};
 applyTheme();viewStore.subscribe(applyTheme);

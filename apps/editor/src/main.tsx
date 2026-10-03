@@ -1,16 +1,10 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {openDocument} from '@diagramia/core';
-import architecture from '../../../examples/architecture.diagramia.json';
-import success from '../../../examples/checkout-success.diagramia.json';
-import failure from '../../../examples/checkout-failure.diagramia.json';
-import login from '../../../examples/login.diagramia.json';
-import sanPancho from '../../../examples/san-pancho.diagramia.json';
 import {useStore} from './store/createStore';
 import {HISTORY_LIMIT,MAX_TABS,addTab,closeTab,dismissExternalChange,documentStore,loadExternalChange,redo,releaseRecovery,retrySave,switchTab,undo} from './store/documentStore';
 import {playbackStore,useCameraFollow,usePlaybackClock} from './store/playbackStore';
 import {select,selectionStore} from './store/selectionStore';
-import {setTheme,viewStore,zoomAt,zoomBy,type Panel,type Tool} from './store/viewStore';
+import {setFocusMode,setTheme,viewStore,zoomAt,zoomBy,type Panel,type Tool} from './store/viewStore';
 import {deleteSelection,designAll,fitAll} from './commands';
 import {EXPORT_FORMATS,addImage,exportDocument,importFile,type ExportFormat} from './io';
 import {SHORTCUTS,useShortcuts} from './shortcuts';
@@ -24,14 +18,14 @@ import {ManualChannel} from './assistant/AssistantPanel';
 import {LibraryPanel} from './library/LibraryPanel';
 import {Timeline} from './timeline/Timeline';
 import {Presentation} from './presentation/Presentation';
-import {Tutorial,tutorialSeen} from './shell/Tutorial';
+import {Tutorial} from './shell/Tutorial';
+import {TEMPLATES,openTemplate} from './shell/templates';
 import {SharedPanel} from './shell/SharedPanel';
 import {sharedStore} from './store/sharedStore';
 import {accountStore,refreshAccount,signIn} from './store/accountStore';
 import {browserOptOut,setTelemetryEnabled,startTelemetry,telemetryEnabled,track,trackReopened} from './telemetry';
 import './styles.css';
 
-const TEMPLATES:[string,unknown,string][]=[['Arquitectura SaaS',architecture,'saas-architecture'],['Compra confirmada',success,'checkout-success'],['Rechazo y recuperación',failure,'checkout-failure'],['Inicio de sesión',login,'login'],['San Pancho · viaje de 10 días',sanPancho,'san-pancho']];
 // Iconos de 16 × 16 dibujados con trazo.
 const TOOLS:[Tool,string,string,string][]=[
   ['select','Mover','V','M3 2l9 5-4 1.5L6.5 13z'],
@@ -53,7 +47,7 @@ const SAVE_ICON={saved:'✓',pending:'…',error:'✕',blocked:'⏸'} as const;
 const resetPlayback=()=>playbackStore.set({animationId:'',scenarioId:'',time:0,playing:false});
 
 function Header(){
-  const {past,future,save,activeId}=useStore(documentStore),shared=useStore(sharedStore),{theme}=useStore(viewStore),inputRef=useRef<HTMLInputElement>(null);
+  const {past,future,save,activeId}=useStore(documentStore),shared=useStore(sharedStore),{theme,focusMode}=useStore(viewStore),inputRef=useRef<HTMLInputElement>(null);
   const remote=shared.tabId===activeId;
   const remoteSummary=shared.phase==='synced'?`✓ ${shared.mode==='cloud'?'Nube':'MCP local'} · r${shared.serverRevision}`:shared.phase==='conflict'?'✕ Conflicto · abrir Cuenta':shared.phase==='offline'?'✕ Sin conexión · abrir Cuenta':`… Guardando ${shared.pending} cambio(s)`;
   return <header>
@@ -69,6 +63,7 @@ function Header(){
       <AccountButton/>
       <button className="icon-button" onClick={()=>setTheme(theme==='dark'?'light':'dark')} aria-label={theme==='dark'?'Cambiar a modo claro':'Cambiar a modo oscuro'} title={theme==='dark'?'Modo claro':'Modo oscuro'}>{theme==='dark'?'☀':'☾'}</button>
       <button className="icon-button" onClick={()=>viewStore.set({tutorial:true})} aria-label="Abrir el tutorial" title="Tutorial">?</button>
+      <button className="focus-toggle" aria-pressed={focusMode} onClick={()=>setFocusMode(!focusMode)} title="Modo concentración (Shift + F)">{focusMode?'← Volver al editor':'Concentrarme'}</button>
       <button className="primary" onClick={()=>viewStore.set({presenting:true})} title="Presentar (P)">▶ Presentar</button>
     </div>
     <input ref={inputRef} type="file" hidden accept=".json,.mmd,.mermaid,.md,.txt,.drawio,.xml,.dot,.gv,.puml,.plantuml,.bpmn" onChange={e=>{const file=e.target.files?.[0];if(file)void importFile(file);e.target.value='';}}/>
@@ -94,7 +89,7 @@ function Tabs(){
       <button role="tab" aria-selected={tab.id===activeId} onClick={()=>{if(tab.id!==activeId){resetPlayback();switchTab(tab.id);}}} title={tab.title}>{tab.title}{tab.id===activeId&&<small>r{doc.revision}</small>}</button>
       <button className="doc-tab-close" aria-label={`Cerrar ${tab.title}`} title="Cerrar pestaña" onClick={()=>{if(confirm(`Se cierra «${tab.title}» y se borra de este navegador. Exportalo antes si lo necesitás.`)){resetPlayback();closeTab(tab.id);}}}>×</button>
     </div>)}</div>
-    <button className="doc-tab-add" disabled={tabs.length>=MAX_TABS} onClick={()=>{resetPlayback();addTab();}} aria-label="Nueva pestaña con un canvas vacío" title="Nueva pestaña">＋</button>
+    <button className="doc-tab-add" disabled={tabs.length>=MAX_TABS} onClick={()=>{resetPlayback();addTab();viewStore.set({focusMode:false});}} aria-label="Nueva pestaña con un canvas vacío" title="Nueva idea">＋ Nueva idea</button>
   </nav>;
 }
 
@@ -106,7 +101,7 @@ function Tools(){
   return <aside className="tools" aria-label="Herramientas y formas">
     <div className="tools-heading"><span className="eyebrow">CREÁ A TU MANERA</span><strong>Tu caja de ideas</strong></div>
     <div className="tool-grid" role="toolbar" aria-label="Herramienta activa">{TOOLS.map(([id,label,key,icon])=>
-      <button key={id} className={tool===id?'chosen':''} aria-pressed={tool===id} title={`${label} (${key})`} onClick={()=>viewStore.set({tool:id})}><svg viewBox="0 0 16 16" aria-hidden="true"><path d={icon}/></svg><span>{label}</span></button>)}
+      <button key={id} className={tool===id?'chosen':''} aria-pressed={tool===id} title={`${label} (${key})`} onClick={()=>viewStore.set({tool:id,connectFromId:null})}><svg viewBox="0 0 16 16" aria-hidden="true"><path d={icon}/></svg><span>{label}</span></button>)}
     </div>
     <p className="tool-note">{TOOL_HINTS[tool]}</p>
     <button className="tool-extra-toggle" aria-expanded={expanded} aria-controls="tool-extra" onClick={()=>setExpanded(!expanded)}>{expanded?'Ocultar formas y elementos':'Mostrar formas y elementos'}</button>
@@ -116,7 +111,7 @@ function Tools(){
     <button onClick={()=>imageRef.current?.click()}>Agregar imagen…</button>
     <input ref={imageRef} type="file" hidden accept="image/png,image/jpeg,image/webp,image/svg+xml" data-role="image-input" onChange={e=>{const file=e.target.files?.[0];if(file)void addImage(file);e.target.value='';}}/>
     <span className="eyebrow">PARA EMPEZAR</span>
-    <select aria-label="Cargar ejemplo" value="" onChange={e=>{const template=TEMPLATES[+e.target.value];resetPlayback();if(addTab({...openDocument(template[1]).document,appliedBatches:[]}))track('template_used',{template:template[2]});}}><option value="" disabled>Abrir un ejemplo…</option>{TEMPLATES.map(([label],i)=><option key={label} value={i}>{label}</option>)}</select>
+    <select aria-label="Cargar ejemplo" value="" onChange={e=>openTemplate(+e.target.value)}><option value="" disabled>Abrir un ejemplo…</option>{TEMPLATES.map(({label},i)=><option key={label} value={i}>{label}</option>)}</select>
     <button disabled={!ids.length} onClick={deleteSelection}>Eliminar selección</button>
     <details className="elements"><summary>Elementos · {elements.length}</summary>
       <div className="element-list">{elements.map(([id,label,kind])=>
@@ -189,14 +184,14 @@ function SidePanel(){
 }
 
 function App(){
-  const {presenting,tutorial,sideOpen}=useStore(viewStore);
+  const {presenting,tutorial,sideOpen,focusMode}=useStore(viewStore);
   useShortcuts();usePlaybackClock();useCameraFollow();
-  // La primera vez se ofrece el recorrido; después queda en el botón «?».
-  useEffect(()=>{if(!tutorialSeen())viewStore.set({tutorial:true});void refreshAccount();},[]);
+  // El inicio vive dentro del lienzo vacío; el tutorial queda disponible en «?».
+  useEffect(()=>{void refreshAccount();},[]);
   return <>
     <style>{DIAGRAM_CSS}</style>
     {/* Mientras se presenta o hay un modal, el editor queda inerte: ni el foco ni los atajos llegan a los controles tapados. */}
-    <div className="app" inert={presenting||tutorial}>
+    <div className={'app'+(focusMode?' focus-mode':'')} inert={presenting||tutorial}>
       <Header/>
       <Tabs/>
       <div className={'workspace'+(sideOpen?'':' side-closed')}>

@@ -5,10 +5,12 @@ import {documentStore,newId,notify,transact} from '../store/documentStore';
 import {kindOf,select,selectionStore} from '../store/selectionStore';
 import {currentAnimation,playbackStore} from '../store/playbackStore';
 import {cancelCameraMove,snap,viewStore,zoomAt,type Camera,type NodeTemplate} from '../store/viewStore';
-import {fitAll,moveActions,selectionUnit} from '../commands';
+import {connectTo,fitAll,moveActions,selectionUnit} from '../commands';
 import {trackThrottled} from '../telemetry';
 import {DiagramLayer} from './DiagramLayer';
 import {singleNodeDocument,templateNode} from './templateNode';
+import {Welcome} from '../shell/Welcome';
+import {SelectionToolbar} from './SelectionToolbar';
 
 type BoxKind='node'|'zone'|'frame';
 type Anchor={x:number;y:number}|null;
@@ -180,6 +182,11 @@ export function Canvas(){
     if(tool==='line'||tool==='arrow'||tool==='freehand'){setGesture({type:'stroke',kind:tool,points:[world,world]});return;}
     if(tool==='zone'||tool==='frame'){setGesture({type:'draw',kind:tool,start:world,current:world});return;}
     if(tool==='connect'){
+      const from=viewStore.get().connectFromId;
+      if(from){
+        connectTo(target?.type==='node'?target.id:null);
+        return;
+      }
       if(target?.type==='node')setGesture({type:'connect',from:target.id,fromAnchor:anchorNear(boxOf(doc,'node',target.id)!,world,14*px),current:world,target:null});
       return;
     }
@@ -347,10 +354,10 @@ export function Canvas(){
   return <div className="canvas-host" ref={hostRef} onDrop={drop}
     onDragOver={e=>{if(e.dataTransfer.types.includes(SHAPE_MIME)){e.preventDefault();e.dataTransfer.dropEffect='copy';setGhostAt(toWorld(e));}}}
     onDragLeave={e=>{if(!hostRef.current?.contains(e.relatedTarget as Node|null))setGhostAt(null);}}>
-    <svg ref={svgRef} className={`canvas tool-${tool}`} style={{cursor}} role="group" aria-label={`Canvas editable: ${doc.nodes.length} nodos, ${doc.edges.length} conexiones`}
+    <svg ref={svgRef} className={`canvas tool-${tool}`} tabIndex={0} style={{cursor}} role="group" aria-label={`Canvas editable: ${doc.nodes.length} nodos, ${doc.edges.length} conexiones`}
       viewBox={`${camera.x} ${camera.y} ${viewport.width/camera.zoom} ${viewport.height/camera.zoom}`}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setGhostAt(null)} onPointerCancel={e=>{pointers.current.delete(e.pointerId);pinch.current=null;setGesture(null);}}
-      onKeyDown={e=>{const target=hit(e.target);if(target&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();select(e.shiftKey?[...ids,target.id]:target.type==='node'?selectionUnit(doc,target.id):[target.id]);}}}>
+      onKeyDown={e=>{const target=hit(e.target);if(target&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();if(viewStore.get().connectFromId&&target.type==='node'&&!staging){connectTo(target.id);return;}select(e.shiftKey?[...ids,target.id]:target.type==='node'?selectionUnit(doc,target.id):[target.id]);}}}>
       <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" className="grid-dot"/></pattern></defs>
       <rect x={camera.x} y={camera.y} width={viewport.width/camera.zoom} height={viewport.height/camera.zoom} fill="url(#grid)" pointerEvents="none"/>
       <DiagramLayer doc={visible} selected={staging?undefined:selected} staged={stagedIds} interactive showAnnotations editing={editing?.id} states={showing?statesAt(animation!,sampled.index):undefined}
@@ -383,8 +390,11 @@ export function Canvas(){
         {(['from','to'] as const).map(end=>{const p=end==='from'?edgeHandles.points[0]:edgeHandles.points[edgeHandles.points.length-1];return <circle key={end} data-handle={'end-'+end} className="handle endpoint" cx={p.x} cy={p.y} r={6*px} strokeWidth={1.5*px}/>;})}
       </g>}
     </svg>
+    <SelectionToolbar busy={Boolean(gesture)}/>
+    {viewStore.get().connectFromId&&tool==='connect'&&<div className="connect-invitation" role="status">Elegí el otro elemento para unirlos.<button onClick={()=>{viewStore.set({connectFromId:null,tool:'select'});notify('Unión cancelada.');}}>Cancelar</button></div>}
     {editing&&<InlineEditor key={editing.id} target={editing} camera={camera}/>}
     {staging&&<p className="canvas-banner" role="status">Vista previa de la propuesta · paso {staging.step} de {staging.total} · aceptala o rechazala en el panel IA</p>}
-    {empty&&!editing&&<p className="canvas-empty">Canvas vacío. Elegí una forma de la paleta y hacé clic acá, arrastrala, o pedile un diagrama a la <strong>IA</strong>.</p>}
+    {empty&&!editing&&!staging&&!gesture&&tool==='select'&&<Welcome/>}
+    {empty&&!editing&&!staging&&!gesture&&tool==='node'&&viewStore.get().startMode==='draw'&&<Welcome/>}
   </div>;
 }

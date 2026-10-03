@@ -53,7 +53,7 @@ const click=point=>drag(point,point);
 // Dos pulsaciones seguidas, sin movimientos intermedios, para que cuenten como doble clic.
 async function doubleClick(point){for(let i=0;i<2;i++){await mouse('mousePressed',point.x,point.y);await mouse('mouseReleased',point.x,point.y);}await sleep(150);}
 const tap=async selector=>{if(!await js(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;el.click();return true;})()`))throw new Error(`no existe ${selector}`);};
-const KEYS={Enter:['Enter',13],F2:['F2',113],c:['KeyC',67],z:['KeyZ',90],n:['KeyN',78],l:['KeyL',76],p:['KeyP',80],a:['KeyA',65],d:['KeyD',68],g:['KeyG',71],Escape:['Escape',27],ArrowRight:['ArrowRight',39],ArrowUp:['ArrowUp',38],End:['End',35],Delete:['Delete',46],'1':['Digit1',49]};
+const KEYS={Enter:['Enter',13],F2:['F2',113],c:['KeyC',67],z:['KeyZ',90],n:['KeyN',78],l:['KeyL',76],p:['KeyP',80],a:['KeyA',65],d:['KeyD',68],f:['KeyF',70],g:['KeyG',71],Escape:['Escape',27],ArrowRight:['ArrowRight',39],ArrowUp:['ArrowUp',38],End:['End',35],Delete:['Delete',46],'1':['Digit1',49]};
 async function key(name,modifiers=0){
   const [code,vk]=KEYS[name],base={key:name,code,windowsVirtualKeyCode:vk,modifiers};
   await send('Input.dispatchKeyEvent',{type:'rawKeyDown',...base});await send('Input.dispatchKeyEvent',{type:'keyUp',...base});await sleep(60);
@@ -79,8 +79,45 @@ try{
   await send('Page.enable');await send('Runtime.enable');
   await viewport(1440,900);
   await send('Page.navigate',{url:URL_});await sleep(1200);
-  // El tutorial de primera vez se prueba aparte; para el resto del recorrido se lo da por visto.
+  // El inicio se comprueba sin datos previos en este perfil aislado.
   await js(`(()=>{localStorage.clear();localStorage.setItem('diagramia.tutorial.seen','1');localStorage.setItem('diagramia.theme','light');})()`);await send('Page.reload');await sleep(1500);
+
+  await check('el inicio permite contar una idea o dibujar y recupera lo creado al recargar',async()=>{
+    expect(await js(`Boolean(document.querySelector('.start-guide'))&&!document.querySelector('.tutorial')`),'el inicio falta o quedó tapado por un modal');
+    const empty=await saved();expect(empty.nodes.length===0,'la primera idea no está vacía');
+    await shot('27-inicio-guiado');
+    await viewport(390,844);await sleep(200);
+    await js(`document.querySelector('.start-guide').scrollIntoView({block:'center'})`);
+    expect(await js(`document.documentElement.scrollWidth<=innerWidth&&[...document.querySelectorAll('.start-choice')].every(b=>{const r=b.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.width>=250;})`),'el inicio móvil recorta los botones o desborda');
+    await shot('31-inicio-movil');await viewport(1440,900);await js(`scrollTo(0,0)`);await sleep(150);
+    await tap('[aria-label="Contame tu idea"]');await sleep(150);
+    expect(await js(`document.activeElement.id==='chat-prompt'||document.activeElement.classList.contains('signin')`),'no se enfocó la entrada de IA o de acceso');
+    expect((await saved()).revision===empty.revision,'abrir la IA modificó el documento');
+    await tap('[aria-label="Dibujar"]');await sleep(80);
+    const host=await center('.canvas-host');await click({x:host.x,y:host.y});
+    expect(await js(`Boolean(document.querySelector('.inline-editor'))`),'no se puede escribir la primera idea');
+    await send('Input.insertText',{text:'Mi cumpleaños'});await key('Enter');
+    const drawn=await saved();expect(drawn.nodes.length===1&&drawn.nodes[0].label==='Mi cumpleaños','no se guardó el dibujo');
+    await send('Page.reload');await sleep(1200);
+    expect((await saved()).nodes[0].id===drawn.nodes[0].id&&!await js(`Boolean(document.querySelector('.start-guide'))`),'recargar reinició el trabajo');
+    return 'tres entradas claras; IA sin envío automático; dibujo guardado con su ID';
+  });
+  await check('los ejemplos cotidianos son editables y se abren sin reemplazar el trabajo',async()=>{
+    const old=await js(`JSON.parse(localStorage.getItem('diagramia.workspace')).active`),before=await saved();
+    await tap('.doc-tab-add');await tap('[aria-label="Elegir un ejemplo"]');await sleep(120);await shot('30-ejemplos-cotidianos');
+    await viewport(390,844);await sleep(150);await js(`document.querySelector('.start-guide').scrollIntoView({block:'center'})`);
+    expect(await js(`document.documentElement.scrollWidth<=innerWidth&&[...document.querySelectorAll('.start-example')].every(b=>{const r=b.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth;})`),'los ejemplos móviles desbordan');
+    await shot('32-ejemplos-movil');await viewport(1440,900);await js(`scrollTo(0,0)`);await sleep(150);
+    await tap('[aria-label="Abrir ejemplo: Explicar una idea"]');
+    const idea=await saved();expect(idea.id==='explain-idea'&&idea.nodes.length===3&&idea.animations[0].steps.length===3,'falta el ejemplo de idea editable y animado');
+    expect(await js(`JSON.parse(localStorage.getItem('diagramia.doc.'+${JSON.stringify(old)})).nodes[0].id`)===before.nodes[0].id,'se reemplazó el trabajo anterior');
+    await js(`(()=>{const s=document.querySelector('select[aria-label="Cargar ejemplo"]');s.value='6';s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+    const task=await saved();expect(task.id==='plan-task'&&task.nodes.length===4,'falta el ejemplo de tarea');
+    return 'idea de tres pasos y tarea de cuatro pasos; documento previo conservado';
+  });
+  // El resto de la regresión conserva su fixture de arquitectura y no consume pestañas de las pruebas de inicio.
+  await js(`(()=>{localStorage.clear();localStorage.setItem('diagramia.tutorial.seen','1');localStorage.setItem('diagramia.theme','light');})()`);await send('Page.reload');await sleep(1200);
+  await js(`(()=>{const s=document.querySelector('select[aria-label="Cargar ejemplo"]');s.value='0';s.dispatchEvent(new Event('change',{bubbles:true}));})()`);await sleep(550);
 
   await check('carga el ejemplo de arquitectura sin errores',async()=>{
     const count=await js(`document.querySelectorAll('.canvas .graph-node').length`);expect(count===4,`se esperaban 4 nodos, hay ${count}`);
@@ -105,6 +142,41 @@ try{
     expect(JSON.stringify(await saved())===before,'el reproductor o su altura modificó el contenido');
     await key('1');await sleep(100);await shot('25-ui-compacta');
     return `barra ${compact.height}px; lienzo ${canvas.height}px; panel ajustable con mouse y teclado`;
+  });
+  await check('la barra contextual escribe, colorea, duplica y conecta con mouse o teclado sin perder los originales',async()=>{
+    const before=await saved();await click(await center('[data-id="user"]'));await sleep(80);
+    expect(await js(`Boolean(document.querySelector('.selection-toolbar'))`),'no aparece la barra junto al elemento');
+    await clickText('Color','.selection-toolbar');await tap('[aria-label="Color Lima"]');
+    let doc=await saved();expect(doc.nodes.find(n=>n.id==='user').style.fill==='#d4f246','no cambió el color');
+    expect(JSON.stringify(doc.nodes.filter(n=>n.id!=='user'))===JSON.stringify(before.nodes.filter(n=>n.id!=='user')),'el color tocó otros nodos');await key('z',CTRL);
+    await clickText('Escribir','.selection-toolbar');await send('Input.insertText',{text:'Mi usuario'});await key('Enter');
+    expect((await saved()).nodes.find(n=>n.id==='user').label==='Mi usuario','no escribió en el lugar');await key('z',CTRL);
+    await clickText('Duplicar','.selection-toolbar');doc=await saved();
+    expect(doc.nodes.length===before.nodes.length+1&&new Set(doc.nodes.map(n=>n.id)).size===doc.nodes.length&&before.nodes.every(n=>doc.nodes.some(x=>x.id===n.id)),'duplicar cambió o repitió IDs');await key('z',CTRL);
+    await click(await center('[data-id="user"]'));await clickText('Unir','.selection-toolbar');await click(await center('[data-id="api"]'));
+    expect((await saved()).edges.some(e=>e.from==='user'&&e.to==='api'),'no conectó con clic');await key('z',CTRL);
+    await click(await center('[data-id="user"]'));await clickText('Unir','.selection-toolbar');await js(`document.querySelector('.canvas [data-id="db"]').focus()`);await key('Enter');
+    expect((await saved()).edges.some(e=>e.from==='user'&&e.to==='db'),'no conectó con teclado');await key('z',CTRL);
+    await click(await center('[data-id="user"]'));const revision=(await saved()).revision;await clickText('Unir','.selection-toolbar');await key('Escape');
+    expect(!await js(`Boolean(document.querySelector('.connect-invitation'))`)&&(await saved()).revision===revision,'cancelar unión dejó estado pendiente o editó');
+    doc=await saved();expect(JSON.stringify(doc.nodes)===JSON.stringify(before.nodes)&&JSON.stringify(doc.edges)===JSON.stringify(before.edges),'undo no restauró el contenido');
+    await clickText('Color','.selection-toolbar');await shot('28-controles-contextuales');await clickText('Más','.selection-toolbar');await sleep(100);
+    expect(await js(`document.querySelector('.tabs [aria-selected="true"]').textContent`)==='Propiedades','Más no abrió las propiedades');
+    await key('Escape');await key('1');await clickText('IA','.tabs');return 'color, texto, IDs nuevos, dos formas de conectar, cancelar y undo';
+  });
+  await check('concentración amplía el lienzo y conserva documento, paneles y reproducción',async()=>{
+    await clickText('Editar pasos','.timeline');await clickText('Cuenta','.tabs');await sleep(100);
+    const doc=JSON.stringify(await saved()),normal=await center('.canvas-host');await tap('.focus-toggle');await sleep(100);
+    const focused=await center('.canvas-host');
+    expect(focused.width>normal.width+400&&focused.height>normal.height+120,'no recuperó espacio para el lienzo');
+    expect(await js(`getComputedStyle(document.querySelector('.tools')).display==='none'&&getComputedStyle(document.querySelector('.side')).display==='none'`),'quedaron paneles visibles');
+    await shot('29-modo-concentracion');await clickText('Reproducir','.timeline');await sleep(180);await clickText('Pausar','.timeline');await key('Escape');await sleep(100);
+    expect(await js(`document.querySelector('.tabs [aria-selected="true"]').textContent`)==='Cuenta'&&await js(`Boolean(document.querySelector('.motion-editor'))`),'no recuperó panel y edición previos');
+    expect(JSON.stringify(await saved())===doc,'el modo concentración modificó el documento');
+    await tap('[aria-controls="side-panel"]');await key('f',SHIFT);await key('Escape');
+    expect(!await js(`Boolean(document.querySelector('.side'))`),'se abrió un panel que antes estaba cerrado');
+    await tap('[aria-controls="side-panel"]');await clickText('IA','.tabs');await tap('.edit-motion');await key('1');
+    return `lienzo ${normal.width}×${normal.height} → ${focused.width}×${focused.height}; preferencias restauradas`;
   });
   await check('arrastrar un nodo lo mueve con una acción y Ctrl+Z lo restaura',async()=>{
     const before=await saved()??{revision:0,nodes:[{id:'user',position:{x:40,y:220}}]},from=await center('[data-id="user"]');
@@ -562,7 +634,7 @@ try{
     await js(`document.querySelector('.doc-tab-add').click()`);await sleep(500);
     let doc=await saved();
     expect(doc.nodes.length===0&&await js(`document.querySelectorAll('.doc-tab').length`)===tabs+1,'no se abrió un canvas vacío');
-    expect(await js(`Boolean(document.querySelector('.canvas-empty'))`),'falta el mensaje de canvas vacío');
+    expect(await js(`Boolean(document.querySelector('.start-guide'))`),'falta el inicio guiado del canvas vacío');
     await js(`document.querySelectorAll('.doc-tab [role=tab]')[${tabs-1}].click()`);await sleep(500);
     doc=await saved();expect(doc.id===before.id&&doc.nodes.length===before.nodes.length&&doc.revision===before.revision,'la pestaña anterior cambió');
     await key('z',CTRL);expect((await saved()).revision===before.revision+1,'el historial de la pestaña se perdió al cambiar');
@@ -688,7 +760,8 @@ try{
     await js(`[...document.querySelectorAll('.tutorial button')].find(b=>b.textContent==='Empezar').click()`);await sleep(200);
     expect(!(await js(`Boolean(document.querySelector('.tutorial'))`)),'el tutorial no cerró');
     await js(`localStorage.removeItem('diagramia.tutorial.seen')`);await send('Page.reload');await sleep(1500);
-    expect(await js(`Boolean(document.querySelector('.tutorial'))`),'el tutorial no aparece la primera vez');
+    expect(!await js(`Boolean(document.querySelector('.tutorial'))`),'el tutorial volvió a interrumpir el trabajo');
+    await tap('[aria-label="Abrir el tutorial"]');await sleep(100);
     await js(`[...document.querySelectorAll('.tutorial button')].find(b=>b.textContent==='Saltar').click()`);await sleep(150);
     await tap('[aria-label="Cambiar a modo claro"]');await sleep(200);
     return `canvas ${light} → ${dark.canvas}`;

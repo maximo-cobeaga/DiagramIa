@@ -39,12 +39,12 @@ function boot(){
     }
     if(!order.length){
       // Primera vez con pestañas: se adopta el documento único de versiones anteriores, si existe.
-      const legacy=LEGACY.map(key=>localStorage.getItem(key)).find(Boolean)??null,opened=legacy?openTab(legacy):{state:blank(example()),notice:null};
+      const legacy=LEGACY.map(key=>localStorage.getItem(key)).find(Boolean)??null,opened=legacy?openTab(legacy):{state:blank(emptyDocument(newId('doc'),'Mi primera idea')),notice:null};
       const id=newId('tab');states.set(id,opened.state);order=[id];active=id;
       notice=opened.notice??{text:legacy?'Documento recuperado del guardado local.':'Listo para editar.',tone:'info'};
     }
   }catch{
-    states.clear();const id=newId('tab');states.set(id,blank(example()));order=[id];active=id;
+    states.clear();const id=newId('tab');states.set(id,blank(emptyDocument(newId('doc'),'Mi primera idea')));order=[id];active=id;
   }
   if(!states.has(active))active=order[0];
   return {order,active,notice};
@@ -190,7 +190,7 @@ function stash(){
 function show(id:string,tabs:Tab[],notice:Notice){
   cancelCameraMove();
   const state=states.get(id)!;
-  selectionStore.set({ids:[]});viewStore.set({staging:null,editingId:null,tool:'select'});
+  selectionStore.set({ids:[]});viewStore.set({staging:null,editingId:null,tool:'select',startMode:'choose',connectFromId:null});
   persisted=state.doc;
   documentStore.set({doc:state.doc,past:state.past,future:state.future,dropped:state.dropped,recovery:state.recovery,activeId:id,tabs,save:saveOf(state.recovery),notice,externalChange:null});
   if(state.camera)viewStore.set({camera:state.camera});else fit(documentBounds(state.doc));

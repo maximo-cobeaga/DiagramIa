@@ -1,0 +1,193 @@
+{
+  "schemaVersion": "1.7.0",
+  "id": "explain-idea",
+  "title": "Explicar una idea",
+  "revision": 2,
+  "nodes": [
+    {
+      "id": "explain-idea-1",
+      "kind": "note",
+      "label": "Mi idea",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 250,
+        "height": 130
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "idea",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "fill": "#eef9c4",
+        "stroke": "#606975",
+        "fontSize": 17
+      },
+      "details": "Contá tu idea con una frase."
+    },
+    {
+      "id": "explain-idea-2",
+      "kind": "note",
+      "label": "A quién ayuda",
+      "position": {
+        "x": 320,
+        "y": 0
+      },
+      "size": {
+        "width": 250,
+        "height": 130
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "users",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "fill": "#e5ecff",
+        "stroke": "#606975",
+        "fontSize": 17
+      },
+      "details": "¿Qué problema resuelve?"
+    },
+    {
+      "id": "explain-idea-3",
+      "kind": "note",
+      "label": "El primer paso",
+      "position": {
+        "x": 0,
+        "y": 190
+      },
+      "size": {
+        "width": 250,
+        "height": 130
+      },
+      "zoneId": null,
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "flag",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "fill": "#ffe4d6",
+        "stroke": "#606975",
+        "fontSize": 17
+      },
+      "details": "Elegí una acción pequeña para empezar."
+    }
+  ],
+  "edges": [
+    {
+      "id": "explain-idea-edge-1",
+      "from": "explain-idea-1",
+      "to": "explain-idea-2",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "curved",
+      "style": {}
+    },
+    {
+      "id": "explain-idea-edge-2",
+      "from": "explain-idea-2",
+      "to": "explain-idea-3",
+      "label": "",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "curved",
+      "style": {}
+    }
+  ],
+  "zones": [],
+  "drawings": [],
+  "groups": [],
+  "frames": [],
+  "animations": [
+    {
+      "id": "explain-idea-tour",
+      "label": "Contar mi idea",
+      "scenarios": [],
+      "steps": [
+        {
+          "id": "explain-idea-tour-1",
+          "caption": "Mi idea",
+          "durationMs": 2400,
+          "nodeIds": [
+            "explain-idea-1"
+          ],
+          "edgeIds": [],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "slow"
+        },
+        {
+          "id": "explain-idea-tour-2",
+          "caption": "A quién ayuda",
+          "durationMs": 2400,
+          "nodeIds": [
+            "explain-idea-2"
+          ],
+          "edgeIds": [
+            "explain-idea-edge-1"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "overview",
+          "transition": "smooth"
+        },
+        {
+          "id": "explain-idea-tour-3",
+          "caption": "El primer paso",
+          "durationMs": 2400,
+          "nodeIds": [
+            "explain-idea-3"
+          ],
+          "edgeIds": [
+            "explain-idea-edge-2"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "overview",
+          "transition": "smooth"
+        }
+      ],
+      "tracks": []
+    }
+  ],
+  "assets": [],
+  "annotations": [],
+  "appliedBatches": [
+    {
+      "id": "explain-idea-build",
+      "signature": "[{\"node\":{\"assetId\":null,\"details\":\"Contá tu idea con una frase.\",\"groupId\":null,\"icon\":\"idea\",\"id\":\"explain-idea-1\",\"kind\":\"note\",\"label\":\"Mi idea\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":130,\"width\":250},\"style\":{\"fill\":\"#eef9c4\",\"fontSize\":17,\"stroke\":\"#606975\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"¿Qué problema resuelve?\",\"groupId\":null,\"icon\":\"users\",\"id\":\"explain-idea-2\",\"kind\":\"note\",\"label\":\"A quién ayuda\",\"link\":null,\"position\":{\"x\":320,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":130,\"width\":250},\"style\":{\"fill\":\"#e5ecff\",\"fontSize\":17,\"stroke\":\"#606975\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Elegí una acción pequeña para empezar.\",\"groupId\":null,\"icon\":\"flag\",\"id\":\"explain-idea-3\",\"kind\":\"note\",\"label\":\"El primer paso\",\"link\":null,\"position\":{\"x\":0,\"y\":190},\"shape\":\"card\",\"size\":{\"height\":130,\"width\":250},\"style\":{\"fill\":\"#ffe4d6\",\"fontSize\":17,\"stroke\":\"#606975\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"explain-idea-1\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"explain-idea-edge-1\",\"label\":\"\",\"line\":\"curved\",\"startArrow\":\"none\",\"style\":{},\"to\":\"explain-idea-2\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"explain-idea-2\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"explain-idea-edge-2\",\"label\":\"\",\"line\":\"curved\",\"startArrow\":\"none\",\"style\":{},\"to\":\"explain-idea-3\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"}]"
+    },
+    {
+      "id": "explain-idea-motion",
+      "signature": "[{\"animation\":{\"id\":\"explain-idea-tour\",\"label\":\"Contar mi idea\",\"scenarios\":[],\"steps\":[{\"caption\":\"Mi idea\",\"durationMs\":2400,\"edgeIds\":[],\"focus\":\"medium\",\"frameId\":null,\"id\":\"explain-idea-tour-1\",\"nodeIds\":[\"explain-idea-1\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"slow\"},{\"caption\":\"A quién ayuda\",\"durationMs\":2400,\"edgeIds\":[\"explain-idea-edge-1\"],\"focus\":\"overview\",\"frameId\":null,\"id\":\"explain-idea-tour-2\",\"nodeIds\":[\"explain-idea-2\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"},{\"caption\":\"El primer paso\",\"durationMs\":2400,\"edgeIds\":[\"explain-idea-edge-2\"],\"focus\":\"overview\",\"frameId\":null,\"id\":\"explain-idea-tour-3\",\"nodeIds\":[\"explain-idea-3\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"}],\"tracks\":[]},\"type\":\"CREATE_ANIMATION\"}]"
+    }
+  ]
+}

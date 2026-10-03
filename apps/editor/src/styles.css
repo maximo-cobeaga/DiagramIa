@@ -15,7 +15,7 @@
   --canvas:#12151a;--grid:#2a2f37;--shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.45);color-scheme:dark;
 }
 /* Colores del dibujo en modo oscuro. Sólo valen dentro del editor: un export no los define y sale claro. */
-:root[data-theme=dark] :is(.canvas,.presentation-stage,.palette,.component-preview){--d-ink:#e8ebef;--d-muted:#9aa4b2;--d-node:#1e2229;--d-line:#8b96a8;--d-zone:#191d23;--d-zone-line:#4a5362;--d-halo:#12151a;--d-note:#2c3118}
+:root[data-theme=dark] :is(.canvas,.presentation-stage,.palette,.component-preview,.start-example){--d-ink:#e8ebef;--d-muted:#9aa4b2;--d-node:#1e2229;--d-line:#8b96a8;--d-zone:#191d23;--d-zone-line:#4a5362;--d-halo:#12151a;--d-note:#2c3118}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body{margin:0;background:var(--paper)}
@@ -509,3 +509,50 @@ button.danger:disabled{opacity:.5}
 .link-preview-card strong{font-size:14px;line-height:1.35}
 .link-preview-card p{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
 .link-preview-card .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+
+/* Inicio guiado dentro del lienzo, sin un modal obligatorio. */
+.start-host{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;pointer-events:none}
+.start-guide{pointer-events:auto;width:min(720px,100%);max-height:100%;overflow:auto;padding:20px 6px;text-align:center;scrollbar-gutter:stable}
+.start-guide h2{font-size:34px;letter-spacing:-1px;line-height:1.15;margin:12px 0}
+.start-guide>p{font-size:15px;line-height:1.5;color:var(--muted);max-width:470px;margin:0 auto 24px}
+.start-guide>.eyebrow{display:block;margin-top:16px}
+.start-spark{display:inline-grid;place-items:center;width:56px;height:56px;background:var(--lime);color:#141619;border-radius:18px;font-size:30px;transform:rotate(-7deg);box-shadow:var(--shadow)}
+.start-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;text-align:left}
+.start-choice{display:flex;flex-direction:column;align-items:flex-start;gap:10px;border-radius:18px;padding:20px 16px;min-height:174px;white-space:normal;box-shadow:0 2px 12px rgba(20,22,25,.03)}
+.start-choice>span{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--surface-2);color:var(--blue);font-size:24px}
+.start-choice strong{font-size:16px;letter-spacing:-.3px}
+.start-choice small{font-size:13px;line-height:1.5;color:var(--muted)}
+.start-choice.ai-choice{border-color:var(--blue);background:linear-gradient(150deg,var(--blue-soft),var(--surface) 80%)}
+.start-choice.ai-choice>span{background:var(--lime);color:#141619}
+.start-guide .start-reassurance{font-size:12px;margin:20px auto 0}
+.start-examples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;text-align:left;margin-bottom:16px}
+.start-example{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;text-align:left;min-width:0}
+.start-example svg{width:100%;height:100px;background:var(--canvas);border-radius:10px;pointer-events:none}
+.start-example strong{font-size:14px;line-height:1.4}
+.start-example>span{font-size:12px;color:var(--muted);line-height:1.5}
+.more-examples>summary{font-size:13px;color:var(--muted);padding:12px;cursor:pointer;list-style-position:inside}
+.drawing-invitation{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:14px;padding:10px 14px;width:max-content;max-width:calc(100% - 24px);font-size:14px}
+.new-idea{font-weight:650}
+@media(max-width:1200px){.start-choices{grid-template-columns:1fr}.start-choice{min-height:0;padding:12px 14px;display:grid;grid-template-columns:38px 1fr;gap:4px 12px}.start-choice>span{grid-row:1/3}.start-examples{grid-template-columns:repeat(2,minmax(0,1fr))}.start-guide h2{font-size:28px}.start-guide>p{margin-bottom:16px}.start-guide>.eyebrow{margin-top:12px}.start-spark{width:42px;height:42px;font-size:24px}}
+@media(max-width:600px){.start-host{padding:12px}.start-guide{padding:12px 2px}.start-guide h2{font-size:26px}.start-examples{grid-template-columns:1fr}.start-example{display:grid;grid-template-columns:80px 1fr;gap:6px 12px}.start-example svg{grid-row:1/3;height:80px}.drawing-invitation{flex-wrap:wrap;justify-content:center;text-align:center;font-size:13px}}
+
+/* Acciones junto a la selección, contenidas dentro del lienzo incluso en pantallas chicas. */
+.selection-toolbar{position:absolute;z-index:3;padding:5px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);width:max-content}
+.selection-actions{display:flex;align-items:center;gap:3px;flex-wrap:wrap}
+.selection-actions button{border-color:transparent;background:transparent;min-height:40px;padding:6px 10px;border-radius:10px;font-size:13px;transform:none}
+.selection-actions button:hover:not(:disabled){background:var(--blue-soft);box-shadow:none;transform:none}
+.selection-colors{display:flex;justify-content:space-between;gap:8px;padding:10px 7px 6px;border-top:1px solid var(--line);margin-top:5px;flex-wrap:wrap}
+.selection-colors button{width:30px;height:30px;min-height:30px;padding:0;border:1px solid #8b96a8;border-radius:50%;box-shadow:inset 0 0 0 3px var(--surface)}
+.connect-invitation{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--blue);border-radius:14px;padding:8px 12px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center;max-width:calc(100% - 24px);font-size:14px;width:max-content}
+@media(max-width:600px){.selection-actions button{padding:6px 8px;font-size:12px}.connect-invitation{flex-wrap:wrap;justify-content:center;text-align:center;font-size:13px}}
+
+/* Concentración: las preferencias de los paneles y el documento se conservan. */
+.focus-mode .workspace,.focus-mode .workspace.side-closed{grid-template-columns:minmax(0,1fr)}
+.focus-mode .tools,.focus-mode .side,.focus-mode .doc-tabs,.focus-mode .edit-motion,.focus-mode .canvas-toolbar .design-button,.focus-mode .panel-toggle{display:none}
+.focus-mode header .header-actions>:not(.focus-toggle):not(.primary){display:none}
+.focus-mode .canvas-host{min-height:320px}
+.focus-toggle[aria-pressed=true]{background:var(--blue-soft);border-color:var(--blue);color:var(--blue)}
+@media(max-width:900px){.focus-mode .app{height:100dvh}.app.focus-mode{height:100dvh;min-height:0}.focus-mode .workspace{display:grid;min-height:0}.focus-mode .canvas-host{flex:1;height:auto;min-height:220px}.focus-mode .header-actions{width:auto;margin-left:auto}.focus-mode .canvas-label{display:none}}
+/* El encabezado puede reacomodarse si la cuenta tiene un nombre largo. */
+header{flex-wrap:wrap}
+.doc-tab-add{white-space:nowrap;flex:none;font-size:12px}

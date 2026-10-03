@@ -8,6 +8,14 @@ Canvas al centro; herramientas y navegación de documento a la izquierda; inspec
 
 Jerarquía: documento → contenido/selección → acciones relevantes → propiedades secundarias. Herramientas con nombres concretos: Nodo, Conector, Zona, Marcador, Frame, Animación. El usuario debe entender qué cambió, dónde y cómo deshacerlo. Mensajes de validación cerca del control afectado y resumen accesible.
 
+## Empezar y editar con pocos pasos (ADR 070–072)
+
+Un espacio nuevo abre «¿Qué querés crear hoy?» dentro del canvas, con tres entradas: Contame tu idea, Dibujar y Elegir un ejemplo. No aparece un tutorial obligatorio; ? lo abre cuando se necesita. Contame tu idea enfoca el asistente o el acceso, sin enviar mensajes. Dibujar invita a tocar el lienzo y escribir una nota. Los ejemplos muestran el diagrama real: explicar una idea, planificar una tarea y San Pancho; los técnicos se encuentran en una sección adicional. Abrirlos crea otra pestaña y conserva el trabajo anterior. La bienvenida desaparece al crear contenido; lo guardado se recupera normalmente.
+
+Seleccionar muestra las acciones junto al elemento: Escribir, Color, Duplicar, Unir y Más. Unir pide elegir otro elemento; también funciona con foco y Enter/Espacio. Esc cancela. Flechas izquierda/derecha, Home y End recorren la barra. Cambiar color, texto, duplicar y conectar pasan por las acciones del documento y se deshacen. La barra se mantiene dentro del lienzo y se oculta durante arrastre, edición, reproducción y propuestas pendientes.
+
+Concentrarme (Shift+F) da todo el ancho al canvas, mantiene el reproductor pequeño y oculta los paneles. Volver al editor o Esc restaura sus preferencias sin editar ni reencuadrar el documento. En móvil se conserva el scroll nativo; bienvenida y ejemplos pueden desplazarse dentro del canvas. Continúa pendiente la observación de niños y adultos mayores, lectores de pantalla y dispositivos físicos.
+
 ## Sistema visual
 
 Tinta #141619, papel #F4F6F8, azul #245CF6, lima #D4F246. Manrope para texto; IBM Plex Mono para código/metadatos. No cambiar logo ni destacar IA en el nombre. Texto normal 16px como objetivo; controles principales 14px; metadata compacta excepcional 12px. Revisar escalado 200%, navegación por teclado, foco, contraste, lector de pantalla y móvil.

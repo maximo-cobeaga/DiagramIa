@@ -109,7 +109,7 @@ function Scenarios({raw}:{raw:DiagramAnimation}){
 export function Timeline(){
   const [tracksOpen,setTracksOpen]=useState(false);
   const stepsRef=useRef<HTMLOListElement>(null);
-  const {doc}=useStore(documentStore),{animationId,scenarioId,time,playing,loop,follow}=useStore(playbackStore),{ids}=useStore(selectionStore),{timelineOpen,timelineHeight}=useStore(viewStore);
+  const {doc}=useStore(documentStore),{animationId,scenarioId,time,playing,loop,follow}=useStore(playbackStore),{ids}=useStore(selectionStore),{timelineOpen:savedOpen,timelineHeight,focusMode}=useStore(viewStore),timelineOpen=savedOpen&&!focusMode;
   const raw=rawAnimation(doc,animationId),animation=currentAnimation(doc,animationId),sampled=animation?sampleAnimation(animation,time):null,duration=animation?animationDuration(animation):0,effects=animation?sampleTrackEffects(animation,time):null;
   useEffect(()=>{
     const list=stepsRef.current,active=list?.querySelector<HTMLElement>('[aria-current="step"]');if(!list||!active)return;

@@ -72,6 +72,15 @@ export function paste(){if(!clipboard){notify('No hay nada copiado en esta sesi�
 export function cut(){if(copy())deleteSelection();}
 export function duplicate(){const clip=capture();if(clip)insert(clip,24,'Selección duplicada');}
 
+/** Une el origen elegido en la barra contextual con un destino real, con mouse o teclado. */
+export function connectTo(to:string|null){
+  const {doc}=state(),from=viewStore.get().connectFromId;if(!from)return;
+  if(!doc.nodes.some(n=>n.id===from)){viewStore.set({connectFromId:null,tool:'select'});notify('El elemento de origen ya no está. Elegí otro para unir.','warn');return;}
+  if(!to||to===from||!doc.nodes.some(n=>n.id===to)){notify('Elegí otro elemento para unirlo con el seleccionado.');return;}
+  const id=newId('edge');
+  if(transact([{type:'ADD_EDGE',edge:{id,from,to,label:''}}],'Elementos unidos')){select([id]);viewStore.set({connectFromId:null,tool:'select'});}
+}
+
 export function group(){
   const {doc,ids}=state(),nodes=selectedNodes(doc,ids);
   if(nodes.length<2){notify('Agrupar necesita al menos dos nodos seleccionados.','warn');return;}

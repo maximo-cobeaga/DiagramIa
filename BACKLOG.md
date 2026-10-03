@@ -2,6 +2,12 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Inicio, acciones cercanas y concentración (03/10/2026)
+
+- **Orden solicitado implementado, P8.1/P1.1 (ADR 070–072):** bienvenida en un canvas vacío, tres entradas claras y ejemplos cotidianos reales; barra contextual para escribir/colorear/duplicar/conectar; concentración reversible con paneles y contenido conservados. Sin modal obligatorio ni envío automático de IA.
+- **Evidencia:** `npm run check` 123/123 y `npm run smoke` 45/45, sin errores de consola; capturas en `evidencias/ui-inicio-guiado.png`, `ui-controles-contextuales.png`, `ui-concentracion.png`, `ui-ejemplos-cotidianos.png` y variantes móviles. Persistencia, IDs, undo, conexión por clic/teclado y preferencias comprobados. Sin cambios de schema o dependencias.
+- **Próximo paso:** revisión manual 22–24. Mantener P8.1 parcial hasta observar personas reales y revisar accesibilidad/dispositivos físicos; aplicar el feedback antes de sumar complejidad.
+
 ## UI más clara y animación compacta (03/10/2026)
 
 - **P8.1/P2.1, mejora implementada (ADR 069):** reproductor pequeño por defecto; «Editar pasos» abre el panel y «Bajar panel» libera el lienzo. Altura ajustable con mouse, táctil o teclado; tarjetas de pasos, duración en segundos y edición habitual separada de opciones avanzadas. Editar pausa la reproducción. Se conservan acciones, undo, pistas, ramas y cámara del documento.

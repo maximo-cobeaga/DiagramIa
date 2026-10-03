@@ -12,7 +12,7 @@ const STEPS:{title:string;body:string;tips:string[]}[]=[
   {title:'Dale movimiento',body:'Abajo tenés un reproductor pequeño. Tocá Reproducir para contar tu idea paso a paso.',tips:['«Editar pasos» abre los textos, la duración en segundos y la cámara.','«Bajar panel» o arrastrar su borde hacia abajo te devuelve espacio para dibujar.','«Presentar» abre tu recorrido a pantalla completa. Esc vuelve al editor.']}
 ];
 
-/** Recorrido rápido en un modal. Se muestra la primera vez y se reabre desde el encabezado. */
+/** Recorrido opcional en un modal, abierto desde la ayuda del encabezado. */
 export function Tutorial(){
   const [step,setStep]=useState(0),nextRef=useRef<HTMLButtonElement>(null),lastStep=step===STEPS.length-1,current=STEPS[step];
   const close=()=>{try{localStorage.setItem(SEEN,'1');}catch{/* se vuelve a mostrar la próxima vez */}viewStore.set({tutorial:false});};
