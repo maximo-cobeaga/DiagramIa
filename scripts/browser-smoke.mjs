@@ -63,6 +63,8 @@ const center=selector=>js(`(()=>{const el=document.querySelector(${JSON.stringif
 // El documento activo: el índice de pestañas dice cuál es y cada pestaña se guarda con su propia clave.
 const ACTIVE_KEY=`'diagramia.doc.'+JSON.parse(localStorage.getItem('diagramia.workspace')).active`;
 const saved=async()=>{await sleep(450);return js(`JSON.parse(localStorage.getItem(${ACTIVE_KEY}))`);};
+// El chat envía con un botón de ícono: se lo busca por su clase, no por el texto.
+const sendChat=()=>js("(()=>{const b=document.querySelector('.chat .send:not(.stop)');if(!b||b.disabled)return false;b.click();return true;})()");
 const clickText=(text,scope='body')=>js(`(()=>{const b=[...document.querySelectorAll(${JSON.stringify(scope)}+' button')].find(b=>b.textContent.trim().startsWith(${JSON.stringify(text)}));if(!b)return false;b.click();return true;})()`);
 const status=()=>js(`document.querySelector('.status span').textContent`);
 
@@ -81,7 +83,7 @@ try{
   await js(`(()=>{localStorage.clear();localStorage.setItem('diagramia.tutorial.seen','1');localStorage.setItem('diagramia.theme','light');})()`);await send('Page.reload');await sleep(1500);
 
   await check('carga el ejemplo de arquitectura sin errores',async()=>{
-    const count=await js(`document.querySelectorAll('.graph-node').length`);expect(count===4,`se esperaban 4 nodos, hay ${count}`);
+    const count=await js(`document.querySelectorAll('.canvas .graph-node').length`);expect(count===4,`se esperaban 4 nodos, hay ${count}`);
     await shot('01-desktop-architecture');return `${count} nodos`;
   });
   await check('arrastrar un nodo lo mueve con una acción y Ctrl+Z lo restaura',async()=>{
@@ -132,7 +134,7 @@ try{
   await check('una propuesta se valida, muestra el diff y se aplica sólo al aceptar',async()=>{
     await key('Escape');
     const api=await center('[data-id="api"]');await click(api);
-    expect(await clickText('Sesión','.tabs'),'no está la pestaña Sesión');await sleep(80);
+    expect(await clickText('Cuenta','.tabs'),'no está la pestaña Cuenta');await sleep(80);
     const revision=(await saved()).revision;
     await js(`document.querySelector('details.manual').open=true`);
     expect(await clickText('Ejemplo: agregar Redis'),'falta el ejemplo');await sleep(60);
@@ -170,7 +172,7 @@ try{
     const before=await saved();await send('Page.reload');await sleep(1500);
     const title=await js(`document.querySelector('.doc-tab.active [role=tab]').textContent`);
     expect(title.includes('r'+before.revision),`título tras recargar: ${title}`);
-    expect(await js(`document.querySelectorAll('.graph-node').length`)===before.nodes.length,'cambió la cantidad de nodos');
+    expect(await js(`document.querySelectorAll('.canvas .graph-node').length`)===before.nodes.length,'cambió la cantidad de nodos');
     return title;
   });
   for(const [index,name] of [[1,'checkout-success'],[2,'checkout-failure']]){
@@ -267,7 +269,7 @@ try{
   });
   await check('si el almacenamiento falla se avisa, no se confirma el guardado y el export sigue disponible',async()=>{
     await js(`(()=>{window.__set=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException('full','QuotaExceededError');};})()`);
-    const node=await center('.graph-node');await drag(node,{x:node.x+40,y:node.y});await sleep(500);
+    const node=await center('.canvas .graph-node');await drag(node,{x:node.x+40,y:node.y});await sleep(500);
     const state=await js(`document.querySelector('.save-state').textContent`),text=await status();
     await js(`Storage.prototype.setItem=window.__set`);
     expect(state.includes('Sin guardar')&&text.includes('No se pudo guardar'),`estado: ${state} / ${text}`);
@@ -279,7 +281,7 @@ try{
     const future=JSON.stringify({...(await saved()),schemaVersion:'9.0.0'});
     await js(`localStorage.setItem(${ACTIVE_KEY},${JSON.stringify(future)})`);await send('Page.reload');await sleep(1500);
     const text=await status();expect(text.includes('9.0.0'),`mensaje: ${text}`);
-    const node=await center('.graph-node');await drag(node,{x:node.x+40,y:node.y});await sleep(500);
+    const node=await center('.canvas .graph-node');await drag(node,{x:node.x+40,y:node.y});await sleep(500);
     expect(await js(`localStorage.getItem(${ACTIVE_KEY})`)===future,'se pisó el documento ilegible');
     expect(await clickText('Exportar copia dañada'),'falta el botón de recuperación');await sleep(400);
     expect((await saved()).schemaVersion!=='9.0.0','el guardado no se rehabilitó');
@@ -290,10 +292,10 @@ try{
     if(!reachable?.providers.some(p=>p.id==='mock'))return 'OMITIDO: el gateway no corre con DIAGRAMIA_ENABLE_MOCK=1';
     await send('Page.reload');await sleep(1500);
     expect(await clickText('IA','.tabs'),'no está la pestaña IA');await sleep(500);
-    await js(`(()=>{const set=(el,proto,v)=>{Object.getOwnPropertyDescriptor(proto,'value').set.call(el,v);el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));};set(document.querySelector('#chat-provider'),HTMLSelectElement.prototype,'mock');set(document.querySelector('#chat-prompt'),HTMLTextAreaElement.prototype,'Agregá una caché');})()`);
+    await js(`(()=>{const set=(el,proto,v)=>{Object.getOwnPropertyDescriptor(proto,'value').set.call(el,v);el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));};const provider=document.querySelector('#chat-provider');if(provider)set(provider,HTMLSelectElement.prototype,'mock');set(document.querySelector('#chat-prompt'),HTMLTextAreaElement.prototype,'Agregá una caché');})()`);
     await sleep(100);const revision=(await saved()).revision;
-    expect(await clickText('Enviar','.chat'),'falta Enviar');await sleep(1200);
-    const staged=await js(`document.querySelector('ol.staged')?.textContent`);expect(staged&&staged.includes('ADD_NODE'),`propuesta: ${staged} / ${await js(`document.querySelector('.chat').textContent.slice(-300)`)}`);
+    expect(await sendChat(),'falta Enviar');await sleep(1200);
+    const staged=await js(`document.querySelector('ol.staged')?.textContent`);expect(staged&&staged.includes('Agrega'),`propuesta: ${staged} / ${await js(`document.querySelector('.chat').textContent.slice(-300)`)}`);
     expect((await saved()).revision===revision,'la propuesta cambió el documento antes de aceptar');
     const badge=await js(`document.querySelector('.chat').textContent.includes('DEMOSTRACIÓN')`);expect(badge,'el mock no está marcado como demostración');
     await shot('10-desktop-chat-proposal');
@@ -304,18 +306,18 @@ try{
   await check('rechazar, cancelar o editar durante una propuesta de IA nunca cambia el documento sin aceptar',async()=>{
     const reachable=await js(`fetch('/api/v1/providers',{headers:{'x-diagramia-client':'editor'}}).then(r=>r.ok?r.json():null).catch(()=>null)`);
     if(!reachable?.providers.some(p=>p.id==='mock'))return 'OMITIDO: el gateway no corre con DIAGRAMIA_ENABLE_MOCK=1';
-    const fill=text=>js(`(()=>{const set=(el,proto,v)=>{Object.getOwnPropertyDescriptor(proto,'value').set.call(el,v);el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));};set(document.querySelector('#chat-provider'),HTMLSelectElement.prototype,'mock');set(document.querySelector('#chat-mode'),HTMLSelectElement.prototype,'edit');set(document.querySelector('#chat-prompt'),HTMLTextAreaElement.prototype,${JSON.stringify(text)});})()`);
+    const fill=text=>js(`(()=>{const set=(el,proto,v)=>{Object.getOwnPropertyDescriptor(proto,'value').set.call(el,v);el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));};const provider=document.querySelector('#chat-provider');if(provider)set(provider,HTMLSelectElement.prototype,'mock');set(document.querySelector('#chat-prompt'),HTMLTextAreaElement.prototype,${JSON.stringify(text)});})()`);
     const chatText=()=>js(`document.querySelector('.chat').textContent`);
     await send('Page.reload');await sleep(1500);
     expect(await clickText('IA','.tabs'),'no está la pestaña IA');await sleep(500);
     const before=await saved();
     // Cancelar: el pedido se corta antes de que el proveedor responda.
     await fill('Agregá una caché');await sleep(80);
-    await js(`(()=>{const b=[...document.querySelectorAll('.chat button')];b.find(x=>x.textContent.trim()==='Enviar').click();setTimeout(()=>b.find(x=>x.textContent.trim()==='Cancelar').click(),30);})()`);await sleep(900);
+    await js(`(()=>{document.querySelector('.chat .send').click();setTimeout(()=>document.querySelector('.chat .send.stop').click(),30);})()`);await sleep(900);
     expect((await chatText()).includes('Pedido cancelado')&&!(await js(`Boolean(document.querySelector('.staged'))`)),'la cancelación no se reflejó');
     // Vista previa en el canvas y rechazo.
     const nodesBefore=await js(`document.querySelectorAll('.canvas .graph-node').length`);
-    await fill('Agregá una caché');await sleep(80);expect(await clickText('Enviar','.chat'),'falta Enviar');await sleep(1400);
+    await fill('Agregá una caché');await sleep(80);expect(await sendChat(),'falta Enviar');await sleep(1400);
     const staged=await js(`({nodes:document.querySelectorAll('.canvas .graph-node').length,marked:document.querySelectorAll('.canvas .staged').length,banner:document.querySelector('.canvas-banner')?.textContent??''})`);
     expect(staged.nodes===nodesBefore+1&&staged.marked>=1&&staged.banner.includes('Vista previa'),`vista previa: ${JSON.stringify(staged)}`);
     await shot('13-desktop-staging-preview');
@@ -323,7 +325,7 @@ try{
     expect(await clickText('Rechazar','.chat'),'falta Rechazar');await sleep(200);
     expect(await js(`document.querySelectorAll('.canvas .graph-node').length`)===nodesBefore&&!(await js(`Boolean(document.querySelector('.canvas-banner'))`)),'el rechazo dejó la vista previa');
     // Revisión obsoleta: se edita mientras la propuesta espera.
-    await fill('Agregá una caché');await sleep(80);await clickText('Enviar','.chat');await sleep(1200);
+    await fill('Agregá una caché');await sleep(80);await sendChat();await sleep(1200);
     // Con la vista previa activa el canvas es de sólo lectura; se la apaga para editar mientras la propuesta espera.
     await js(`document.querySelector('[data-role="stage-toggle"]').click()`);await sleep(150);
     await js('document.activeElement?.blur()');
@@ -332,10 +334,12 @@ try{
     expect(text.includes('Regenerar')&&!text.includes('Aceptar y aplicar'),'la propuesta obsoleta sigue siendo aplicable');
     const after=await saved();
     expect(after.revision===before.revision+1&&after.nodes.length===before.nodes.length,`documento: r${after.revision} con ${after.nodes.length} nodos`);
+    // Se mira el pedido que sale hacia el gateway: la memoria de la conversación es el historial que viaja con él.
+    await js(`(()=>{window.__assist=[];const original=window.fetch;window.fetch=(url,init)=>{if(String(url).includes('/v1/assist'))window.__assist.push(JSON.parse(init.body));return original(url,init);};})()`);
     expect(await clickText('Regenerar','.chat'),'falta Regenerar');await sleep(1200);
     expect(await clickText('Aceptar y aplicar','.chat'),'la regeneración no produjo una propuesta aplicable');
     const done=await saved();expect(done.nodes.length===before.nodes.length+1&&done.revision===before.revision+2,'la propuesta regenerada no se aplicó');
-    expect((await chatText()).includes('recuerda'),'la conversación no recuerda los turnos');
+    const sent=await js(`window.__assist.at(-1)`);expect(sent?.history?.length>=2&&sent.mode==='edit','la conversación no recuerda los turnos');
     return 'cancelar, previsualizar, rechazar, obsoleta y regenerar';
   });
   const setValue=(selector,value)=>js(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});const proto=el.tagName==='SELECT'?HTMLSelectElement.prototype:el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));})()`);
@@ -392,11 +396,41 @@ try{
     const reachable=await js(`fetch('/api/v1/providers',{headers:{'x-diagramia-client':'editor'}}).then(r=>r.ok?r.json():null).catch(()=>null)`);
     if(!reachable?.providers.some(p=>p.id==='mock'))return 'anotación manual ok; revisión de IA OMITIDA: gateway sin proveedor de demostración';
     expect(await clickText('IA','.tabs'),'no está la pestaña IA');await sleep(500);
-    await setValue('#chat-provider','mock');await setValue('#chat-mode','review');await setValue('#chat-prompt','Revisá la arquitectura');await sleep(100);
-    expect(await clickText('Enviar','.chat'),'falta Enviar');await sleep(1200);
+    if(await js("Boolean(document.querySelector('#chat-provider'))"))await setValue('#chat-provider','mock');await setValue('#chat-prompt','Revisá la arquitectura');await sleep(100);
+    expect(await sendChat(),'falta Enviar');await sleep(1200);
     expect(await clickText('Guardar como anotaciones','.chat'),`sin observaciones: ${await js(`document.querySelector('.chat').textContent.slice(-200)`)}`);
     doc=await saved();expect(doc.annotations.length===2&&doc.annotations[1].source==='ai',`anotaciones: ${doc.annotations.length}`);
-    return `${doc.annotations.length} anotaciones (usuario + IA de demostración)`;
+    // Tocar una observación enfoca el elemento y lo resalta, sin seleccionarlo ni cambiar el documento.
+    const selectedBefore=await js(`document.querySelectorAll('.canvas .selected').length`);
+    expect(await js(`(()=>{const b=document.querySelector('.chat .finding-target');if(!b)return false;b.click();return true;})()`),'la observación no se puede tocar');await sleep(300);
+    expect(await js(`document.querySelectorAll('.canvas .focus-flash').length`)>0,'no se resaltó el elemento');
+    expect(await js(`document.querySelectorAll('.canvas .selected').length`)===selectedBefore&&(await saved()).revision===doc.revision,'enfocar seleccionó o cambió algo');
+    const named=await js(`document.querySelector('.chat .finding-target').textContent`);
+    return `${doc.annotations.length} anotaciones (usuario + IA de demostración); enfoque de «${named}»`;
+  });
+  await check('una explicación es breve, se puede ampliar y se ve como presentación animada sin guardarse sola',async()=>{
+    const reachable=await js(`fetch('/api/v1/providers',{headers:{'x-diagramia-client':'editor'}}).then(r=>r.ok?r.json():null).catch(()=>null)`);
+    if(!reachable?.providers.some(p=>p.id==='mock'))return 'OMITIDO: el gateway no corre con DIAGRAMIA_ENABLE_MOCK=1';
+    await send('Page.reload');await sleep(1500);
+    await setValue('select[aria-label="Cargar ejemplo"]','0');await sleep(600);
+    expect(await clickText('IA','.tabs'),'no está la pestaña IA');await sleep(500);
+    if(await js("Boolean(document.querySelector('#chat-provider'))"))await setValue('#chat-provider','mock');
+    await setValue('#chat-prompt','Explicame qué hace este diagrama');await sleep(100);
+    expect(await sendChat(),'falta Enviar');await sleep(1200);
+    expect(await js(`document.querySelector('.answer-footer .intent select')?.value`)==='explain','el pedido no se interpretó como explicación');
+    const before=await saved();
+    expect(await clickText('▶ Ver explicación animada','.chat'),`sin recorrido: ${await js(`document.querySelector('.chat').textContent.slice(-300)`)}`);await sleep(1600);
+    const caption=await js(`document.querySelector('.presentation-caption')?.textContent??''`);
+    expect(caption.includes('Paso 1 de demostración'),`la presentación no muestra el recorrido: ${caption}`);
+    await shot('17-desktop-explanation-tour');
+    await key('Escape');await sleep(300);
+    expect(!(await js(`Boolean(document.querySelector('.presentation'))`)),'la presentación no se cerró');
+    expect((await saved()).revision===before.revision,'ver la explicación cambió el documento');
+    expect(await clickText('Guardar como animación','.chat'),'falta guardar el recorrido');await sleep(200);
+    const after=await saved();expect(after.animations.length===before.animations.length+1&&after.animations.at(-1).steps.length===3,`animaciones: ${after.animations.length}`);
+    expect(await clickText('Explicar más','.chat'),'falta Explicar más');await sleep(1200);
+    expect(await js(`[...document.querySelectorAll('.chat .bubble.user')].at(-1).textContent`)==='Explicar más','el pedido ampliado no se ve como tal');
+    return `recorrido de ${after.animations.at(-1).steps.length} pasos guardado; ampliación enviada`;
   });
   await check('formas, texto en el lugar, estilo y flechas enganchadas en cualquier punto',async()=>{
     await send('Page.reload');await sleep(1500);
@@ -433,6 +467,44 @@ try{
     expect(moved.to==='frontend'&&moved.toAnchor===null,`tras reconectar: ${moved.to}`);
     await shot('14-desktop-shapes-style-anchors');
     return `clase «${cls.label}», relleno ${doc.nodes.find(n=>n.id==='db').style.fill}, enganche ${JSON.stringify(edge.toAnchor)}`;
+  });
+  await check('elementos para todo público: buscar, tarjeta con icono, estilo rápido y elemento propio que vuelve agrupado',async()=>{
+    await send('Page.reload');await sleep(1500);
+    await setValue('select[aria-label="Cargar ejemplo"]','0');await sleep(600);
+    await js(`document.querySelector('.tool-extra-toggle')?.getAttribute('aria-expanded')==='false'&&document.querySelector('.tool-extra-toggle').click()`);await sleep(100);
+    await setValue('input[aria-label="Buscar elementos"]','bombilla');await sleep(150);
+    expect(await js(`[...document.querySelectorAll('.palette-item')].map(b=>b.textContent.trim()).join()`)==='Idea','la búsqueda no encontró la idea por palabra clave');
+    await js(`document.querySelector('.palette-item').click()`);await sleep(80);
+    const host=await center('.canvas-host');
+    // Vista previa: con la forma elegida, el elemento real sigue al puntero antes de ubicarlo.
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:host.left+host.width*.5,y:host.top+host.height*.5});await sleep(200);
+    expect(await js(`document.querySelector('.place-ghost .graph-node.shape-cloud')!==null`),'no se ve la vista previa del elemento elegido');await click({x:host.left+host.width*.18,y:host.top+host.height*.85});await sleep(200);await key('Escape');await sleep(100);
+    let doc=await saved();const idea=doc.nodes.at(-1);
+    expect(idea.icon==='idea'&&idea.style.iconSize==='large'&&idea.size.height>=104,`tarjeta: ${JSON.stringify({icon:idea.icon,style:idea.style,size:idea.size})}`);
+    await setValue('input[aria-label="Buscar elementos"]','');
+    // Estilo rápido sobre la tarjeta y otro nodo: un solo paso para los dos.
+    await click(await center(`[data-id="${idea.id}"]`));await clickText('Propiedades','.tabs');await sleep(150);
+    expect(await js(`(()=>{const b=document.querySelector('.presets button[title="Menta"]');if(!b)return false;b.click();return true;})()`),'faltan los estilos rápidos');await sleep(150);
+    doc=await saved();expect(doc.nodes.find(n=>n.id===idea.id).style.fill==='#d9f5e8'&&doc.nodes.find(n=>n.id===idea.id).style.iconSize==='large','el estilo rápido no se aplicó o borró el icono grande');
+    await shot('18-desktop-icon-card');
+    // Elemento propio: dos nodos seleccionados, guardados con nombre e insertados como una pieza.
+    await js(`document.activeElement?.blur()`);
+    await click(await center('[data-id="api"]'));await sleep(100);
+    await js(`(()=>{const list=document.querySelector('details.elements');list.open=true;[...list.querySelectorAll('button')].find(b=>b.textContent.endsWith('· db')).dispatchEvent(new MouseEvent('click',{bubbles:true,shiftKey:true}));})()`);await sleep(150);
+    expect(await clickText('✦ Guardar como elemento propio','.panel-body'),'falta guardar como elemento propio');await sleep(100);
+    await setValue('#element-name','API con base');await clickText('Guardar','.save-element-form');await sleep(200);
+    expect(await clickText('Biblioteca','.tabs'),'falta la pestaña Biblioteca');await sleep(150);
+    expect((await js(`document.querySelector('.panel-body h3').textContent`)).includes('Mis elementos · 1'),'el elemento no quedó en Mis elementos');
+    const before=await saved();await clickText('Insertar','.component-list');await sleep(300);
+    doc=await saved();const group=doc.groups.find(g=>g.label==='API con base');
+    expect(group&&doc.nodes.filter(n=>n.groupId===group.id).length===2&&doc.revision===before.revision+1,'el elemento propio no se insertó agrupado en un paso');
+    await shot('19-desktop-own-element');
+    // «Darle diseño»: un solo paso, zonas con tono y un recorrido si no había animaciones.
+    const plain=await saved();
+    expect(await clickText('✦ Darle diseño','.canvas-toolbar'),'falta «Darle diseño»');await sleep(500);
+    doc=await saved();
+    expect(doc.revision===plain.revision+1&&doc.zones.every(z=>z.style.stroke),'el diseño no se aplicó en un paso a las zonas');
+    return `tarjeta «${idea.label}», estilo Menta, elemento «${group.label}» agrupado, diseño aplicado`;
   });
   await check('pestañas: canvas nuevo, volver sin perder nada y cerrar',async()=>{
     const before=await saved(),tabs=await js(`document.querySelectorAll('.doc-tab').length`);
@@ -519,12 +591,12 @@ try{
       return [...controls,...images];
     })()`);
     const found=new Set();
-    for(const tab of ['IA','Propiedades','Biblioteca','Sesión']){
+    for(const tab of ['IA','Propiedades','Biblioteca','Cuenta']){
       await js(`[...document.querySelectorAll('.tabs button')].find(b=>b.textContent.trim()===${JSON.stringify(tab)})?.click()`);await sleep(250);
       for(const item of await unnamed())found.add(`${tab}: ${item}`);
     }
     expect(!found.size,`sin nombre accesible: ${[...found].slice(0,12).join(' · ')}`);
-    return 'IA, Propiedades, Biblioteca y Sesión revisados';
+    return 'IA, Propiedades, Biblioteca y Cuenta revisados';
   });
   for(const [width,height,label] of [[1024,768,'tablet'],[390,844,'mobile']]){
     await check(`layout ${label} ${width}×${height} sin desborde horizontal`,async()=>{

@@ -15,7 +15,7 @@
   --canvas:#12151a;--grid:#2a2f37;--shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.45);color-scheme:dark;
 }
 /* Colores del dibujo en modo oscuro. Sólo valen dentro del editor: un export no los define y sale claro. */
-:root[data-theme=dark] :is(.canvas,.presentation-stage,.palette){--d-ink:#e8ebef;--d-muted:#9aa4b2;--d-node:#1e2229;--d-line:#8b96a8;--d-zone:#191d23;--d-zone-line:#4a5362;--d-halo:#12151a;--d-note:#2c3118}
+:root[data-theme=dark] :is(.canvas,.presentation-stage,.palette,.component-preview){--d-ink:#e8ebef;--d-muted:#9aa4b2;--d-node:#1e2229;--d-line:#8b96a8;--d-zone:#191d23;--d-zone-line:#4a5362;--d-halo:#12151a;--d-note:#2c3118}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body{margin:0;background:var(--paper)}
@@ -87,12 +87,17 @@ header::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;ba
 .palette details{border-top:1px solid var(--line)}
 .palette summary,.elements summary{cursor:pointer;font-size:13px;font-weight:600;padding:8px 2px;list-style-position:inside}
 .palette-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding-bottom:10px}
-.palette-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px 4px;min-height:58px;min-width:0;cursor:grab}
+.palette-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 5px;min-height:70px;min-width:0;cursor:grab}
 .palette-item:hover:not(:disabled) .thumb{transform:scale(1.12)}
 .palette-item span{font-size:10px;line-height:1.15;color:var(--muted);text-align:center;overflow:hidden;text-overflow:ellipsis;max-width:100%;white-space:nowrap}
 .palette-item.chosen span{color:var(--blue);font-weight:600}
-.thumb{width:44px;height:30px;transition:transform 200ms var(--ease);overflow:visible}
+.thumb{width:56px;max-width:100%;height:40px;transition:transform 200ms var(--ease);overflow:visible}
+/* Vista previa del elemento que se va a crear, bajo el cursor. */
+.place-ghost{opacity:.72}
+.place-ghost .node-shape{stroke-dasharray:6 4}
 .thumb-text{font-size:13px;font-weight:650;fill:var(--ink)}
+.palette-search{width:100%;margin:2px 0 6px;font-size:13px;padding:7px 10px;border-radius:10px}
+.palette-results{margin:4px 2px 6px;font-size:12px;color:var(--muted)}
 .element-list{display:flex;flex-direction:column;gap:4px;max-height:260px;overflow:auto}
 .element-list>*{flex:none}
 .element-list button{text-align:left;border:0;border-left:3px solid transparent;display:flex;flex-direction:column;background:var(--surface-2);min-height:0;padding:6px 8px;box-shadow:none;transform:none}
@@ -239,6 +244,8 @@ textarea#proposal{width:100%;height:200px;resize:vertical;font:12px/1.6 Plex,mon
 .component-card small{font:11px Plex,monospace;color:var(--muted)}
 .component-card p{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.45}
 .component-actions{display:flex;flex-direction:column;gap:4px;flex:none}
+.component-card>div:nth-child(2){flex:1;min-width:0}
+.component-preview{flex:none;width:84px;height:58px;background:var(--surface-2);border-radius:8px;pointer-events:none}
 .log{margin:0;padding-left:0;list-style:none;font:12px/1.7 Plex,monospace;color:var(--muted);overflow-wrap:anywhere;max-height:220px;overflow:auto}
 .shortcuts{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:12px;line-height:1.45}
 .shortcuts dt{font-family:Plex,monospace;color:var(--ink)}
@@ -281,10 +288,40 @@ ol.staged li.shown{color:var(--blue)}
 .stage-control input[type=range]{width:100%;padding:0;accent-color:var(--accent)}
 .chat-composer{flex:none;border-top:1px solid var(--line);padding:10px 12px 8px;display:flex;flex-direction:column;gap:7px;background:var(--surface)}
 .chat-composer textarea{width:100%;resize:none;border-radius:12px;padding:10px 12px;line-height:1.4;min-height:58px;max-height:160px}
-.composer-row{display:flex;gap:6px;align-items:center}
-.composer-row select{min-width:0;flex:1;padding:6px;font-size:12px;min-height:34px}
-.composer-row button{min-height:34px;font-size:13px;flex:none}
-.composer-hint{margin:0;font:10px/1.5 Plex,monospace;color:var(--muted)}
+.composer-row{display:flex;gap:8px;align-items:center}
+.composer-row select{min-width:0;max-width:45%;padding:4px 6px;font-size:12px;min-height:30px}
+.composer-hint{margin:0;font-size:12px;color:var(--muted);flex:1}
+/* Cuadro de mensaje con el botón de enviar adentro, como en cualquier chat. */
+.composer-box{position:relative}
+.chat-composer .composer-box textarea{padding-right:52px;border-radius:16px;transition:border-color 180ms var(--ease),box-shadow 180ms var(--ease)}
+.chat-composer .composer-box textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-soft);outline:none}
+.composer-box .send{position:absolute;right:8px;bottom:8px;width:36px;height:36px;min-height:0;padding:0;border-radius:50%;font-size:18px;font-weight:700;display:grid;place-items:center}
+.composer-box .send.stop{font-size:12px;background:var(--surface-2)}
+/* Invitación a entrar cuando la IA pide sesión. */
+.chat-cta{margin:auto 0;display:flex;flex-direction:column;gap:12px;align-items:flex-start;padding:18px;border-radius:16px;background:linear-gradient(160deg,var(--blue-soft),var(--surface) 70%);border:1px solid var(--line);font-size:14px;line-height:1.55}
+.chat-cta p{margin:0}
+.chat-cta .spark{width:30px;height:30px;font-size:16px;border-radius:9px}
+/* Respuestas: Markdown liviano, recorrido y pie con acciones. */
+.md{display:flex;flex-direction:column;gap:8px}
+.md ul,.md ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:3px}
+.md .md-heading{font-weight:700}
+.md code{font-size:12px}
+.tour-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tour-actions .primary small{color:inherit;opacity:.8;font-weight:500;margin-left:4px}
+.answer-footer{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;border-top:1px solid var(--line);padding-top:6px;margin-top:2px}
+.answer-footer .more{font-weight:650}
+.answer-footer .intent{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.answer-footer .intent select{font-size:12px;padding:2px 4px;min-height:26px;border-radius:6px}
+.answer-footer .feedback{margin:0 0 0 auto}
+.bubble.user.derived{background:var(--blue-soft);color:var(--ink);font-weight:600}
+details.usage summary{font-size:11px;color:var(--muted);cursor:pointer;width:max-content}
+details.usage .bubble-meta{margin-top:4px;color:var(--muted)}
+/* Observaciones: el elemento se nombra y se ve al tocarlo. */
+.findings li{border-left:3px solid var(--blue);padding-left:8px}
+.findings li.tone-warning{border-left-color:#e8a317}
+.findings li.tone-risk{border-left-color:#e5484d}
+.finding-target{align-self:flex-start;display:flex;gap:6px;align-items:center;min-height:0;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:650}
+.finding-target .severity{font:10px Plex,monospace;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 
 .modal-backdrop{position:fixed;inset:0;z-index:20;background:rgba(15,17,20,.55);display:grid;place-items:center;padding:16px;backdrop-filter:blur(3px)}
 .modal{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:26px;width:min(520px,100%);display:flex;flex-direction:column;gap:10px;animation:pop 260ms var(--ease) both;border-top:4px solid var(--lime)}
@@ -303,6 +340,40 @@ ol.staged li.shown{color:var(--blue)}
 .presentation-bar{flex:none;background:var(--surface);border-top:1px solid var(--line);padding:14px 24px;display:flex;gap:16px 24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .presentation-caption{margin:0;font-size:20px;line-height:1.4;display:flex;flex-direction:column;gap:4px;flex:1;min-width:260px}
 
+/* Cuenta en la cabecera: invitar a entrar sin competir con «Presentar». */
+button.signin{background:var(--lime);color:#141619;border-color:#b9d62f;font-weight:700}
+button.signin:hover:not(:disabled){border-color:#141619;box-shadow:0 4px 14px rgba(160,190,20,.35)}
+button.account-chip{display:flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;border-radius:999px;max-width:220px}
+.account-chip .avatar{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--blue);color:#fff;font-weight:700;font-size:13px}
+.account-chip .account-email{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.account-chip .warn-dot{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--warn);color:#fff;font-size:11px;font-weight:700}
+/* Mostrar u ocultar el panel lateral: ícono, no texto. */
+.canvas-toolbar .design-button{background:var(--lime);border-color:#b9d62f;color:#141619;font-weight:700}
+.canvas-toolbar .panel-toggle{display:grid;place-items:center;padding:0;width:34px}
+.panel-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.4}
+.panel-toggle svg .fill{fill:currentColor;stroke:none;opacity:.35}
+.panel-toggle.chosen{color:var(--blue)}
+
+/* Resaltado de lo que señala la IA: late dos veces y se apaga. Con reduced-motion queda fijo hasta desaparecer. */
+.focus-flash{fill:none;stroke:var(--blue);animation:focus-pulse 1.3s var(--ease) 2}
+.focus-flash.tone-warning{stroke:#e8a317;fill:rgba(232,163,23,.10)}
+.focus-flash.tone-risk{stroke:#e5484d;fill:rgba(229,72,77,.10)}
+.focus-flash.tone-info{fill:rgba(36,92,246,.08)}
+@keyframes focus-pulse{0%{opacity:0}25%{opacity:1}70%{opacity:.85}100%{opacity:.35}}
+
+/* Apariencia del nodo: estilos de un toque e iconos en grilla. */
+.preset-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.preset{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;min-height:0;font-size:11px;color:var(--muted)}
+.preset-swatch{display:grid;place-items:center;width:100%;height:26px;border-radius:7px;border:1.5px solid;font-size:12px;font-weight:700}
+.icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:4px;margin-top:6px}
+.icon-grid button{display:grid;place-items:center;min-height:36px;padding:0;font-size:15px;color:var(--muted)}
+.icon-grid svg{width:20px;height:20px;fill:none;stroke:var(--ink);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.icon-details summary,.style-details summary{cursor:pointer;font-size:13px;color:var(--blue);padding:4px 0}
+.segmented{display:flex;gap:4px;margin-bottom:4px}
+.save-element{width:100%;border-style:dashed;color:var(--blue);font-weight:650}
+.save-element-form{display:flex;flex-direction:column;gap:6px;border:1px dashed var(--blue);border-radius:10px;padding:10px}
+.segmented button{flex:1;font-size:12px;padding:5px 6px;min-height:30px}
+
 @media(max-width:1200px){
   header{flex-wrap:wrap}
   .header-actions{flex-wrap:wrap;justify-content:flex-end}
@@ -318,6 +389,9 @@ ol.staged li.shown{color:var(--blue)}
   header{flex-wrap:wrap}
   .header-actions{width:100%;margin:0;flex-wrap:wrap}
   .header-actions select{flex:1;min-width:0}
+  button.account-chip{max-width:160px}
+  .canvas-toolbar{padding:0 8px;justify-content:flex-end}
+  .canvas-toolbar>.mono{display:none}
   .workspace,.workspace.side-closed{display:flex;flex-direction:column}
   .tools{border-right:0;border-bottom:1px solid var(--line);overflow:visible}
   .tool-extra-toggle{display:block;text-align:left;width:100%}

@@ -111,6 +111,34 @@
           "acceptance": "Instanciar dos veces no colisiona IDs; editar una instancia no modifica otra; biblioteca se importa/exporta.",
           "status": "implemented",
           "evidence": "Biblioteca base (6 componentes), instanciación con IDs nuevos, biblioteca propia import/export; test y smoke."
+        },
+        {
+          "id": "P1.6",
+          "title": "Elementos para todo público y elementos propios",
+          "scope": "Revisión del usuario 03/10, puntos 8 y 9: elementos para personas, ideas, negocio, educación, comunicación y lugares; iconos ampliados con tamaño grande; estilos de un toque; buscador de la paleta; guardar una selección como elemento propio e insertarlo como una pieza.",
+          "paths": [
+            "packages/core/src/schema.ts",
+            "apps/editor/src/palette",
+            "apps/editor/src/inspector/Appearance.tsx",
+            "apps/editor/src/library"
+          ],
+          "acceptance": "Un documento 1.5.0 abre igual como 1.6.0; un icono fuera del catálogo se rechaza; la paleta encuentra elementos por palabra clave; un estilo rápido conserva el icono grande; un elemento propio se reinserta agrupado en un paso.",
+          "status": "implemented",
+          "evidence": "03/10/2026 (ADR 059 y 060): schema 1.6.0 con 49 iconos e iconSize, migración sin cambios de contenido, JSON Schemas y ejemplos actualizados, 6 categorías nuevas en la paleta con buscador, 12 estilos rápidos, selector de iconos en grilla, «Guardar como elemento propio» en Propiedades y «Mis elementos» con miniaturas. Test de core y smoke en Chromium («elementos para todo público…»). Falta revisión manual del usuario y biblioteca propia en la nube (sigue en el navegador). 03/10/2026 (noche, ADR 062): 11 formas con diseño propio, 68 iconos, categorías Viajes y planes y Procesos, vista previa real al ubicar y arrastrar, miniaturas dibujadas por el canvas, detalle partido en renglones. Smoke 36/36."
+        },
+        {
+          "id": "P1.7",
+          "title": "Diseño automático, enlaces y mapas",
+          "scope": "Segunda revisión del usuario 03/10 (evidencias/evi-1.json): que lo que arma la IA tenga diseño, animación y elementos variados; enlaces con vista previa y mapas.",
+          "paths": [
+            "packages/core/src/design.ts",
+            "packages/core/src/layout.ts",
+            "apps/api/src/assist.ts",
+            "apps/editor/src/commands.ts"
+          ],
+          "acceptance": "Un plan no técnico creado por la IA sale con tonos por zona, formas por rol, iconos, conexiones legibles y recorrido; «Darle diseño» lo hace con un diagrama existente en un paso deshacible; los enlaces se abren de forma segura. Vista previa remota de enlaces y mapas reales con protección SSRF y privacidad decidida.",
+          "status": "partial",
+          "evidence": "03/10/2026 (ADR 063 y 064): diseñador automático, recorrido, distribución en grilla/filas/estantes, guarda de formas compactas, campo link con dominio y botón ↗, forma mapa ilustrada. Test de gateway con un viaje; smoke:ai no cubre el diseño; prueba real con DeepSeek del pedido del usuario: 19–27 elementos, 3 a 5 formas, 17–21 iconos, recorrido de 13–15 pasos (evidencias/evi-2-viaje-con-diseno.png). Falta: vista previa remota de enlaces (SSRF), mapas reales, menos cruces entre zonas y revisión manual."
         }
       ]
     },
@@ -166,6 +194,32 @@
           "acceptance": "Animación editable ligada a IDs; borrar nodo detecta/poda referencias con aviso de captions; varios tracks sincronizados.",
           "status": "implemented",
           "evidence": "Plantillas de login, SaaS y flujo comercial; schema 1.5.0 con pistas de resaltado, texto y cámara ligadas a IDs de paso; editor en grilla, reproducción/presentación sincronizadas y export de timeline JSON/Markdown. Borrado de elementos o pasos poda referencias y avisa. Tests core de migración, referencias y ramas; npm run check 81/81 y smoke Chromium 32/32. Falta revisión manual de la interfaz."
+        },
+        {
+          "id": "P2.5",
+          "title": "Explicación animada por IA",
+          "scope": "Revisión del usuario 03/10, punto 2: una explicación trae un recorrido por los elementos reales que se reproduce como presentación sin tocar el documento y se puede guardar como animación editable.",
+          "paths": [
+            "apps/api/src/assist.ts",
+            "apps/editor/src/assistant/tour.ts",
+            "apps/editor/src/presentation"
+          ],
+          "acceptance": "El recorrido sólo refiere IDs existentes; verlo no cambia la revisión; guardarlo crea una animación en un paso; la cámara se acerca a lo resaltado y respeta reduced-motion.",
+          "status": "implemented",
+          "evidence": "03/10/2026 (ADR 058): contrato explain con answer + tour (schema estricto para Luna, JSON para compatibles), filtrado de IDs en gateway y editor, presentación sobre copia efímera, «Guardar como animación», encuadre de pasos sin frame. Test de gateway, smoke en Chromium y smoke:ai real con DeepSeek: recorrido de 5 pasos válidos. Falta revisión manual."
+        },
+        {
+          "id": "P2.6",
+          "title": "Narración con voz (Premium)",
+          "scope": "Revisión del usuario 03/10, punto 3: narrar la explicación animada con voz generada, al estilo de NotebookLM con identidad propia. Sólo en un plan pago.",
+          "paths": [
+            "packages/providers",
+            "apps/api",
+            "apps/editor/src/presentation"
+          ],
+          "acceptance": "Por definir con P4.6: proveedor de voz elegido por costo y licencia, tope de gasto por cuenta, sin voz en Free.",
+          "status": "pending",
+          "evidence": "Registrada el 03/10/2026. Depende de P4.6 (billing) y de P2.5."
         }
       ]
     },
@@ -186,7 +240,7 @@
           ],
           "acceptance": "Un provider real y uno local compatible funcionan con credenciales disponibles; error sin clave visible; mock marcado separado.",
           "status": "implemented",
-          "evidence": "Gateway + adapters. Proveedor local REAL comprobado (Ollama, qwen2.5-coder:7b) con npm run smoke:ai: 6/6 en tres corridas seguidas. Error sin clave visible y demostración marcada. FALTA SÓLO: correr «npm run smoke:ai -- anthropic» cuando exista ANTHROPIC_API_KEY. 02/10/2026: adapter GPT-6 Luna (`openai`, ADR 045/050) con structured outputs estrictos en Crear/Revisar, `max_completion_tokens`, `reasoning_effort` y costo con caché; pruebas de contrato contra un servidor que imita OpenAI (forma del pedido, negativa, clave faltante, flujo Crear sin reparaciones, costo). Las cuentas sólo usan proveedores de su plan (ADR 049). Bloqueado: smoke real con OPENAI_API_KEY (`npm run smoke:ai -- openai`)."
+          "evidence": "Gateway + adapters. Proveedor local REAL comprobado (Ollama, qwen2.5-coder:7b) con npm run smoke:ai: 6/6 en tres corridas seguidas. Error sin clave visible y demostración marcada. FALTA SÓLO: correr «npm run smoke:ai -- anthropic» cuando exista ANTHROPIC_API_KEY. 02/10/2026: adapter GPT-6 Luna (`openai`, ADR 045/050) con structured outputs estrictos en Crear/Revisar, `max_completion_tokens`, `reasoning_effort` y costo con caché; pruebas de contrato contra un servidor que imita OpenAI (forma del pedido, negativa, clave faltante, flujo Crear sin reparaciones, costo). Las cuentas sólo usan proveedores de su plan (ADR 049). Bloqueado: smoke real con OPENAI_API_KEY (`npm run smoke:ai -- openai`). 03/10/2026: DeepSeek (deepseek-flash) como proveedor provisorio por el adaptador compatible; smoke:ai real 9/9. No reemplaza la verificación con Luna."
         },
         {
           "id": "P3.2",
@@ -255,7 +309,7 @@
           ],
           "acceptance": "Usuario A no puede leer ni editar documentos de B; sesiones vencidas retornan error recuperable; secrets fuera de build.",
           "status": "implemented",
-          "evidence": "OIDC Authorization Code + PKCE con openid-client, state/nonce, firma de ID Token y cookie de sesión HttpOnly; proyectos privados con IDs de almacenamiento opacos, membresía y autorización por cuenta. Tests con issuer OIDC firmado y smoke PostgreSQL real: A no lee ni edita B, sesión vencida 401, mismo ID semántico en proyectos distintos. Falta conexión manual a Auth0 real y revisión en navegador con dos cuentas."
+          "evidence": "OIDC Authorization Code + PKCE con openid-client, state/nonce, firma de ID Token y cookie de sesión HttpOnly; proyectos privados con IDs de almacenamiento opacos, membresía y autorización por cuenta. Tests con issuer OIDC firmado y smoke PostgreSQL real: A no lee ni edita B, sesión vencida 401, mismo ID semántico en proyectos distintos. Falta conexión manual a Auth0 real y revisión en navegador con dos cuentas. 03/10/2026: el usuario configuró un tenant real de Auth0 y entró con email verificado; se corrigió el bloqueo tras verificar (botón «Ya lo verifiqué»). Falta la prueba con dos cuentas."
         },
         {
           "id": "P4.2",
@@ -313,6 +367,18 @@
           ],
           "acceptance": "Webhooks firmados y deduplicados; el proveedor se reemplaza sin tocar la lógica de planes; no inventar precios; condiciones del MoR verificadas en documentación oficial antes de integrar.",
           "status": "pending"
+        },
+        {
+          "id": "P4.7",
+          "title": "Biblioteca de la comunidad",
+          "scope": "Revisión del usuario 03/10, punto 10: publicar elementos y plantillas para que otros los usen.",
+          "paths": [
+            "apps/api",
+            "apps/editor/src/library"
+          ],
+          "acceptance": "Por definir: almacenamiento (P4.3), moderación y denuncias, licencia de lo publicado y términos de uso.",
+          "status": "pending",
+          "evidence": "Registrada el 03/10/2026. Depende de P4.3 y de los términos de uso."
         }
       ]
     },
@@ -531,6 +597,20 @@
           "acceptance": "Release reproducible y reversión probada; Diagramia no degrada a ReservApp bajo carga; desplegar sólo con autorización correspondiente; V1 completa según criterios o bloqueos identificados.",
           "status": "partial",
           "evidence": "02/10/2026 (ADR 055): infra/Dockerfile, compose.prod.yml, nginx.conf, backup.sh, env.production.example y runbook infra/DEPLOY.md. Probado en Docker local: pila sana, CSP por host, IP real a través de dos proxies, smoke 33/33 contra el contenedor, respaldo restaurado en una base nueva y vuelta atrás/adelante entre versiones. CI construye las dos imágenes. Bloqueado: autorización de despliegue, acceso al VPS, dominio, tenant Auth0 y OPENAI_API_KEY."
+        },
+        {
+          "id": "P8.5",
+          "title": "Revisión del usuario: acceso, chat y enfoque",
+          "scope": "Revisión del usuario 03/10, puntos 1, 4, 5, 6 y 7: login visible, chat sin selector de modos con intención deducida, respuestas breves con «Explicar más», enfoque y color al tocar una observación, botón del panel con ícono, logo hacia la landing real.",
+          "paths": [
+            "apps/editor/src/main.tsx",
+            "apps/editor/src/assistant",
+            "apps/api/src/intent.ts",
+            "apps/editor/src/store"
+          ],
+          "acceptance": "El invitado ve «Iniciar sesión» en la cabecera; el pedido se interpreta sin elegir modo y se puede corregir; explicar es breve y ampliable; tocar una observación enfoca sin seleccionar ni cambiar el documento.",
+          "status": "implemented",
+          "evidence": "03/10/2026 (ADR 057): cabecera con cuenta, pestaña Cuenta, clasificador de intención por reglas (16 frases de prueba), detail brief/expanded, enfoque con resaltado por gravedad, chat rediseñado. npm run check 109/109, smoke 36/36 en Chromium, smoke:ai DeepSeek 9/9. Falta revisión manual del usuario."
         }
       ]
     }
@@ -560,7 +640,9 @@
       "P7.4",
       "P4.3",
       "P5.3",
-      "P6.4"
+      "P6.4",
+      "P2.6",
+      "P4.7"
     ]
   }
 }

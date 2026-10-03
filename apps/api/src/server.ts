@@ -4,6 +4,7 @@ import {z} from 'zod';
 import {DiagramError,SCHEMA_VERSION,TelemetryBatchSchema,describeError,type ServerEvent} from '@diagramia/core';
 import type {Provider} from '@diagramia/providers';
 import {AssistError,MODES,assist,systemPrompt,type AssistAnswer,type AssistConfig} from './assist.js';
+import {resolveAutoMode} from './intent.js';
 import {UsageError,UsageLedger} from './usage.js';
 import {PostgresDocumentRepository,RepositoryError} from './repositories/postgres.js';
 import {AccountRepository,CreditError} from './repositories/accounts.js';
@@ -219,7 +220,8 @@ export function createApp(options:AppOptions):Server{
       if(path==='/v1/providers'&&req.method==='GET')return send(200,{modes:MODES,providers:providers.map(p=>p.info()),usage:options.ledger.summary(),credits:session?await options.accounts!.creditUsage(session.userId):null});
       if(path==='/v1/usage'&&req.method==='GET')return send(200,{...options.ledger.summary(),credits:session?await options.accounts!.creditUsage(session.userId):null});
       if(path==='/v1/assist'&&req.method==='POST'){
-        const body=await readJson(req),abort=new AbortController(),started=Date.now();
+        // «auto» se resuelve antes que nada: los créditos, la medición y la idempotencia usan el modo deducido.
+        const body=resolveAutoMode(await readJson(req)),abort=new AbortController(),started=Date.now();
         // Si el cliente corta la conexión antes de la respuesta, se cancela la llamada al proveedor.
         res.on('close',()=>{if(!res.writableEnded)abort.abort();});
         const meta=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES),providerId:z.string().min(1).max(40)}).safeParse(body);
@@ -242,7 +244,7 @@ export function createApp(options:AppOptions):Server{
           track({blocked:'RATE_LIMITED'});return fail(429,'RATE_LIMITED','Demasiados pedidos seguidos. Esperá un minuto y volvé a intentar.');
         }
         if(session&&options.requireVerifiedEmail!==false&&!session.emailVerified){
-          track({blocked:'EMAIL_NOT_VERIFIED'});return fail(403,'EMAIL_NOT_VERIFIED','Verificá tu email para usar la IA: revisá el correo de confirmación y volvé a iniciar sesión.');
+          track({blocked:'EMAIL_NOT_VERIFIED'});return fail(403,'EMAIL_NOT_VERIFIED','Verificá tu email para usar la IA con el correo de confirmación. Si ya lo hiciste, tocá «Ya lo verifiqué».');
         }
         try{
         if(session){

@@ -10,7 +10,7 @@ import {HISTORY_LIMIT,MAX_TABS,addTab,closeTab,dismissExternalChange,documentSto
 import {playbackStore,usePlaybackClock} from './store/playbackStore';
 import {select,selectionStore} from './store/selectionStore';
 import {setTheme,viewStore,zoomAt,zoomBy,type Panel,type Tool} from './store/viewStore';
-import {deleteSelection,fitAll} from './commands';
+import {deleteSelection,designAll,fitAll} from './commands';
 import {EXPORT_FORMATS,addImage,exportDocument,importFile,type ExportFormat} from './io';
 import {SHORTCUTS,useShortcuts} from './shortcuts';
 import {KIND_LABELS,saveFile} from './ui';
@@ -26,6 +26,7 @@ import {Presentation} from './presentation/Presentation';
 import {Tutorial,tutorialSeen} from './shell/Tutorial';
 import {SharedPanel} from './shell/SharedPanel';
 import {sharedStore} from './store/sharedStore';
+import {accountStore,refreshAccount,signIn} from './store/accountStore';
 import {browserOptOut,setTelemetryEnabled,startTelemetry,telemetryEnabled,track,trackReopened} from './telemetry';
 import './styles.css';
 
@@ -44,7 +45,9 @@ const TOOL_HINTS:Record<Tool,string>={
   node:'Hacé clic en el canvas para ubicar la forma elegida.',connect:'Arrastrá de un nodo a otro para crear una conexión.',line:'Arrastrá sobre el canvas para dibujar una línea libre.',arrow:'Arrastrá sobre el canvas para dibujar una flecha libre.',freehand:'Arrastrá para dibujar a mano alzada.',
   zone:'Arrastrá para dibujar la zona. Adopta los nodos sin zona que queden adentro.',frame:'Arrastrá para dibujar un encuadre de presentación.'
 };
-const PANELS:[Panel,string][]=[['assistant','IA'],['inspector','Propiedades'],['library','Biblioteca'],['history','Sesión']];
+const PANELS:[Panel,string][]=[['assistant','IA'],['inspector','Propiedades'],['library','Biblioteca'],['history','Cuenta']];
+// La landing vive en el dominio principal y el editor en app.<dominio>; en desarrollo la sirve npm run dev:landing.
+const SITE_URL=location.hostname.startsWith('app.')?`${location.protocol}//${location.hostname.slice(4)}/`:'http://127.0.0.1:4173/';
 const SAVE_ICON={saved:'✓',pending:'…',error:'✕',blocked:'⏸'} as const;
 const resetPlayback=()=>playbackStore.set({animationId:'',scenarioId:'',time:0,playing:false});
 
@@ -53,7 +56,7 @@ function Header(){
   const remote=shared.tabId===activeId;
   const remoteSummary=shared.phase==='synced'?`✓ ${shared.mode==='cloud'?'Nube':'MCP local'} · r${shared.serverRevision}`:shared.phase==='conflict'?'✕ Conflicto · abrir Cuenta':shared.phase==='offline'?'✕ Sin conexión · abrir Cuenta':`… Guardando ${shared.pending} cambio(s)`;
   return <header>
-    <a className="brand" href="http://localhost:4173" target="_blank" rel="noreferrer"><img src="/favicon.svg" alt=""/>diagramia</a>
+    <a className="brand" href={SITE_URL} target="_blank" rel="noreferrer"><img src="/favicon.svg" alt=""/>diagramia</a>
     <span className={`save-state ${remote&&['conflict','offline'].includes(shared.phase)?'error':save.status}`} role="status" title={remote?shared.message:save.detail}>{remote?remoteSummary:`${SAVE_ICON[save.status]} ${save.detail}`}{save.status==='error'&&<button className="quiet" onClick={retrySave}>Reintentar</button>}</span>
     <div className="header-actions">
       <button onClick={undo} disabled={!past.length} title="Deshacer (Ctrl + Z)">↶ Deshacer</button>
@@ -62,13 +65,24 @@ function Header(){
       <select aria-label="Exportar" value="" onChange={e=>void exportDocument(e.target.value as ExportFormat)}>
         <option value="" disabled>Exportar…</option>{EXPORT_FORMATS.map(([key,label])=><option key={key} value={key}>{label}</option>)}
       </select>
-      <button onClick={()=>viewStore.set({panel:'history',sideOpen:true})}>Cuenta</button>
+      <AccountButton/>
       <button className="icon-button" onClick={()=>setTheme(theme==='dark'?'light':'dark')} aria-label={theme==='dark'?'Cambiar a modo claro':'Cambiar a modo oscuro'} title={theme==='dark'?'Modo claro':'Modo oscuro'}>{theme==='dark'?'☀':'☾'}</button>
       <button className="icon-button" onClick={()=>viewStore.set({tutorial:true})} aria-label="Abrir el tutorial" title="Tutorial">?</button>
       <button className="primary" onClick={()=>viewStore.set({presenting:true})} title="Presentar (P)">▶ Presentar</button>
     </div>
     <input ref={inputRef} type="file" hidden accept=".json,.mmd,.mermaid,.md,.txt,.drawio,.xml,.dot,.gv,.puml,.plantuml,.bpmn" onChange={e=>{const file=e.target.files?.[0];if(file)void importFile(file);e.target.value='';}}/>
   </header>;
+}
+
+/** Entrada a la cuenta siempre a la vista: invitar a iniciar sesión es parte del recorrido, no un ajuste escondido. */
+function AccountButton(){
+  const {auth,account}=useStore(accountStore),open=()=>viewStore.set({panel:'history',sideOpen:true});
+  if(auth==='guest')return <button className="signin" onClick={()=>signIn('menu')}>Iniciar sesión</button>;
+  if(auth!=='signed-in'||!account)return <button onClick={open}>Cuenta</button>;
+  const email=account.session.email,initial=(email??'?').slice(0,1).toUpperCase();
+  return <button className="account-chip" onClick={open} title={email?`Cuenta: ${email}`:'Cuenta'} aria-label={email?`Cuenta de ${email}`:'Cuenta'}>
+    <span className="avatar" aria-hidden="true">{initial}</span><span className="account-email">{email??'Mi cuenta'}</span>{!account.session.emailVerified&&<span className="warn-dot" title="Email sin verificar" aria-hidden="true">!</span>}
+  </button>;
 }
 
 /** Pestañas: cada una es un diagrama independiente, con su propio historial y guardado. */
@@ -119,8 +133,11 @@ function CanvasToolbar(){
       <button onClick={()=>zoomBy(1/1.2)} aria-label="Alejar">−</button>
       <button className="zoom-readout" onClick={()=>zoomAt(viewport.width/2,viewport.height/2,1)} title="Volver a 100%">{Math.round(camera.zoom*100)}%</button>
       <button onClick={()=>zoomBy(1.2)} aria-label="Acercar">+</button>
+      <button className="wide design-button" onClick={designAll} title="Colores, formas, iconos y recorrido automáticos">✦ Darle diseño</button>
       <button className="wide" onClick={()=>fitAll()} title="Encuadrar todo (1)">Encuadrar</button>
-      <button className="wide" aria-expanded={sideOpen} aria-controls="side-panel" onClick={()=>viewStore.set({sideOpen:!sideOpen})} title={sideOpen?'Cerrar el panel lateral':'Abrir el panel lateral'}>{sideOpen?'Panel ⟩':'⟨ Panel'}</button>
+      <button className={'panel-toggle'+(sideOpen?' chosen':'')} aria-pressed={sideOpen} aria-controls="side-panel" onClick={()=>viewStore.set({sideOpen:!sideOpen})} aria-label={sideOpen?'Ocultar el panel lateral':'Mostrar el panel lateral'} title={sideOpen?'Ocultar panel':'Mostrar panel'}>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M10 2.5v11"/>{sideOpen&&<path className="fill" d="M10 3h4v10h-4z"/>}</svg>
+      </button>
     </div>
   </div>;
 }
@@ -137,7 +154,9 @@ function StatusBar(){
 function SessionPanel(){
   const {log,past,future,dropped,doc}=useStore(documentStore);
   return <div className="panel-body">
-    <span className="eyebrow">SESIÓN</span>
+    <SharedPanel/>
+    <PrivacySettings/>
+    <span className="eyebrow">SESIÓN DE TRABAJO</span>
     <p className="inline-note">Revisión actual r{doc.revision}. {past.length} paso(s) para deshacer, {future.length} para rehacer. El historial vive sólo en esta sesión y guarda hasta {HISTORY_LIMIT} pasos por pestaña.</p>
     {dropped>0&&<p className="inline-note warn">⚠ Se descartaron los {dropped} pasos más antiguos por el límite del historial. Exportá el JSON si necesitás conservar un estado.</p>}
     <h3>Cambios</h3>
@@ -146,8 +165,6 @@ function SessionPanel(){
     <dl className="shortcuts">{SHORTCUTS.map(([keys,action])=><React.Fragment key={keys}><dt>{keys}</dt><dd>{action}</dd></React.Fragment>)}</dl>
     <h3>Otra IA o MCP</h3>
     <ManualChannel/>
-    <SharedPanel/>
-    <PrivacySettings/>
   </div>;
 }
 
@@ -173,7 +190,7 @@ function App(){
   const {presenting,tutorial,sideOpen}=useStore(viewStore);
   useShortcuts();usePlaybackClock();
   // La primera vez se ofrece el recorrido; después queda en el botón «?».
-  useEffect(()=>{if(!tutorialSeen())viewStore.set({tutorial:true});},[]);
+  useEffect(()=>{if(!tutorialSeen())viewStore.set({tutorial:true});void refreshAccount();},[]);
   return <>
     <style>{DIAGRAM_CSS}</style>
     {/* Mientras se presenta o hay un modal, el editor queda inerte: ni el foco ni los atajos llegan a los controles tapados. */}

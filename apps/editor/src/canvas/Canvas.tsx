@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {anchorAt,contains,fitSize,groupMembers,nodeRect,overlaps,resolveMembership,routeAll,sampleAnimation,sampleTrackEffects,statesAt,unionRects,type ActionInput,type DiagramDocument,type Point,type Rect} from '@diagramia/core';
+import {anchorAt,contains,documentBounds,fitSize,groupMembers,nodeRect,overlaps,resolveMembership,routeAll,sampleAnimation,sampleTrackEffects,statesAt,unionRects,type ActionInput,type DiagramDocument,type Point,type Rect} from '@diagramia/core';
 import {useStore} from '../store/createStore';
 import {documentStore,newId,notify,transact} from '../store/documentStore';
 import {kindOf,select,selectionStore} from '../store/selectionStore';
@@ -8,6 +8,7 @@ import {snap,viewStore,zoomAt,type Camera,type NodeTemplate} from '../store/view
 import {fitAll,moveActions,selectionUnit} from '../commands';
 import {trackThrottled} from '../telemetry';
 import {DiagramLayer} from './DiagramLayer';
+import {singleNodeDocument,templateNode} from './templateNode';
 
 type BoxKind='node'|'zone'|'frame';
 type Anchor={x:number;y:number}|null;
@@ -73,11 +74,9 @@ function withGesture(doc:DiagramDocument,g:Gesture|null):DiagramDocument{
 
 /** Nodo nuevo a partir de la plantilla elegida en la paleta, centrado en `at` y con la pertenencia a zona que corresponda. */
 function placeNode(doc:DiagramDocument,template:NodeTemplate,at:Point){
-  const draft={kind:template.kind,shape:template.shape,label:template.label,subtitle:'',details:template.shape==='class'?'+ atributo: tipo\n--\n+ metodo(): tipo':'',style:{},assetId:null,icon:null};
-  const need=fitSize(draft),size={width:Math.max(template.size.width,need.width),height:Math.max(template.size.height,need.height)},id=newId('node');
-  const target=resolveMembership(doc,{x:snap(at.x-size.width/2),y:snap(at.y-size.height/2),...size});
-  if(!transact([{type:'ADD_NODE',node:{id,kind:draft.kind,shape:draft.shape,label:draft.label,details:draft.details,position:target.position,size,zoneId:target.zoneId}}],'Nodo agregado'))return;
-  select([id]);viewStore.set({tool:'select',editingId:id});
+  const node=templateNode(template,at,newId('node')),target=resolveMembership(doc,{...node.position,...node.size});
+  if(!transact([{type:'ADD_NODE',node:{...node,position:target.position,zoneId:target.zoneId}}],'Nodo agregado'))return;
+  select([node.id]);viewStore.set({tool:'select',editingId:node.id});
 }
 
 type Editable={id:string;kind:'node'|'edge'|'zone'|'frame';value:string;box:Rect;size:number;multiline:boolean};
@@ -100,8 +99,8 @@ function InlineEditor({target,camera}:{target:Editable;camera:Camera}){
 }
 
 export function Canvas(){
-  const {doc:saved}=useStore(documentStore),{camera,viewport,tool,template,staging,editingId}=useStore(viewStore),doc=staging?.doc??saved,stagedIds=useMemo(()=>staging?new Set(staging.changed):undefined,[staging]),{ids}=useStore(selectionStore),{animationId,time,scenarioId}=useStore(playbackStore);
-  const [gesture,showGesture]=useState<Gesture|null>(null),[spaceHeld,setSpaceHeld]=useState(false);
+  const {doc:saved}=useStore(documentStore),{camera,viewport,tool,template,staging,editingId,flash,dragTemplate}=useStore(viewStore),doc=staging?.doc??saved,stagedIds=useMemo(()=>staging?new Set(staging.changed):undefined,[staging]),{ids}=useStore(selectionStore),{animationId,time,scenarioId}=useStore(playbackStore);
+  const [gesture,showGesture]=useState<Gesture|null>(null),[spaceHeld,setSpaceHeld]=useState(false),[ghostAt,setGhostAt]=useState<Point|null>(null);
   // El gesto vigente vive en una ref: los movimientos se renderizan con prioridad baja y, si el botón se suelta
   // enseguida, el estado de React todavía puede ser el anterior. La ref siempre tiene el último valor.
   const gestureRef=useRef<Gesture|null>(null);
@@ -141,6 +140,8 @@ export function Canvas(){
     return {x:current.x+(e.clientX-box.left)/current.zoom,y:current.y+(e.clientY-box.top)/current.zoom};
   };
   const selected=useMemo(()=>new Set(ids),[ids]);
+  // Se calcula una vez por resaltado: durante el viaje de cámara el canvas se redibuja en cada cuadro.
+  const flashBoxes=useMemo(()=>flash?flash.ids.map(id=>documentBounds(doc,[id])).filter((r):r is Rect=>Boolean(r)):[],[flash,doc]);
   const visible=useMemo(()=>withGesture(doc,gesture),[doc,gesture]);
   // scenarioId no se usa directo: forma parte del estado suscripto para que cambiar de rama vuelva a dibujar.
   void scenarioId;
@@ -201,6 +202,8 @@ export function Canvas(){
       zoomAt((a.x+b.x)/2-box.left,(a.y+b.y)/2-box.top,pinch.current.zoom*Math.hypot(a.x-b.x,a.y-b.y)/pinch.current.distance);return;
     }
     if(gestureRef.current)setGesture(advance(gestureRef.current,e));
+    // Con una forma elegida, la vista previa sigue al puntero (mouse o lápiz; en táctil no hay puntero que seguir).
+    else if(tool==='node'&&e.pointerType!=='touch')setGhostAt(toWorld(e));
   }
   /** El gesto actualizado a la posición del puntero. También se aplica al soltar, para no depender del último movimiento. */
   function advance(g:Gesture,e:React.PointerEvent<SVGSVGElement>):Gesture{
@@ -303,6 +306,7 @@ export function Canvas(){
   }
   // Una forma arrastrada desde la paleta se crea donde se suelta.
   function drop(e:React.DragEvent){
+    setGhostAt(null);
     const raw=e.dataTransfer.getData(SHAPE_MIME);if(!raw||staging)return;
     e.preventDefault();
     try{placeNode(saved,JSON.parse(raw) as NodeTemplate,toWorld(e));}catch{/* un arrastre ajeno a la paleta no hace nada */}
@@ -317,6 +321,9 @@ export function Canvas(){
   }).filter(x=>x!==null),[visible,selected]);
   const escaped=gesture?.type==='resize'&&gesture.kind==='zone'?visible.nodes.filter(n=>n.zoneId===gesture.id&&!contains(gesture.rect,nodeRect(n))):[];
   const draft=gesture&&(gesture.type==='marquee'||gesture.type==='draw')?rectOf(gesture.start,gesture.current):null;
+  // Vista previa del elemento que se va a crear: la plantilla que se arrastra o la elegida en la paleta.
+  const ghostTemplate=dragTemplate??(tool==='node'?template:null);
+  const ghost=useMemo(()=>ghostTemplate&&ghostAt&&!staging&&!gesture?singleNodeDocument(templateNode(ghostTemplate,ghostAt)):null,[ghostTemplate,ghostAt,staging,gesture]);
   const empty=!doc.nodes.length&&!doc.zones.length&&!doc.frames.length&&!doc.drawings.length;
   const cursor=gesture?.type==='pan'?'grabbing':tool==='pan'||spaceHeld||staging?'grab':tool==='select'?'default':'crosshair';
   const wire=gesture?.type==='connect'?{from:(r=>({x:r.x+(gesture.fromAnchor?.x??.5)*r.width,y:r.y+(gesture.fromAnchor?.y??.5)*r.height}))(nodeRect(doc.nodes.find(n=>n.id===gesture.from)!)),to:gesture.current,ready:Boolean(gesture.target)}
@@ -335,20 +342,24 @@ export function Canvas(){
   },[editingId,doc,staging,routes]);
   useEffect(()=>{if(editingId&&!editing)viewStore.set({editingId:null});},[editingId,editing]);
 
-  return <div className="canvas-host" ref={hostRef} onDragOver={e=>{if(e.dataTransfer.types.includes(SHAPE_MIME)){e.preventDefault();e.dataTransfer.dropEffect='copy';}}} onDrop={drop}>
+  return <div className="canvas-host" ref={hostRef} onDrop={drop}
+    onDragOver={e=>{if(e.dataTransfer.types.includes(SHAPE_MIME)){e.preventDefault();e.dataTransfer.dropEffect='copy';setGhostAt(toWorld(e));}}}
+    onDragLeave={e=>{if(!hostRef.current?.contains(e.relatedTarget as Node|null))setGhostAt(null);}}>
     <svg ref={svgRef} className={`canvas tool-${tool}`} style={{cursor}} role="group" aria-label={`Canvas editable: ${doc.nodes.length} nodos, ${doc.edges.length} conexiones`}
       viewBox={`${camera.x} ${camera.y} ${viewport.width/camera.zoom} ${viewport.height/camera.zoom}`}
-      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={e=>{pointers.current.delete(e.pointerId);pinch.current=null;setGesture(null);}}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setGhostAt(null)} onPointerCancel={e=>{pointers.current.delete(e.pointerId);pinch.current=null;setGesture(null);}}
       onKeyDown={e=>{const target=hit(e.target);if(target&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();select(e.shiftKey?[...ids,target.id]:target.type==='node'?selectionUnit(doc,target.id):[target.id]);}}}>
       <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" className="grid-dot"/></pattern></defs>
       <rect x={camera.x} y={camera.y} width={viewport.width/camera.zoom} height={viewport.height/camera.zoom} fill="url(#grid)" pointerEvents="none"/>
       <DiagramLayer doc={visible} selected={staging?undefined:selected} staged={stagedIds} interactive showAnnotations editing={editing?.id} states={showing?statesAt(animation!,sampled.index):undefined}
         activeNodes={showing?new Set([...sampled.step.nodeIds,...(effects?.nodeIds??[])]):undefined} activeEdges={showing?new Set([...sampled.step.edgeIds,...(effects?.edgeIds??[])]):undefined}
         failed={sampled?.step.tone==='failure'} progress={showing?sampled.progress:null}/>
+      {ghost&&<g className="place-ghost" pointerEvents="none" aria-hidden="true"><DiagramLayer doc={ghost}/></g>}
       <g pointerEvents="none">
         {groupBoxes.map(g=><g key={g.id}><rect className="group-outline" x={g.box.x-8} y={g.box.y-8} width={g.box.width+16} height={g.box.height+16} rx="8" strokeWidth={px}/>{g.label&&<text className="group-label" x={g.box.x-8} y={g.box.y-14} fontSize={11*px}>{g.label}</text>}</g>)}
         {escaped.map(n=><rect key={n.id} className="conflict-outline" x={n.position.x-3} y={n.position.y-3} width={n.size.width+6} height={n.size.height+6} rx="12" strokeWidth={2*px}/>)}
         {escaped.length>0&&gesture?.type==='resize'&&<text className="conflict-label" x={gesture.rect.x} y={gesture.rect.y+gesture.rect.height+18*px} fontSize={12*px}>⚠ {escaped.length} nodo(s) quedarían fuera de la zona: el cambio se va a rechazar.</text>}
+        {flash&&flashBoxes.map((r,i)=><rect key={`${flash.key}-${i}`} className={`focus-flash tone-${flash.tone}`} x={r.x-10} y={r.y-10} width={r.width+20} height={r.height+20} rx="14" strokeWidth={4*px}/>)}
         {draft&&<rect className={gesture!.type==='marquee'?'marquee':'draft'} {...draft} strokeWidth={px}/>}
         {wireTarget&&<rect className="drop-target" x={wireTarget.x-4} y={wireTarget.y-4} width={wireTarget.width+8} height={wireTarget.height+8} rx="12" strokeWidth={2*px}/>}
         {wire&&<line className={'draft-edge'+(wire.ready?' ready':'')} x1={wire.from.x} y1={wire.from.y} x2={wire.to.x} y2={wire.to.y} strokeWidth={2*px}/>}

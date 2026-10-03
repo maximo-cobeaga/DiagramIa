@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.5.0",
+  "schemaVersion": "1.6.0",
   "id": "checkout-failure",
   "title": "Rechazo y recuperación",
   "revision": 0,

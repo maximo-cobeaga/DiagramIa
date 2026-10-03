@@ -2,6 +2,7 @@ import {useEffect} from 'react';
 import {animationDuration,resolveScenario,stepStarts,sampleAnimation,type DiagramDocument} from '@diagramia/core';
 import {createStore,useStore} from './createStore';
 import {documentStore} from './documentStore';
+import {viewStore} from './viewStore';
 
 // El playhead es estado de interfaz: undo/redo y las ediciones no lo reinician.
 export const playbackStore=createStore({animationId:'',scenarioId:'',time:0,playing:false,loop:false});
@@ -30,7 +31,8 @@ export function togglePlay(d:DiagramDocument){
 
 /** Reloj de reproducción. Se monta una sola vez; avanza el tiempo sin tocar el documento. */
 export function usePlaybackClock(){
-  const {playing,animationId,loop,scenarioId}=useStore(playbackStore),{doc}=useStore(documentStore);
+  // Mientras se presenta el recorrido de una explicación, el reloj mide esa copia y no el documento.
+  const {playing,animationId,loop,scenarioId}=useStore(playbackStore),{doc:saved}=useStore(documentStore),{tour}=useStore(viewStore),doc=tour?.doc??saved;
   const animation=currentAnimation(doc,animationId),duration=animation?animationDuration(animation):0;
   useEffect(()=>{
     if(!playing||!duration)return;

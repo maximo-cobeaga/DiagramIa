@@ -62,6 +62,20 @@ await check('Explicar: devuelve texto y ninguna acción',true,async()=>{
   expect(r.data.kind==='text'&&r.data.text.length>40&&!r.data.batch,`respuesta: ${JSON.stringify(r.data).slice(0,200)}`);
   return `${r.data.text.replace(/\s+/g,' ').slice(0,110)}… · ${r.seconds}s`;
 });
+await check('Explicar sin elegir modo: breve, con un recorrido animable por elementos reales',true,async()=>{
+  const r=await ask('explain-auto',{mode:'auto',prompt:'¿Qué hace este diagrama?',document:architecture()});expect(r.ok,failure(r));
+  expect(r.data.mode==='explain'&&r.data.kind==='text',`se interpretó como ${r.data.mode}/${r.data.kind}`);
+  const words=r.data.text.split(/\s+/).length,ids=new Set([...architecture().nodes,...architecture().edges].map(x=>x.id));
+  expect(words<=120,`la respuesta breve tiene ${words} palabras`);
+  expect(r.data.tour?.length>=2&&r.data.tour.every(s=>s.caption&&[...s.nodeIds,...s.edgeIds].every(id=>ids.has(id))),`recorrido: ${JSON.stringify(r.data.tour)}`);
+  return `${words} palabras · recorrido de ${r.data.tour.length} pasos: ${r.data.tour.map(s=>s.caption).join(' / ').slice(0,140)}… · ${r.seconds}s`;
+});
+await check('Explicar más: amplía la respuesta anterior',false,async()=>{
+  const r=await ask('explain-more',{mode:'explain',detail:'expanded',prompt:'Explicá con más detalle tu respuesta anterior, en lenguaje simple.',document:architecture(),
+    history:[{role:'user',content:'¿Qué hace este diagrama?'},{role:'assistant',content:'Un usuario usa una web que pide datos a una API, y la API los guarda en una base.'}]});
+  expect(r.ok,failure(r));expect(r.data.kind==='text'&&r.data.text.split(/\s+/).length>40,`ampliación corta: ${r.data.text}`);
+  return `${r.data.text.split(/\s+/).length} palabras · ${r.seconds}s`;
+});
 await check('Revisar: observaciones ligadas a elementos existentes',true,async()=>{
   const r=await ask('review',{mode:'review',prompt:'Revisá la arquitectura y señalá hasta tres riesgos.',document:architecture()});expect(r.ok,failure(r));
   expect(r.data.kind==='review'&&r.data.findings.length>0,`sin observaciones: ${JSON.stringify(r.data).slice(0,200)}`);

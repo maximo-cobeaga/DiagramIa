@@ -1,27 +1,28 @@
 import {useEffect,useState} from 'react';
 import {useStore} from '../store/createStore';
 import {documentStore} from '../store/documentStore';
-import {flush as flushTelemetry,track} from '../telemetry';
+import {flush as flushTelemetry} from '../telemetry';
+import {accountStore,refreshAccount,signIn} from '../store/accountStore';
 import {createSharedDocument,detachSharedDocument,listSharedDocuments,openSharedDocument,recoverShared,retryShared,sharedStore,type SharedMode} from '../store/sharedStore';
 
 type Entry={id:string;title:string;revision:number};
-type Account={session:{email:string|null;emailVerified:boolean;projectId:string};storage:{documents:number;bytes:number;maxDocuments:number;maxBytes:number;maxDocumentBytes:number}};
 const authHeaders={'x-diagramia-client':'editor'};
 const mb=(bytes:number)=>(bytes/1_000_000).toFixed(1)+' MB';
+
+/** La verificación del email sólo llega con el inicio de sesión: volver a pasar por el proveedor la actualiza, y con su sesión abierta no pide la contraseña. */
+export function ReauthButton(){
+  return <button className="quiet" onClick={()=>void flushTelemetry(true).finally(()=>window.location.assign('/api/v1/auth/login'))}>Ya lo verifiqué</button>;
+}
 
 export function SharedPanel(){
   const {activeId,doc}=useStore(documentStore),shared=useStore(sharedStore);
   const [deleting,setDeleting]=useState<'closed'|'open'|'working'>('closed'),[confirmation,setConfirmation]=useState(''),[deleteError,setDeleteError]=useState('');
-  const [local,setLocal]=useState<Entry[]>([]),[cloud,setCloud]=useState<Entry[]>([]),[account,setAccount]=useState<Account|null>(null),[auth,setAuth]=useState<'loading'|'unavailable'|'guest'|'signed-in'>('loading'),[loading,setLoading]=useState(false);
+  const [local,setLocal]=useState<Entry[]>([]),[cloud,setCloud]=useState<Entry[]>([]),[loading,setLoading]=useState(false),{auth,account}=useStore(accountStore);
   const attached=shared.tabId===activeId,bodyBytes=new TextEncoder().encode(JSON.stringify(doc)).length;
   const refresh=async()=>{
     setLoading(true);
-    const status=await fetch('/api/v1/auth/status',{headers:authHeaders}).then(r=>r.ok?r.json():null).catch(()=>null);
-    if(status?.configured){
-      const response=await fetch('/api/v1/auth/me',{headers:authHeaders}).catch(()=>null);
-      if(response?.ok){const data=await response.json() as Account;setAccount(data);setAuth('signed-in');setCloud(await listSharedDocuments('cloud'));}
-      else{setAccount(null);setCloud([]);setAuth('guest');}
-    }else{setAccount(null);setCloud([]);setAuth('unavailable');}
+    await refreshAccount();
+    setCloud(accountStore.get().auth==='signed-in'?await listSharedDocuments('cloud'):[]);
     setLocal(await listSharedDocuments('local'));
     setLoading(false);
   };
@@ -47,9 +48,9 @@ export function SharedPanel(){
     <h3>Cuenta y nube</h3>
     {auth==='loading'&&<p className="inline-note">Comprobando la sesión…</p>}
     {auth==='unavailable'&&<p className="inline-note">La cuenta aún no está configurada en este servidor. Podés seguir con el borrador local y exportar el JSON.</p>}
-    {auth==='guest'&&<div className="step-actions"><p className="inline-note">Iniciá sesión para guardar en la nube.</p><button onClick={()=>{track('signup_started',{trigger:'cloud'});void flushTelemetry(true).finally(()=>window.location.assign('/api/v1/auth/login'));}}>Iniciar sesión</button></div>}
+    {auth==='guest'&&<div className="step-actions"><p className="inline-note">Iniciá sesión para guardar en la nube.</p><button className="primary" onClick={()=>signIn('cloud')}>Iniciar sesión</button></div>}
     {account&&<>
-      {!account.session.emailVerified&&<p className="inline-note warn" role="status">⚠ Tu email todavía no está verificado: la IA se habilita cuando lo confirmes desde el correo que te enviamos y vuelvas a iniciar sesión.</p>}
+      {!account.session.emailVerified&&<p className="inline-note warn" role="status">⚠ Tu email todavía no está verificado: la IA se habilita cuando lo confirmes desde el correo que te enviamos. <ReauthButton/></p>}
       <p className="inline-note">{account.session.email??'Cuenta activa'}{account.session.emailVerified?' ✓ verificado':''} · {account.storage.documents}/{account.storage.maxDocuments} diagramas · {mb(account.storage.bytes)}/{mb(account.storage.maxBytes)} usados.</p>
       <p className="inline-note">Esta pestaña ocupa {mb(bodyBytes)}; el máximo por diagrama, incluidas sus versiones, es {mb(account.storage.maxDocumentBytes)}.</p>
       <div className="step-actions"><button disabled={account.storage.documents>=account.storage.maxDocuments||bodyBytes>account.storage.maxDocumentBytes||attached} onClick={()=>void share('cloud')}>Guardar esta pestaña en la nube</button><button disabled={attached&&shared.mode==='cloud'&&shared.pending>0} onClick={()=>void signOut()}>Cerrar sesión</button></div>

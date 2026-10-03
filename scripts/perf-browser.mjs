@@ -23,7 +23,7 @@ function synthetic(count){
   }
   for(let n=1;n<count;n++)edges.push({id:`e-${n}`,from:`n-${n-1}`,to:`n-${n}`,label:'llama'});
   for(let n=3;n<count;n+=3)edges.push({id:`x-${n}`,from:`n-${n}`,to:`n-${(n*7)%count}`,label:''});
-  return {schemaVersion:'1.5.0',id:`perf-${count}`,title:`Perf ${count}`,revision:0,nodes,edges,zones,groups:[],frames:[],drawings:[],animations:[],assets:[],annotations:[],appliedBatches:[]};
+  return {schemaVersion:'1.6.0',id:`perf-${count}`,title:`Perf ${count}`,revision:0,nodes,edges,zones,groups:[],frames:[],drawings:[],animations:[],assets:[],annotations:[],appliedBatches:[]};
 }
 
 let socket,results=[];
@@ -41,7 +41,7 @@ try{
     const doc=synthetic(count);
     await js(`(()=>{localStorage.clear();localStorage.setItem('diagramia.tutorial.seen','1');localStorage.setItem('diagramia.telemetry','off');localStorage.setItem('diagramia.workspace',JSON.stringify({tabs:['tab-perf'],active:'tab-perf'}));localStorage.setItem('diagramia.doc.tab-perf',${JSON.stringify(JSON.stringify(doc))});})()`);
     const started=Date.now();await send('Page.reload');
-    let shown=0;for(let i=0;i<240&&shown<count;i++){await sleep(100);shown=await js("document.querySelectorAll('.graph-node').length").catch(()=>0);}
+    let shown=0;for(let i=0;i<240&&shown<count;i++){await sleep(100);shown=await js("document.querySelectorAll('.canvas .graph-node').length").catch(()=>0);}
     await frame();const loadMs=Date.now()-started;
     await js('window.__long=[]');
     // Arrastre de un nodo visible en 20 pasos: cada paso espera dos cuadros, así se mide lo que ve el usuario.

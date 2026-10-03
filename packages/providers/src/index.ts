@@ -23,7 +23,10 @@ export function mockProvider(delayMs=150):Provider{
       const prompt=request.messages[request.messages.length-1]?.content??'',anchor=prompt.match(/"focusNodeIds":\s*\["([^"]+)"/)?.[1]??prompt.match(/"nodes":\s*\[\s*\{\s*"id":\s*"([^"]+)"/)?.[1];
       // El ID evita chocar con una demostración ya aplicada, para poder repetir el recorrido sobre el mismo documento.
       let id='mock-cache';for(let n=2;prompt.includes(`"${id}"`);n++)id=`mock-cache-${n}`;
-      const text=/MODO: (explain|document)/.test(prompt)?'Respuesta de demostración: no hay un modelo conectado.'
+      // Explicar recorre los primeros nodos del índice que manda el gateway, para poder probar el recorrido sin modelo.
+      const indexed=[...(prompt.match(/NODOS \(ID → nombre\): ([^\n]*)/)?.[1]??'').matchAll(/([A-Za-z0-9_-]+) → /g)].map(m=>m[1]).slice(0,3);
+      const text=/MODO: explain/.test(prompt)?JSON.stringify({answer:'Respuesta de demostración: no hay un modelo conectado.',tour:indexed.map((id,i)=>({caption:`Paso ${i+1} de demostración.`,nodeIds:[id],edgeIds:[]}))})
+        :/MODO: document/.test(prompt)?'Respuesta de demostración: no hay un modelo conectado.'
         :/MODO: review/.test(prompt)?JSON.stringify({summary:'Revisión de demostración.',findings:anchor?[{targetId:anchor,severity:'info',observation:'Observación de demostración sobre este elemento.',evidence:'Generada sin modelo.',suggestion:''}]:[]})
         :JSON.stringify({summary:'Propuesta de demostración: agrega un nodo de caché.',clarification:null,actions:[
           {type:'ADD_NODE',node:{id,kind:'cache',label:'Caché',position:{x:0,y:0},size:{width:150,height:82},subtitle:'DEMO'},...(anchor?{placement:{below:anchor,gap:60}}:{})},

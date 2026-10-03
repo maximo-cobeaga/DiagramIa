@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {ARROWS,LINES,NODE_KINDS,SHAPES,ActionSchema,CAPABILITIES,EdgeStyleSchema,Id,NodeStyleSchema,PositionSchema,SizeSchema,canonical,describeError,errorCode,getContext,previewBatch,tidyBatch,validateDocument,type ActionInput,type DiagramDocument} from '@diagramia/core';
+import {ARROWS,ICONS,LINES,NODE_KINDS,SHAPES,designDocument,tourOf,ActionSchema,CAPABILITIES,EdgeStyleSchema,Id,NodeStyleSchema,PositionSchema,SizeSchema,canonical,describeError,errorCode,getContext,previewBatch,tidyBatch,validateDocument,type ActionInput,type DiagramDocument} from '@diagramia/core';
 import {ProviderError,type ChatMessage,type Provider} from '@diagramia/providers';
 import {UsageLedger,costOf} from './usage.js';
 
@@ -10,7 +10,9 @@ export const AssistRequestSchema=z.strictObject({
   requestId:Id,providerId:z.string().min(1).max(40),mode:z.enum(MODES),prompt:z.string().trim().min(1).max(4000),
   document:z.unknown(),selectedIds:z.array(z.string().max(80)).max(500).default([]),
   // Turnos anteriores de la conversación, en texto. El documento sólo viaja en el pedido actual, siempre en su revisión vigente.
-  history:z.array(z.strictObject({role:z.enum(['user','assistant']),content:z.string().trim().min(1).max(4000)})).max(8).default([])
+  history:z.array(z.strictObject({role:z.enum(['user','assistant']),content:z.string().trim().min(1).max(4000)})).max(8).default([]),
+  // «Explicar más» pide la versión ampliada; por defecto las respuestas son breves.
+  detail:z.enum(['brief','expanded']).default('brief')
 }).refine(r=>r.history.every((turn,i)=>turn.role===(i%2?'assistant':'user'))&&r.history.length%2===0,'history debe alternar user/assistant y terminar en assistant');
 // Los modelos suelen mandar null donde el contrato dice texto vacío: se acepta y se normaliza en vez de gastar una reparación.
 const Text=(max:number)=>z.string().max(max).nullish().transform(value=>value??'');
@@ -26,9 +28,12 @@ const CREATE_KIND_ALIASES:Record<string,typeof NODE_KINDS[number]>={
 const CreateKind=z.preprocess(value=>typeof value==='string'?CREATE_KIND_ALIASES[value.trim().toLowerCase()]??value:value,z.enum(NODE_KINDS).default('service'));
 const CreateSchema=z.object({summary:Text(2000),clarification:z.string().max(2000).nullable().default(null),
   zones:z.array(z.object({id:Id,label:z.string().min(1).max(200)})).max(20).default([]),
-  nodes:z.array(z.object({id:Id,kind:CreateKind,label:z.string().min(1).max(200),zoneId:Id.nullish(),shape:z.enum(SHAPES).nullish(),details:Text(2000),style:NodeStyleSchema.optional()})).max(100).default([]),
+  nodes:z.array(z.object({id:Id,kind:CreateKind,label:z.string().min(1).max(200),zoneId:Id.nullish(),shape:z.enum(SHAPES).nullish(),icon:z.enum(ICONS).nullish(),details:Text(2000),style:NodeStyleSchema.optional()})).max(100).default([]),
   edges:z.array(z.object({from:Id,to:Id,label:Text(160),line:z.enum(LINES).optional(),startArrow:z.enum(ARROWS).optional(),endArrow:z.enum(ARROWS).optional(),style:EdgeStyleSchema.optional()})).max(150).default([])
 });
+// Explicar devuelve un texto breve y un recorrido por el diagrama. Un paso sin elementos reales se descarta; no se gasta una reparación en eso.
+const ExplainSchema=z.object({answer:z.string().max(8000),tour:z.array(z.object({caption:Text(300),nodeIds:z.array(z.string().max(80)).max(40).default([]),edgeIds:z.array(z.string().max(80)).max(40).default([])})).max(12).default([])});
+export type TourStep={caption:string;nodeIds:string[];edgeIds:string[]};
 const ReviewSchema=z.object({summary:Text(2000),findings:z.array(z.object({
   targetId:z.string().max(80),severity:z.enum(['info','warning','risk']).default('info'),observation:z.string().max(1000),evidence:Text(1000),suggestion:Text(1000)
 })).max(50).default([])});
@@ -43,10 +48,11 @@ const color=nullable(text),dash=nullable(oneOf(['solid','dashed','dotted']));
 const STRICT_SCHEMAS:Partial<Record<Mode,{name:string;schema:Record<string,unknown>}>>={
   create:{name:'diagram_inventory',schema:strictObject({summary:text,clarification:nullable(text),
     zones:list(strictObject({id:text,label:text})),
-    nodes:list(strictObject({id:text,kind:oneOf(NODE_KINDS),label:text,zoneId:nullable(text),shape:nullable(oneOf(SHAPES)),details:nullable(text),
-      style:nullable(strictObject({fill:color,stroke:color,textColor:color,strokeWidth:nullable({type:'number'}),dash,fontSize:nullable({type:'integer'}),bold:nullable({type:'boolean'}),italic:nullable({type:'boolean'}),align:nullable(oneOf(['left','center','right']))}))})),
+    nodes:list(strictObject({id:text,kind:oneOf(NODE_KINDS),label:text,zoneId:nullable(text),shape:nullable(oneOf(SHAPES)),icon:nullable(oneOf(ICONS)),details:nullable(text),
+      style:nullable(strictObject({fill:color,stroke:color,textColor:color,strokeWidth:nullable({type:'number'}),dash,fontSize:nullable({type:'integer'}),bold:nullable({type:'boolean'}),italic:nullable({type:'boolean'}),align:nullable(oneOf(['left','center','right'])),iconSize:nullable(oneOf(['small','large']))}))})),
     edges:list(strictObject({from:text,to:text,label:text,line:nullable(oneOf(LINES)),startArrow:nullable(oneOf(ARROWS)),endArrow:nullable(oneOf(ARROWS)),
       style:nullable(strictObject({stroke:color,textColor:color,strokeWidth:nullable({type:'number'}),dash,fontSize:nullable({type:'integer'})}))}))})},
+  explain:{name:'diagram_explanation',schema:strictObject({answer:text,tour:list(strictObject({caption:text,nodeIds:list(text),edgeIds:list(text)}))})},
   review:{name:'diagram_review',schema:strictObject({summary:text,findings:list(strictObject({targetId:text,severity:oneOf(['info','warning','risk']),observation:text,evidence:text,suggestion:text}))})}
 };
 /** Schema estricto que el gateway entrega al proveedor en este modo, si hay uno. */
@@ -65,16 +71,24 @@ export type AssistAnswer={kind:'proposal'|'clarification'|'text'|'review';model:
 const MODE_BRIEF:Record<Mode,string>={
   create:'Creá los elementos pedidos en el documento.',edit:'Editá sólo lo pedido; conservá el resto y los IDs existentes.',
   transform:'Reorganizá o convertí lo pedido sin perder elementos ni referencias.',animate:'Creá o modificá animaciones con pasos que refieran IDs existentes.',
-  explain:'Explicá el diagrama o la selección. No propongas cambios.',review:'Revisá la arquitectura y señalá observaciones ligadas a IDs existentes. No es una auditoría de seguridad.',
+  explain:'Explicá el diagrama o la selección. No propongas cambios.',review:'Revisá el diagrama y señalá hasta 5 observaciones ligadas a IDs existentes, cada una en una frase corta y simple. No es una auditoría de seguridad.',
   document:'Redactá documentación en Markdown a partir del documento. No inventes elementos.'
 };
-const OUTPUT_CONTRACT=(mode:Mode)=>mode==='create'
-  ?`Respondé ÚNICAMENTE con JSON: {"summary":string,"clarification":null,"zones":[{"id":string,"label":string}],"nodes":[{"id":string,"kind":string,"label":string,"zoneId":string|null}],"edges":[{"from":string,"to":string,"label":string}]}. kind DEBE ser exactamente uno de: ${NODE_KINDS.join(', ')}. Ejemplos: usuario→actor; frontend/API/backend→service; base de datos→database. Describí TODOS los elementos y conexiones pedidos. En nodos podés agregar shape, details y style; en conexiones line, startArrow, endArrow y style cuando el pedido lo necesite. Los IDs son únicos y cortos; from/to y zoneId deben referir IDs declarados. No escribas acciones, posiciones, tamaños ni comandos de layout: los calcula el engine. Si falta información esencial, usá clarification y dejá las listas vacías.`
+// Breve por defecto: quien pregunta puede no saber nada técnico. «Explicar más» amplía la misma respuesta.
+const EXPLAIN_DETAIL={
+  brief:'Respuesta BREVE: 2 a 4 oraciones cortas, en lenguaje simple para alguien sin conocimientos técnicos. Sin jerga; si usás un término técnico, aclaralo en pocas palabras. Sin títulos ni listas largas.',
+  expanded:'Respuesta AMPLIADA pero clara: hasta 3 párrafos cortos o una lista breve, en lenguaje simple. Profundizá en lo que la respuesta anterior dejó sin explicar; no la repitas.'
+} as const;
+const OUTPUT_CONTRACT=(mode:Mode,detail:keyof typeof EXPLAIN_DETAIL='brief')=>mode==='explain'
+  ?`${EXPLAIN_DETAIL[detail]}\nRespondé ÚNICAMENTE con JSON: {"answer": string, "tour": [{"caption": string, "nodeIds": string[], "edgeIds": string[]}]}. "answer" es la explicación en Markdown simple. "tour" es un recorrido de ${detail==='brief'?'3 a 6':'4 a 8'} pasos que muestra el diagrama en un orden lógico (por ejemplo, siguiendo el camino de los datos o del usuario): cada paso tiene una frase corta (máximo 20 palabras) y los IDs EXACTOS de los nodos y conexiones que se resaltan en ese paso. Si el contexto tiene menos de 2 elementos, "tour" va vacío.`
+  :mode==='create'
+  ?`Respondé ÚNICAMENTE con JSON: {"summary":string,"clarification":null,"zones":[{"id":string,"label":string}],"nodes":[{"id":string,"kind":string,"label":string,"zoneId":string|null}],"edges":[{"from":string,"to":string,"label":string}]}. kind DEBE ser exactamente uno de: ${NODE_KINDS.join(', ')}. Ejemplos: usuario→actor; frontend/API/backend→service; base de datos→database. Describí TODOS los elementos y conexiones pedidos. Si el tema no es técnico (un viaje, un plan, un proyecto, una clase, una idea), armá algo RICO y concreto: varias zonas temáticas, secuencias conectadas en orden (por ejemplo día 1 → día 2), y sólo las conexiones entre zonas que aporten (una o dos por elemento como máximo, con una etiqueta corta; no conectes todo con todo); en details poné 1 o 2 líneas útiles (horario, costo, duración, dirección). Si hay un destino o lugares, agregá un nodo con shape "map". Formas con diseño propio: sticky (nota), card (tarjeta con encabezado), bubble (globo), pill (ítem corto), avatar (persona), badge (insignia), ribbon (cinta), folder, browser (pantalla web), chevron (paso), map. En nodos podés agregar shape, icon (uno de: ${ICONS.join(', ')}), details y style (con iconSize "large" el icono va grande sobre el nombre, ideal para temas no técnicos); en conexiones line, startArrow, endArrow y style cuando el pedido lo necesite. Los IDs son únicos y cortos; from/to y zoneId deben referir IDs declarados. No escribas acciones, posiciones, tamaños ni comandos de layout: los calcula el engine. Si falta información esencial, usá clarification y dejá las listas vacías.`
   :ACTION_MODES.includes(mode)
   ?'Respondé ÚNICAMENTE con un objeto JSON, sin texto ni bloques de código alrededor: {"summary": string, "clarification": string|null, "actions": Action[]}. Conservá el contenido no mencionado y usá sólo las acciones necesarias. Si el pedido es ambiguo o no se puede cumplir, devolvé "actions": [] y explicá en "clarification" qué necesitás saber. No incluyas id de lote ni baseRevision: los pone el gateway.'
   :mode==='review'
     ?'Respondé ÚNICAMENTE con un objeto JSON: {"summary": string, "findings": [{"targetId": string, "severity": "info"|"warning"|"risk", "observation": string, "evidence": string, "suggestion": string}]}. Cada targetId debe ser el ID de un nodo, conexión, zona, grupo o frame del contexto; nunca el de un paso o una animación.'
     :'Respondé con texto en Markdown. No devuelvas acciones ni JSON.';
+const SUMMARY_RULE='\n"summary" es una o dos oraciones simples que cualquier persona entienda.';
 
 /** Prompt de sistema estable (se cachea): instrucciones del producto + contrato de acciones vigente. */
 export function systemPrompt(productPrompt:string){
@@ -123,11 +137,26 @@ function extractJson(text:string):unknown{
   if(start<0||end<=start)throw new SyntaxError('la respuesta no contiene un objeto JSON');
   return dropNulls(JSON.parse(unfenced.slice(start,end+1)));
 }
+/**
+ * Lee la explicación y su recorrido. Si el modelo no devolvió JSON, el texto entero es la respuesta y no hay recorrido:
+ * una explicación legible vale más que gastar otra llamada. Los IDs que no existen se quitan de cada paso.
+ */
+function explanation(raw:string,doc:DiagramDocument):{text:string;tour:TourStep[]}{
+  let parsed:z.infer<typeof ExplainSchema>;
+  try{parsed=ExplainSchema.parse(extractJson(raw));}catch{return {text:raw.trim(),tour:[]};}
+  const nodes=new Set(doc.nodes.map(n=>n.id)),edges=new Set(doc.edges.map(e=>e.id));
+  const tour=parsed.tour.map(step=>({caption:step.caption.trim(),nodeIds:[...new Set(step.nodeIds.filter(id=>nodes.has(id)))],edgeIds:[...new Set(step.edgeIds.filter(id=>edges.has(id)))]}))
+    .filter(step=>step.caption&&(step.nodeIds.length||step.edgeIds.length)).slice(0,8);
+  return {text:parsed.answer.trim()||raw.trim(),tour:tour.length>=2?tour:[]};
+}
+// Formas compactas: un ítem corto. Con detalle o un nombre largo, la tarjeta se lee mejor y no se estira.
+const COMPACT=new Set(['pill','chevron','ribbon','badge','avatar']);
+const fitsCompact=(node:{label:string;details:string})=>!node.details.trim()&&node.label.length<=28;
 function createActions(spec:z.infer<typeof CreateSchema>,doc:DiagramDocument):ActionInput[]{
   const used=new Set([...doc.nodes,...doc.edges,...doc.zones,...doc.groups,...doc.frames,...spec.nodes,...spec.zones].map(item=>item.id));
   return [
     ...spec.zones.map(zone=>({type:'CREATE_ZONE' as const,zone:{...zone,bounds:{x:0,y:0,width:100,height:100}}})),
-    ...spec.nodes.map(node=>({type:'ADD_NODE' as const,node:{id:node.id,kind:node.kind,label:node.label,zoneId:node.zoneId??null,shape:node.shape??null,details:node.details,style:node.style??{},position:{x:0,y:0},size:{width:160,height:80}}})),
+    ...spec.nodes.map(node=>({type:'ADD_NODE' as const,node:{id:node.id,kind:node.kind,label:node.label,zoneId:node.zoneId??null,shape:node.shape&&COMPACT.has(node.shape)&&!fitsCompact(node)?'card':node.shape??null,icon:node.icon??null,details:node.details,style:node.style??{},position:{x:0,y:0},size:{width:160,height:80}}})),
     ...spec.edges.map((edge,i)=>{
       let id=`edge-${i+1}`,suffix=1;
       while(used.has(id))id=`edge-${i+1}-${++suffix}`;
@@ -135,6 +164,22 @@ function createActions(spec:z.infer<typeof CreateSchema>,doc:DiagramDocument):Ac
       return {type:'ADD_EDGE' as const,edge:{id,from:edge.from,to:edge.to,label:edge.label,line:edge.line??'orthogonal',startArrow:edge.startArrow??'none',endArrow:edge.endArrow??'arrow',style:edge.style??{}}};
     })
   ];
+}
+/**
+ * Diseño de lo que crea la IA: tonos por zona, formas por rol, iconos por significado y flechas de color, sólo donde
+ * el modelo no eligió. Un diagrama de cuatro elementos o más trae además su recorrido animado. Todo es determinista:
+ * no depende de que el modelo «se acuerde» de diseñar, y no gasta tokens.
+ */
+function designed(actions:ActionInput[],doc:DiagramDocument,requestId:string):ActionInput[]{
+  // Se diseña sobre el resultado ya ordenado: antes de eso, las zonas nuevas todavía no tienen tamaño.
+  const batch={id:'design-'+requestId.slice(-40),baseRevision:doc.revision,actions},draft=previewBatch(doc,tidyBatch(doc,batch).batch).document;
+  const fresh=new Set(actions.flatMap(a=>a.type==='ADD_NODE'?[a.node.id]:a.type==='CREATE_ZONE'?[a.zone.id]:a.type==='ADD_EDGE'?[a.edge.id]:[]));
+  const only={...draft,nodes:draft.nodes.filter(n=>fresh.has(n.id)),zones:draft.zones.filter(z=>fresh.has(z.id)),edges:draft.edges.filter(e=>fresh.has(e.id))};
+  const style=designDocument(only,{vary:true}).actions;
+  const taken=new Set([...doc.animations.map(a=>a.id),...doc.animations.flatMap(a=>a.steps.map(s=>s.id))]);
+  let id='recorrido',n=1;while([...taken].some(t=>t===id||t.startsWith(id+'-')))id=`recorrido-${++n}`;
+  const tour=only.nodes.length>=4?tourOf(only,id,`Recorrido: ${doc.title}`.slice(0,200)):null;
+  return [...actions,...style,...(tour?[tour]:[])];
 }
 const estimateTokens=(chars:number)=>Math.ceil(chars/3);
 
@@ -158,13 +203,13 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   // Índices cortos de IDs reales: evitan que el modelo invente identificadores o confunda nombres con IDs.
   const nodeIndex=doc.nodes.length?`\n\nNODOS (ID → nombre): ${doc.nodes.slice(0,80).map(n=>`${n.id} → ${n.label}`).join('; ')}${doc.nodes.length>80?'; …':''}`:'';
   const zoneIndex=doc.zones.length?`\n\nZONAS (ID → nombre): ${doc.zones.slice(0,60).map(z=>`${z.id} → ${z.label}`).join('; ')}`:'';
-  const first=`MODO: ${request.mode}\n${MODE_BRIEF[request.mode]}\n\nCONTEXTO DEL DOCUMENTO (JSON):\n${context.body}${nodeIndex}${zoneIndex}${choice?.chosen?`\nEl usuario eligió la zona de ID "${choice.chosen.id}" entre las ${choice.twins.length} que se llaman «${choice.chosen.label}». Usá ese ID.`:''}\n\nPEDIDO DEL USUARIO:\n${request.prompt}\n\nFORMATO DE RESPUESTA:\n${OUTPUT_CONTRACT(request.mode)}`;
+  const first=`MODO: ${request.mode}\n${MODE_BRIEF[request.mode]}\n\nCONTEXTO DEL DOCUMENTO (JSON):\n${context.body}${nodeIndex}${zoneIndex}${choice?.chosen?`\nEl usuario eligió la zona de ID "${choice.chosen.id}" entre las ${choice.twins.length} que se llaman «${choice.chosen.label}». Usá ese ID.`:''}\n\nPEDIDO DEL USUARIO:\n${request.prompt}\n\nFORMATO DE RESPUESTA:\n${OUTPUT_CONTRACT(request.mode,request.detail)}${ACTION_MODES.includes(request.mode)||request.mode==='review'?SUMMARY_RULE:''}`;
   const inputEstimate=(messages:ChatMessage[])=>estimateTokens(deps.system.length+messages.reduce((sum,m)=>sum+m.content.length,0));
   const callCost=(messages:ChatMessage[])=>inputEstimate(messages)+deps.config.maxOutputTokens;
   // Peor caso en USD: toda la entrada sin caché y la salida máxima. Se reserva antes de llamar y se libera al liquidar.
   const callUsd=(messages:ChatMessage[])=>costOf(info.pricing,inputEstimate(messages),deps.config.maxOutputTokens)??0;
   const messages:ChatMessage[]=[...request.history,{role:'user',content:first}];
-  const signature=canonical({provider:info.id,mode:request.mode,prompt:request.prompt,revision:doc.revision,documentId:doc.id,selectedIds,history:request.history});
+  const signature=canonical({provider:info.id,mode:request.mode,detail:request.detail,prompt:request.prompt,revision:doc.revision,documentId:doc.id,selectedIds,history:request.history});
   // El presupuesto limita gasto: sólo los proveedores remotos lo consumen. El límite de pedidos por minuto rige para todos.
   const billable=info.kind==='remote';
   const begun=deps.ledger.begin(request.requestId,signature,billable?callCost(messages):0,billable?callUsd(messages):0);
@@ -178,12 +223,16 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   try{
     for(;;){
       if(calls>0&&billable)deps.ledger.reserveMore(request.requestId,callCost(messages),callUsd(messages));
-      const result=await provider.generate({system:deps.system,messages,maxOutputTokens:deps.config.maxOutputTokens,signal,json:request.mode!=='explain'&&request.mode!=='document',schema:strictSchemaFor(request.mode)});
+      const result=await provider.generate({system:deps.system,messages,maxOutputTokens:deps.config.maxOutputTokens,signal,json:request.mode!=='document',schema:strictSchemaFor(request.mode)});
       calls++;inputTokens+=result.usage.inputTokens;outputTokens+=result.usage.outputTokens;cachedInputTokens+=result.usage.cachedInputTokens??0;model=result.model;
       let problem:string;
       try{
-        if(request.mode==='explain'||request.mode==='document'){
+        if(request.mode==='document'){
           const response={...base(),kind:'text' as const,text:result.text.trim()};settle('completed',response);return response;
+        }
+        if(request.mode==='explain'){
+          const {text,tour}=explanation(result.text,doc);
+          const response={...base(),kind:'text' as const,text,tour};settle('completed',response);return response;
         }
         if(request.mode==='review'){
           const review=ReviewSchema.parse(extractJson(result.text)),known=new Set([...doc.nodes,...doc.edges,...doc.zones,...doc.frames,...doc.groups].map(x=>x.id));
@@ -195,7 +244,7 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
         const proposal=request.mode==='create'?(()=>{
           const spec=CreateSchema.parse(parsed);
           if(!spec.nodes.length&&!spec.clarification)throw new Error('Crear requiere nodos o una aclaración concreta.');
-          return {...spec,actions:createActions(spec,doc)};
+          return {...spec,actions:designed(createActions(spec,doc),doc,request.requestId)};
         })():ProposalSchema.parse(parsed);
         if(!proposal.actions.length){
           const response={...base(),kind:'clarification' as const,summary:proposal.summary,clarification:proposal.clarification??(proposal.summary||'El asistente no propuso cambios.')};settle('completed',response);return response;

@@ -57,7 +57,10 @@ if(get('OPENAI_API_KEY')){
       else warn(`OpenAI respondió ${response.status}.`);
     }catch{warn('No se pudo contactar a OpenAI.','Revisá tu conexión a internet.');}
   }
-}else bad('Falta OPENAI_API_KEY: la IA incluida no funciona.','Seguí docs/GUIA_PASO_A_PASO.md, paso 1.');
+}else if(!production&&get('DIAGRAMIA_COMPAT_API_KEY')&&get('DIAGRAMIA_COMPAT_MODEL'))
+  // Un proveedor compatible (DeepSeek u otro) sirve para probar en local; no reemplaza a Luna ni tiene tarifa: el tope en USD no lo cubre.
+  warn(`Probando con ${get('DIAGRAMIA_COMPAT_LABEL')||'un servidor compatible'} (${get('DIAGRAMIA_COMPAT_MODEL')}); falta OPENAI_API_KEY para GPT-6 Luna.`,'Sin tarifa conocida, el tope en USD no limita a este proveedor: poné un límite en su panel. Para Luna seguí el paso 1 de la guía.');
+else bad('Falta OPENAI_API_KEY: la IA incluida no funciona.','Seguí docs/GUIA_PASO_A_PASO.md, paso 1.');
 const allowed=(get('DIAGRAMIA_ACCOUNT_PROVIDERS')||'openai').split(',').map(s=>s.trim());
 ok(`Las cuentas usan: ${allowed.join(', ')}`);
 if(get('DIAGRAMIA_ENABLE_MOCK')==='1')production?bad('El proveedor de demostración está activado en producción.','Borrá DIAGRAMIA_ENABLE_MOCK.'):warn('El proveedor de demostración está activado (está bien sólo para probar la interfaz).');

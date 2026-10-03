@@ -23,6 +23,12 @@ Si algo falla, **copiá el mensaje completo y pasámelo**. No hace falta que lo 
 
 ---
 
+## Mientras tanto: DeepSeek para probar (ya configurado)
+
+En `.env` hay un bloque `DIAGRAMIA_COMPAT_*` con tu clave de DeepSeek y `DIAGRAMIA_ACCOUNT_PROVIDERS=compatible`. Con eso la IA funciona para probar, incluso con login. El tope en dólares de Diagramia **no** lo controla, porque no conoce la tarifa de DeepSeek: dejá poco saldo cargado en <https://platform.deepseek.com>. Cuando tengas la clave de OpenAI, hacé el paso 1 y borrá las líneas de DeepSeek y la de `DIAGRAMIA_ACCOUNT_PROVIDERS`.
+
+---
+
 ## Paso 1. Clave de OpenAI para GPT-6 Luna (≈ 15 minutos, cuesta algunos dólares)
 
 La IA del plan gratis usa GPT-6 Luna. Hace falta una clave de la API de OpenAI: no es lo mismo que ChatGPT Plus, se paga aparte y por uso.
@@ -54,7 +60,7 @@ La IA del plan gratis usa GPT-6 Luna. Hace falta una clave de la API de OpenAI: 
    Al final muestra cuántas comprobaciones pasaron y el costo por pedido. **Copiame todo lo que imprime.**
 8. (Opcional, para ajustar el costo) Repetí la prueba con distintos niveles de razonamiento. En `.env` poné `DIAGRAMIA_OPENAI_REASONING_EFFORT=none`, cerrá la terminal 1 con **Ctrl+C**, volvé a correr `npm run api` y repetí el smoke. Hacé lo mismo con `low` y con `medium`, y pasame los tres resultados: con eso elegimos el mejor equilibrio entre calidad y costo.
 
-> Hacé este paso **antes** del paso 3. Con el login activado, la IA pide sesión y la prueba automática no puede entrar.
+> Con el login activado, la IA pide sesión y la prueba automática no puede entrar. Si ya hiciste el paso 3, para correr el smoke poné un `#` adelante de las líneas `DIAGRAMIA_OIDC_*`, reiniciá `npm run api` y, al terminar, sacá los `#`.
 
 ---
 

@@ -45,7 +45,7 @@ try{
   await send('Network.setCookie',{name:'diagramia_session',value:alice.token,url:origin});
   await send('Page.navigate',{url:origin});await sleep(800);
   await js("localStorage.clear();localStorage.setItem('diagramia.tutorial.seen','1')");await send('Page.reload');await sleep(1000);
-  await js("[...document.querySelectorAll('.tabs button')].find(b=>b.textContent.trim()==='Sesión').click()");
+  await js("[...document.querySelectorAll('.tabs button')].find(b=>b.textContent.trim()==='Cuenta').click()");
   assert.ok(await js("!![...document.querySelectorAll('button')].find(b=>b.textContent.includes('Compartir esta pestaña'))"),'no aparece el control de compartir');
   await js("[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Compartir esta pestaña')).click()");
   await until(()=>js("document.querySelector('.shared-panel')?.textContent.includes('Compartido con MCP')"),'documento compartido');
@@ -81,7 +81,7 @@ try{
   assert.ok((await repo.get(initial.id,alice.session.projectId)).nodes.find(n=>n.id==='user').position.x>node.position.x);
   const beforeReload=await repo.get(initial.id,alice.session.projectId);
   await send('Page.reload');await sleep(950);
-  await js("[...document.querySelectorAll('.tabs button')].find(b=>b.textContent.trim()==='Sesión').click()");
+  await js("[...document.querySelectorAll('.tabs button')].find(b=>b.textContent.trim()==='Cuenta').click()");
   await until(()=>js("document.querySelector('.shared-panel')?.textContent.includes('Reconectado')"),'reconexión tras recargar');
   assert.equal((await saved()).revision,beforeReload.revision);
   // Telemetría de punta a punta: el navegador envía por lotes, el gateway valida y PostgreSQL guarda sin contenido.

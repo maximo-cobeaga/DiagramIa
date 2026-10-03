@@ -6,7 +6,7 @@ Para una lectura rápida del proyecto y las decisiones abiertas: `docs/Estado_Di
 
 El código está publicado en `maximo-cobeaga/DiagramIa` (GitHub, público). El CI remoto de `check` y `database` pasó el 02/10/2026; esto no equivale a desplegar el producto ni cambia los estados de las microfases pendientes.
 
-Orden de ejecución (02/10/2026, ADR 048): **P3.1 con GPT-6 Luna → P7.1/P7.2 medición → P4.1/P4.4 cuenta real y antiabuso → P8.2/P8.3 → P8.4 despliegue → P7.3 dashboard**. Después del lanzamiento: P4.6, P7.4, P4.3, P5.3 y P6.4. Higgsfield se retiró del producto (ADR 044).
+Orden de ejecución (02/10/2026, ADR 048): **P3.1 con GPT-6 Luna → P7.1/P7.2 medición → P4.1/P4.4 cuenta real y antiabuso → P8.2/P8.3 → P8.4 despliegue → P7.3 dashboard**. Después del lanzamiento: P4.6, P7.4, P4.3, P5.3, P6.4, P2.6 (voz Premium) y P4.7 (comunidad). Higgsfield se retiró del producto (ADR 044).
 
 Estados: **verificada** = criterio de salida comprobado; **implementada** = alcance hecho con checks automáticos, falta revisión manual del usuario o una prueba real bloqueada; **parcial** = falta alcance (ver evidence); **pendiente** = sin empezar.
 
@@ -20,10 +20,14 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 | P1.3 | Grupos, frames y assets | implementada |
 | P1.4 | Routing y layout determinista | implementada |
 | P1.5 | Componentes reutilizables | implementada |
+| P1.6 | Elementos para todo público y elementos propios | implementada |
+| P1.7 | Diseño automático, enlaces y mapas | parcial |
 | P2.1 | Timeline editable | implementada |
 | P2.2 | Ramas, estados y paralelismo | implementada |
 | P2.3 | Cámara y presentación | implementada |
 | P2.4 | Plantillas de explicación | implementada |
+| P2.5 | Explicación animada por IA | implementada |
+| P2.6 | Narración con voz, Premium (post-lanzamiento) | pendiente |
 | P3.1 | Gateway local y adapters | implementada |
 | P3.2 | Contexto selectivo | verificada |
 | P3.3 | Propuestas y staging observable | verificada |
@@ -35,6 +39,7 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 | P4.4 | Free, cuotas y antiabuso | parcial |
 | P4.5 | Operación local y CI | verificada |
 | P4.6 | Billing y planes pagos (post-lanzamiento) | pendiente |
+| P4.7 | Biblioteca de la comunidad (post-lanzamiento) | pendiente |
 | P5.1 | Unificar canal de cambios | implementada |
 | P5.2 | Transporte remoto y permisos | implementada |
 | P5.3 | Capacidades y hosts | pendiente |
@@ -50,13 +55,20 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 | P8.2 | Performance y estabilidad | implementada |
 | P8.3 | Seguridad y release candidate | parcial |
 | P8.4 | Entrega y despliegue autorizado | parcial |
+| P8.5 | Revisión del usuario: acceso, chat y enfoque | implementada |
+
+## Revisión manual del usuario (03/10/2026)
+
+`revision-3-10.md` trajo diez puntos. Implementados el mismo día: login visible y pestaña Cuenta, botón del panel con ícono, enfoque y color al tocar una observación (P8.5); chat sin selector de modos, respuestas breves y «Explicar más» (P8.5, ADR 057); explicación animada (P2.5, ADR 058); elementos para todo público, estilos rápidos y elementos propios (P1.6, ADR 059–060). Quedan para después del lanzamiento la voz Premium (P2.6) y la biblioteca de la comunidad (P4.7).
+
+Segunda vuelta, el mismo día. El usuario marcó que los elementos nuevos eran todos iguales, que no se veía lo que iba a ubicar y que el viaje armado por la IA (`evidencias/evi-1.json`) era «triste». Se sumaron formas con diseño propio, vista previa real, diseñador automático con recorrido, «✦ Darle diseño», una distribución que se lee de un vistazo, enlaces y una forma mapa (P1.6, P1.7, ADR 062–064). Pendiente: vista previa remota de enlaces, mapas reales y menos cruces entre zonas.
 
 ## Límites técnicos conocidos (continuación del 01/10/2026)
 
 - Editor y MCP comparten documentos por PostgreSQL al activar el espacio local; los cambios aparecen mediante polling y CAS con conflicto visible. También hay documentos de cuenta privados. MCP remoto expone Streamable HTTP con token OAuth por usuario, scopes y aislamiento de proyecto; se probó con issuer/JWKS local firmado, falta comprobar Auth0, proxy y dos hosts externos. El MCP stdio conserva el token de servidor.
 - Las imágenes viajan dentro del documento (tope 400 KB cada una, 40 por documento): no hay almacenamiento de archivos hasta P4.3. `custom` se dibuja como caja genérica.
 - Las ramas de animación son escenarios con nombre; no hay variables ni triggers con expresiones. Las pistas se sincronizan por ID de paso y admiten resaltado, texto y cámara; falta revisión manual de la UX.
-- Schema 1.5.0: formas básicas, de flujo y UML, estilos, enganches y pistas editables. El layout separa nodos y reserva espacio para etiquetas, pero rutas manuales/curvas y cruces entre conexiones aún pueden superponerse; no existe garantía universal de ausencia de cruces.
+- Schema 1.6.0 (ADR 059 amplía los iconos a 49 y agrega iconos grandes): formas básicas, de flujo y UML, estilos, enganches y pistas editables. El layout separa nodos y reserva espacio para etiquetas, pero rutas manuales/curvas y cruces entre conexiones aún pueden superponerse; no existe garantía universal de ausencia de cruces.
 - Los grupos no muestran marcador de anotación en el canvas (sí en el inspector).
 - El routing ortogonal evita nodos y reparte extremos compartidos; no elimina todos los cruces entre conexiones.
 - La IA se probó con un modelo real local (Ollama, qwen2.5-coder:7b). El modo Crear usa un inventario de elementos convertido a acciones por el gateway; dos smokes pasaron con el test básico y otro con verificación estricta de etiquetas y relaciones. Entre ellos, el test estricto detectó etiquetas superpuestas y se corrigió el layout. Ese modelo todavía puede pedir aclaraciones innecesarias o interpretar mal pedidos libres. Claude sigue sin probarse: falta ANTHROPIC_API_KEY. Con la key: `npm run api` y `npm run smoke:ai -- anthropic`.

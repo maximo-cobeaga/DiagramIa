@@ -82,6 +82,47 @@ export function layeredLayout(nodes:LayoutItem[],edges:Link[],direction:'right'|
 }
 
 const ZONE_PAD={x:32,top:56,bottom:32};
+/** Grilla en orden de lectura con celdas del tamaño del elemento más grande: listas y calendarios, no columnas infinitas. */
+function gridLayout(items:LayoutItem[],columns:number,gap:number):Map<string,Point>{
+  const cellW=Math.max(...items.map(n=>n.size.width)),cellH=Math.max(...items.map(n=>n.size.height)),out=new Map<string,Point>();
+  items.forEach((n,i)=>{const col=i%columns,row=Math.floor(i/columns);out.set(n.id,round({x:col*(cellW+gap)+(cellW-n.size.width)/2,y:row*(cellH+gap)+(cellH-n.size.height)/2}));});
+  return out;
+}
+/** Columnas para una lista suelta: una fila si son pocos, después una grilla cerca de cuadrada. */
+const columnsFor=(count:number)=>count<=3?count:count===4?2:count<=9?3:4;
+/** Si los nodos forman una sola fila encadenada (A→B→C…), devuelve ese orden. */
+function singleChain(items:LayoutItem[],edges:Link[]):LayoutItem[]|null{
+  const ids=new Set(items.map(n=>n.id)),inner=edges.filter(e=>ids.has(e.from)&&ids.has(e.to)&&e.from!==e.to);
+  if(inner.length!==items.length-1)return null;
+  const next=new Map<string,string>(),hasIn=new Set<string>();
+  for(const e of inner){if(next.has(e.from)||hasIn.has(e.to))return null;next.set(e.from,e.to);hasIn.add(e.to);}
+  const start=items.find(n=>!hasIn.has(n.id));if(!start)return null;
+  const order:LayoutItem[]=[];let at:string|undefined=start.id;
+  while(at&&order.length<=items.length){order.push(items.find(n=>n.id===at)!);at=next.get(at);}
+  return order.length===items.length?order:null;
+}
+/**
+ * Layout de los miembros de un bloque. Una secuencia larga se parte en filas de hasta cinco (como un calendario),
+ * una lista sin conexiones va en grilla y el resto usa capas.
+ */
+function innerLayout(items:LayoutItem[],edges:Link[],direction:'right'|'down',gap:number):Map<string,Point>{
+  const ids=new Set(items.map(n=>n.id)),linked=edges.some(e=>ids.has(e.from)&&ids.has(e.to)&&e.from!==e.to);
+  const chain=items.length>=6?singleChain(items,edges):null;
+  if(chain)return gridLayout(chain,Math.min(5,Math.ceil(chain.length/2)),gap);
+  if(!linked&&items.length>=4)return gridLayout(items,columnsFor(items.length),Math.min(gap,40));
+  return layeredLayout(items,edges,direction,gap);
+}
+/** Bloques sin conexiones entre sí, en estantes de un ancho parecido al de una pantalla apaisada. */
+function shelfLayout(blocks:LayoutItem[],gap:number):Map<string,Point>{
+  const area=blocks.reduce((sum,b)=>sum+(b.size.width+gap)*(b.size.height+gap),0),widest=Math.max(...blocks.map(b=>b.size.width));
+  const target=Math.max(widest,Math.sqrt(area*1.7)),out=new Map<string,Point>();
+  let x=0,y=0,row=0;
+  for(const b of blocks){
+    if(x>0&&x+b.size.width>target){x=0;y+=row+gap;row=0;}
+    out.set(b.id,round({x,y}));x+=b.size.width+gap;row=Math.max(row,b.size.height);
+  }
+  return out;
+}
 /**
  * Layout de dos niveles que nunca superpone nada: cada zona se ordena por dentro y después se ordenan los bloques
  * (zonas completas y nodos libres) como si fueran nodos. Las zonas quedan separadas entre sí y contienen a sus nodos.
@@ -93,14 +134,22 @@ export function arrangeBlocks(nodes:DiagramNode[],zones:DiagramZone[],edges:Link
   for(const zone of zones){
     const members=nodes.filter(n=>n.zoneId===zone.id);
     if(!members.length){blocks.push({id:zone.id,position:{x:zone.bounds.x,y:zone.bounds.y},size:{width:zone.bounds.width,height:zone.bounds.height}});continue;}
-    const placed=layeredLayout(members,edges,direction,spacing),box=unionRects(members.map(n=>nodeRect({position:placed.get(n.id)!,size:n.size})))!;
+    const placed=innerLayout(members,edges,direction,spacing),box=unionRects(members.map(n=>nodeRect({position:placed.get(n.id)!,size:n.size})))!;
     for(const n of members){const p=placed.get(n.id)!;local.set(n.id,{x:p.x-box.x+ZONE_PAD.x,y:p.y-box.y+ZONE_PAD.top});owner.set(n.id,zone.id);}
     blocks.push({id:zone.id,position:{x:zone.bounds.x,y:zone.bounds.y},size:{width:Math.max(100,box.width+ZONE_PAD.x*2),height:Math.max(100,box.height+ZONE_PAD.top+ZONE_PAD.bottom)}});
   }
   const zoneIds=new Set(zones.map(z=>z.id));
   for(const n of nodes)if(!n.zoneId||!zoneIds.has(n.zoneId)){blocks.push({id:n.id,position:n.position,size:n.size});owner.set(n.id,n.id);}
   const links=edges.filter(e=>owner.has(e.from)&&owner.has(e.to)).map(e=>({from:owner.get(e.from)!,to:owner.get(e.to)!})).filter(e=>e.from!==e.to);
-  const placed=layeredLayout(blocks,links,direction,spacing),all=[...placed.values()];
+  // Zonas que no se conectan entre sí no tienen un orden que respetar: se acomodan en estantes, no en una sola columna.
+  let placed=!links.length&&blocks.length>=3?shelfLayout(blocks,spacing):layeredLayout(blocks,links,direction,spacing);
+  // Una cadena larga de zonas conectadas queda como una tira que no entra en pantalla: se acomoda en estantes,
+  // respetando el orden de lectura de las capas (izquierda a derecha, arriba a abajo).
+  if(links.length&&blocks.length>=3){
+    const box=unionRects(blocks.map(b=>nodeRect({position:placed.get(b.id)!,size:b.size})))!;
+    if(box.width>box.height*2.4){const order=[...blocks].sort((a,b)=>placed.get(a.id)!.x-placed.get(b.id)!.x||placed.get(a.id)!.y-placed.get(b.id)!.y);placed=shelfLayout(order,spacing);}
+  }
+  const all=[...placed.values()];
   const shift=all.length?{x:origin.x-Math.min(...all.map(p=>p.x)),y:origin.y-Math.min(...all.map(p=>p.y))}:{x:0,y:0};
   const at=(id:string):Point=>{const p=placed.get(id)!;return {x:p.x+shift.x,y:p.y+shift.y};};
   const positions=new Map<string,Point>(),zoneBounds=new Map<string,Rect>();

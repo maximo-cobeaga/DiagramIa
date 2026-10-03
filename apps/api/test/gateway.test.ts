@@ -46,6 +46,28 @@ test('an edit request returns a validated proposal with its diff and never mutat
     assert.equal(body.usage.estimatedCostUsd,(1000*4+200*20)/1e6);assert.equal(body.usage.costBasis,'published-price-estimate');
   }finally{await g.close();}
 });
+test('a non-technical plan comes out designed: tones per zone, shapes by role, icons by meaning and a tour',async()=>{
+  const day=(n:number)=>({id:`dia-${n}`,kind:'note',label:n<3?`Día ${n}: playa y paseo`:`Día ${n}: llegada`,zoneId:'itinerario'});
+  const graph=JSON.stringify({summary:'Viaje',clarification:null,zones:[{id:'itinerario',label:'Día a día'},{id:'comida',label:'Dónde comer'},{id:'tips',label:'Tips'}],
+    nodes:[day(1),day(2),day(3),{id:'parrilla',kind:'note',label:'Parrilla del puerto',zoneId:'comida'},{id:'churros',kind:'note',label:'Churros',zoneId:'comida'},{id:'pizza',kind:'note',label:'Pizza',zoneId:'comida'},
+      {id:'tip',kind:'note',label:'Reservá alojamiento con anticipación',zoneId:'tips'},{id:'elegido',kind:'note',label:'Bici',zoneId:'tips',shape:'ribbon',style:{fill:'#ffffff'}}],
+    edges:[{from:'dia-1',to:'dia-2'},{from:'dia-2',to:'dia-3'}]});
+  const {provider}=scripted([graph]),g=await gateway([provider]);
+  try{
+    const empty=emptyDocument('viaje','Viaje a la costa'),body=await(await g.post(g.ask({mode:'create',prompt:'Planificá un viaje',document:empty,selectedIds:[]}))).json();
+    assert.equal(body.kind,'proposal');
+    const result=applyBatch(empty,body.batch),node=(id:string)=>result.nodes.find(n=>n.id===id)!;
+    assert.equal(new Set(result.zones.map(z=>z.style.stroke)).size,3,'cada zona tiene su tono');
+    assert.equal(node('dia-2').shape,'card');assert.equal(node('dia-2').icon,'umbrella','cada día muestra su actividad');assert.equal(node('dia-3').icon,'calendar','sin actividad reconocible, el día lleva calendario');
+    assert.equal(node('parrilla').icon,'food');assert.equal(node('churros').icon,'coffee');assert.equal(node('pizza').shape,'pill');
+    assert.equal(node('tip').shape,'sticky','los consejos son notas adhesivas');
+    assert.equal(node('elegido').shape,'ribbon');assert.deepEqual(node('elegido').style,{fill:'#ffffff'},'lo que eligió el modelo se respeta');
+    assert.ok(result.edges.every(e=>e.style.stroke),'las flechas llevan el color de su zona');
+    const tour=result.animations.at(-1)!;
+    assert.deepEqual(tour.steps.slice(0,3).map(s=>s.nodeIds),[['dia-1'],['dia-2'],['dia-3']],'el recorrido sigue el día a día');
+    assert.deepEqual(findOverlaps(result).filter(i=>!['edge-through-node','label-overlap'].includes(i.type)),[]);
+  }finally{await g.close();}
+});
 test('liveness, readiness and request logs expose no prompt or query string',async()=>{
   const logs:{event:'http';method:string;path:string;status:number;durationMs:number}[]=[];
   const {provider}=scripted([redis()]),g=await gateway([provider],{log:entry=>logs.push(entry)});
@@ -178,6 +200,28 @@ test('explain returns text, review returns findings bound to existing IDs, ambig
     assert.equal(question.kind,'clarification');assert.match(question.clarification,/dos zonas/);
   }finally{await g.close();}
 });
+test('mode "auto" is resolved before the call; an explanation is brief by default and its tour keeps only real IDs',async()=>{
+  const tour=JSON.stringify({answer:'El usuario entra por la web y la API guarda los datos.',tour:[
+    {caption:'Todo empieza con el usuario.',nodeIds:['user','inventado'],edgeIds:[]},
+    {caption:'La web le pide datos a la API.',nodeIds:['frontend','api'],edgeIds:['front-api','no-existe']},
+    {caption:'Un paso sin nada real se descarta.',nodeIds:['fantasma'],edgeIds:[]},
+    {caption:'La API guarda en la base.',nodeIds:['db'],edgeIds:['api-db']}]});
+  const {provider,calls}=scripted([tour,'{"answer":"Más detalle.","tour":[]}']),g=await gateway([provider]);
+  try{
+    const body=await(await g.post(g.ask({requestId:'auto-1',mode:'auto',prompt:'¿Qué hace este sistema?',selectedIds:[]}))).json();
+    assert.equal(body.mode,'explain');assert.equal(body.kind,'text');assert.equal(body.text,'El usuario entra por la web y la API guarda los datos.');
+    assert.deepEqual(body.tour,[
+      {caption:'Todo empieza con el usuario.',nodeIds:['user'],edgeIds:[]},
+      {caption:'La web le pide datos a la API.',nodeIds:['frontend','api'],edgeIds:['front-api']},
+      {caption:'La API guarda en la base.',nodeIds:['db'],edgeIds:['api-db']}]);
+    assert.match(calls[0].messages[0].content,/MODO: explain/);assert.match(calls[0].messages[0].content,/Respuesta BREVE/);
+    assert.equal(calls[0].json,true,'la explicación se pide como JSON');
+    const more=await(await g.post(g.ask({requestId:'auto-2',mode:'explain',detail:'expanded',prompt:'Explicá con más detalle',selectedIds:[]}))).json();
+    assert.equal(more.text,'Más detalle.');assert.deepEqual(more.tour,[],'un recorrido vacío no se inventa');
+    assert.match(calls[1].messages[0].content,/Respuesta AMPLIADA/);
+  }finally{await g.close();}
+});
+
 test('the gateway rejects foreign origins, missing client header and unconfigured providers; no key is ever listed',async()=>{
   const g=await gateway([anthropicProvider({}),mockProvider()]);
   try{

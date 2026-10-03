@@ -1,4 +1,4 @@
-import {ARROWS,ICONS,LINES,PORTS,SHAPES,assetBytes,documentBounds,fitSize,rootGroupId,type ActionInput,type DiagramDocument,type DiagramEdge,type DiagramFrame,type DiagramNode,type DiagramZone,type Rect} from '@diagramia/core';
+import {ARROWS,LINES,PORTS,SHAPES,assetBytes,documentBounds,fitSize,rootGroupId,type ActionInput,type DiagramDocument,type DiagramEdge,type DiagramFrame,type DiagramNode,type DiagramZone,type Rect} from '@diagramia/core';
 import {useStore} from '../store/createStore';
 import {documentStore,transact} from '../store/documentStore';
 import {kindOf,select,selectionStore} from '../store/selectionStore';
@@ -6,14 +6,13 @@ import {fit,viewStore} from '../store/viewStore';
 import {arrange,deleteSelection,duplicate,group,ungroup} from '../commands';
 import {CREATABLE_KINDS,KIND_LABELS,NumberField,SelectField,TextField} from '../ui';
 import {Annotations} from './Annotations';
+import {IconPicker,SaveAsElement,StylePresets} from './Appearance';
 import {ARROW_LABELS,EdgeStyleFields,LINE_LABELS,NodeStyleFields,ZoneStyleFields} from './StyleFields';
 
-const SHAPE_LABELS:Record<typeof SHAPES[number],string>={rectangle:'Rectángulo',rounded:'Redondeado',ellipse:'Elipse',circle:'Círculo',diamond:'Rombo',triangle:'Triángulo',hexagon:'Hexágono',parallelogram:'Paralelogramo',trapezoid:'Trapecio',star:'Estrella',cloud:'Nube',cylinder:'Cilindro',note:'Nota',text:'Sólo texto',terminator:'Inicio / fin',document:'Documento',predefined:'Subproceso','manual-input':'Entrada manual',delay:'Espera',actor:'Actor (figura)',class:'Clase UML',package:'Paquete',component:'Componente',start:'Inicio (punto)',end:'Fin (diana)'};
+const SHAPE_LABELS:Record<typeof SHAPES[number],string>={rectangle:'Rectángulo',rounded:'Redondeado',ellipse:'Elipse',circle:'Círculo',diamond:'Rombo',triangle:'Triángulo',hexagon:'Hexágono',parallelogram:'Paralelogramo',trapezoid:'Trapecio',star:'Estrella',cloud:'Nube',cylinder:'Cilindro',note:'Nota',text:'Sólo texto',terminator:'Inicio / fin',document:'Documento',predefined:'Subproceso','manual-input':'Entrada manual',delay:'Espera',actor:'Actor (figura)',class:'Clase UML',package:'Paquete',component:'Componente',start:'Inicio (punto)',end:'Fin (diana)',sticky:'Nota adhesiva',card:'Tarjeta con encabezado',bubble:'Globo de diálogo',pill:'Píldora',avatar:'Avatar',badge:'Insignia',ribbon:'Cinta',folder:'Carpeta',browser:'Ventana',chevron:'Paso (chevron)',map:'Mapa'};
 const SHAPE_OPTIONS=[['','Según el tipo'] as const,...SHAPES.map(shape=>[shape,SHAPE_LABELS[shape]] as const)];
 const ARROW_OPTIONS=ARROWS.map(arrow=>[arrow,ARROW_LABELS[arrow]] as const),LINE_OPTIONS=LINES.map(line=>[line,LINE_LABELS[line]] as const);
 
-const ICON_LABELS:Record<typeof ICONS[number],string>={user:'Persona',server:'Servidor',database:'Datos',cloud:'Nube',lock:'Candado',queue:'Lista',globe:'Web',bolt:'Rayo',mail:'Correo',gear:'Engranaje'};
-const ICON_OPTIONS=[['','Sin icono'] as const,...ICONS.map(icon=>[icon,ICON_LABELS[icon]] as const)];
 
 const PORT_LABELS={auto:'Automático',top:'Arriba',right:'Derecha',bottom:'Abajo',left:'Izquierda'} as const;
 const PORT_OPTIONS=PORTS.map(p=>[p,PORT_LABELS[p]] as const);
@@ -38,13 +37,15 @@ function NodeInspector({doc,node,focusToken}:{doc:DiagramDocument;node:DiagramNo
     {asset?<p className="inline-note">Imagen «{asset.label}» · {asset.mediaType.replace('image/','').replace('+xml','').toUpperCase()} · {asset.width} × {asset.height} px · {Math.max(1,Math.round(assetBytes(asset.data)/1024))} KB. Viaja dentro del documento; al eliminar el nodo, la imagen se va con él.</p>
       :<><SelectField label="Tipo" value={node.kind} options={kinds} onChange={kind=>update({kind},'Tipo cambiado')}/>
       <SelectField label="Forma" value={node.shape??''} options={SHAPE_OPTIONS} onChange={shape=>update({shape:shape||null},'Forma cambiada')}/>
-      <SelectField label="Icono" value={node.icon??''} options={ICON_OPTIONS} onChange={icon=>update({icon:icon||null},'Icono cambiado')}/>
+      <IconPicker node={node}/>
+      <TextField label="Enlace (https://…)" value={node.link??''} allowEmpty maxLength={2000} onCommit={link=>update({link:link.trim()||null},link.trim()?'Enlace cambiado':'Enlace quitado')}/>
       <TextField label="Detalle (un renglón por línea; «--» separa secciones)" value={node.details} multiline allowEmpty maxLength={2000} onCommit={details=>update({details},'Detalle cambiado')}/></>}
     <SelectField label="Zona" value={node.zoneId??''} options={[['','Sin zona'],...doc.zones.map(z=>[z.id,`${z.label} · ${z.id}`] as const)]}
       onChange={zoneId=>zoneId?transact([{type:'MOVE_NODE',id:node.id,placement:{inside:zoneId}}],'Nodo movido a la zona'):update({zoneId:null},'Nodo liberado de la zona')}/>
     <BoundsFields rect={{...node.position,...node.size}} minSize={24} onCommit={r=>transact([{type:'RESIZE_NODE',id:node.id,size:{width:r.width,height:r.height},position:{x:r.x,y:r.y}}],'Geometría cambiada')}/>
     {!asset&&<button onClick={()=>{const need=fitSize(node);transact([{type:'RESIZE_NODE',id:node.id,size:{width:Math.max(24,need.width),height:Math.max(24,need.height)}}],'Tamaño ajustado al texto');}}>Ajustar el tamaño al texto</button>}
-    {!asset&&<NodeStyleFields node={node} onStyle={style=>update({style},'Estilo cambiado')}/>}
+    {!asset&&<StylePresets nodes={[node]}/>}
+    {!asset&&<details className="style-details"><summary>Más opciones de estilo</summary><NodeStyleFields node={node} onStyle={style=>update({style},'Estilo cambiado')}/></details>}
     {rootGroup&&<div className="inline-note">
       <TextField label={`Grupo · ${rootGroup.id}`} value={rootGroup.label} allowEmpty maxLength={200} onCommit={label=>transact([{type:'UPDATE_GROUP',id:rootGroup.id,changes:{label}}],'Grupo renombrado')}/>
       <button onClick={ungroup}>Desagrupar</button>
@@ -132,7 +133,9 @@ export function Inspector(){
     {kind==='edge'&&<EdgeInspector key={ids[0]} doc={doc} edge={doc.edges.find(e=>e.id===ids[0])!} focusToken={labelFocus}/>}
     {kind==='zone'&&<ZoneInspector key={ids[0]} doc={doc} zone={doc.zones.find(z=>z.id===ids[0])!} focusToken={labelFocus}/>}
     {kind==='frame'&&<FrameInspector key={ids[0]} frame={doc.frames.find(f=>f.id===ids[0])!} focusToken={labelFocus}/>}
+    {nodes.length>1&&<StylePresets nodes={nodes}/>}
     {nodes.length>1&&<Arrange count={nodes.length}/>}
+    {nodes.length>0&&<SaveAsElement count={nodes.length}/>}
     {kind&&<Annotations key={'notes-'+ids[0]} doc={doc} targetId={ids[0]}/>}
     <div className="button-grid two">
       <button disabled={!nodes.length} onClick={duplicate}>Duplicar</button>

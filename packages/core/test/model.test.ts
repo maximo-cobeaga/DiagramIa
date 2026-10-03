@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {applyBatch,openDocument,validateDocument,previewBatch,getContext,routeEdge,edgePoints,instantiateComponent,validateLibrary,BUILTIN_LIBRARY,DiagramError,SCHEMA_VERSION,resolveScenario,sampleTrackEffects,stepStarts,type ActionInput,type DiagramDocument} from '../src/index.js';
+import {applyBatch,fitSize,openDocument,validateDocument,previewBatch,getContext,routeEdge,edgePoints,instantiateComponent,validateLibrary,BUILTIN_LIBRARY,DiagramError,SCHEMA_VERSION,resolveScenario,sampleTrackEffects,stepStarts,type ActionInput,type DiagramDocument} from '../src/index.js';
 
 const read=(path:string)=>JSON.parse(readFileSync(new URL(path,import.meta.url),'utf8'));
 const initial=():DiagramDocument=>validateDocument(read('../../../examples/architecture.diagramia.json'));
@@ -32,6 +32,16 @@ test('schema 1.4.0 adds empty tracks without changing old steps or their IDs',()
   const {document,migratedFrom}=openDocument(old);
   assert.equal(migratedFrom,'1.4.0');assert.deepEqual(document.animations[0].tracks,[]);
   assert.deepEqual(document.animations[0].steps.map(s=>s.id),initial().animations[0].steps.map(s=>s.id));
+});
+test('schema 1.5.0 opens unchanged as 1.6.0; the new icons and the large icon size are valid and need room for the name',()=>{
+  const old={...initial(),schemaVersion:'1.5.0'},{document,migratedFrom}=openDocument(old);
+  assert.equal(migratedFrom,'1.5.0');assert.equal(document.schemaVersion,'1.6.0');
+  assert.deepEqual(document,initial(),'sólo cambia la versión: el ejemplo ya es 1.6.0 y el contenido es el mismo');
+  const card=run(initial(),{type:'ADD_NODE',node:node('idea',0,600,{kind:'custom',shape:'rounded',icon:'idea',style:{fill:'#fff3b0',iconSize:'large'}})}).nodes.at(-1)!;
+  assert.equal(card.icon,'idea');assert.equal(card.style.iconSize,'large');
+  const small=fitSize({...card,style:{fill:'#fff3b0'}}),large=fitSize(card);
+  assert.ok(large.height>=small.height+28,`el icono grande suma alto: ${small.height} → ${large.height}`);
+  assert.throws(()=>run(initial(),{type:'ADD_NODE',node:node('x',0,600,{icon:'unicornio'})} as unknown as ActionInput),/icon/,'un icono fuera del catálogo se rechaza');
 });
 test('an unknown schema version is rejected with a recoverable error instead of being guessed',()=>{
   const future={...initial(),schemaVersion:'9.0.0'};

@@ -1,5 +1,5 @@
-import {documentBounds,groupMembers,instantiateComponent,nodeRect,resolveMembership,rootGroupId,type ActionInput,type DiagramComponent,type DiagramDocument,type DiagramEdge,type DiagramNode} from '@diagramia/core';
-import {documentStore,newId,notify,transact} from './store/documentStore';
+import {designDocument,describeError,fitSize,previewBatch,tidyBatch,tourOf,documentBounds,groupMembers,instantiateComponent,nodeRect,resolveMembership,rootGroupId,type ActionInput,type DiagramComponent,type DiagramDocument,type DiagramEdge,type DiagramNode} from '@diagramia/core';
+import {commit,documentStore,newId,notify,transact} from './store/documentStore';
 import {select,selectionStore} from './store/selectionStore';
 import {track} from './telemetry';
 import {fit,viewStore} from './store/viewStore';
@@ -97,7 +97,26 @@ export function insertComponent(component:DiagramComponent){
   // Se ubica debajo del contenido existente para no pisarlo; en un documento vacío, en el centro de la vista.
   const bounds=documentBounds(doc),at=bounds?{x:bounds.x,y:bounds.y+bounds.height+64}:{x:camera.x+viewport.width/camera.zoom/2-200,y:camera.y+viewport.height/camera.zoom/2-100};
   const {actions,nodeIds}=instantiateComponent(doc,component,at);
-  if(transact(actions,`Componente «${component.label}» insertado`)){select(nodeIds);fit(documentBounds(documentStore.get().doc));}
+  // Un elemento propio se mueve como una pieza: se inserta agrupado y se puede desagrupar para editarlo por partes.
+  const grouped=component.category==='custom'&&nodeIds.length>1?[{type:'CREATE_GROUP' as const,group:{id:newId('group'),label:component.label},nodeIds}]:[];
+  if(transact([...actions,...grouped],`«${component.label}» insertado`)){select(nodeIds);fit(documentBounds(documentStore.get().doc));}
+}
+/**
+ * Le da diseño al diagrama en un paso: tonos por zona, formas por rol, iconos por significado y flechas de color,
+ * sólo donde no hay una elección propia. Si no tiene animaciones, suma un recorrido. Después reacomoda todo para que se lea
+ * de un vistazo (un paso de deshacer).
+ */
+export function designAll(){
+  const {doc}=documentStore.get(),{actions}=designDocument(doc),tour=doc.animations.length?null:tourOf(doc,newId('recorrido'),'Recorrido: '+doc.title.slice(0,180));
+  if(!actions.length&&!tour){notify('Este diagrama ya tiene su propio diseño. Para cambiarlo, usá los estilos rápidos en Propiedades.');return;}
+  try{
+    // Las formas nuevas cambian lo que ocupa cada texto: primero se ajustan los tamaños y después se reacomoda todo.
+    const styled=previewBatch(doc,{id:newId('design-preview'),baseRevision:doc.revision,actions}).document;
+    const sizes=styled.nodes.flatMap(n=>{const need=fitSize(n);return need.width>n.size.width||need.height>n.size.height?[{type:'RESIZE_NODE' as const,id:n.id,size:{width:Math.max(n.size.width,need.width),height:Math.max(n.size.height,need.height)}}]:[];});
+    const arrange=doc.nodes.length>1?[{type:'ARRANGE_DOCUMENT' as const,direction:'right' as const}]:[];
+    const {batch}=tidyBatch(doc,{id:newId('design'),baseRevision:doc.revision,actions:[...actions,...sizes,...arrange,...(tour?[tour]:[])]});
+    if(commit(batch,(tour?'Diseño aplicado y recorrido creado':'Diseño aplicado')+'; Ctrl + Z lo deshace'))fit(documentBounds(documentStore.get().doc));
+  }catch(e){notify('No se pudo aplicar el diseño: '+describeError(e),'error');}
 }
 export function fitAll(quiet=false){
   if(!fit(documentBounds(documentStore.get().doc))&&!quiet)notify('El diagrama no entra completo a un tamaño legible: se muestra desde su esquina. Recorrelo con la mano (H) o alejá con −.','warn');

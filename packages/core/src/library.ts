@@ -5,7 +5,8 @@ import {validateDocument} from './engine.js';
 import {nodeRect,unionRects,type Point} from './geometry.js';
 
 export const ComponentSchema=z.strictObject({
-  id:Id,label:z.string().min(1).max(200),category:z.enum(['saas','cloud','process']),description:z.string().max(300).default(''),
+  // `custom` son los elementos que arma el usuario: se insertan agrupados, como una sola pieza.
+  id:Id,label:z.string().min(1).max(200),category:z.enum(['saas','cloud','process','custom']),description:z.string().max(300).default(''),
   nodes:z.array(NodeSchema).min(1).max(50),edges:z.array(EdgeSchema).max(100).default([]),zones:z.array(ZoneSchema).max(10).default([])
 });
 export const LibrarySchema=z.strictObject({libraryVersion:z.literal('1.0.0'),id:Id,label:z.string().min(1).max(200),components:z.array(ComponentSchema).max(200)});

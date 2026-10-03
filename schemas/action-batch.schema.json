@@ -173,8 +173,79 @@
                           "globe",
                           "bolt",
                           "mail",
-                          "gear"
+                          "gear",
+                          "users",
+                          "heart",
+                          "idea",
+                          "star",
+                          "target",
+                          "flag",
+                          "question",
+                          "check",
+                          "alert",
+                          "coin",
+                          "cart",
+                          "store",
+                          "chart",
+                          "trend",
+                          "briefcase",
+                          "file",
+                          "calendar",
+                          "clock",
+                          "tag",
+                          "box",
+                          "truck",
+                          "chat",
+                          "phone",
+                          "bell",
+                          "laptop",
+                          "wifi",
+                          "home",
+                          "building",
+                          "pin",
+                          "book",
+                          "graduation",
+                          "pencil",
+                          "search",
+                          "key",
+                          "shield",
+                          "leaf",
+                          "play",
+                          "link",
+                          "photo",
+                          "car",
+                          "bus",
+                          "train",
+                          "plane",
+                          "ship",
+                          "bike",
+                          "umbrella",
+                          "sun",
+                          "wave",
+                          "mountain",
+                          "food",
+                          "coffee",
+                          "bed",
+                          "camera",
+                          "map",
+                          "ticket",
+                          "music",
+                          "bag",
+                          "sparkle"
                         ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "link": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "pattern": "^https?:\\/\\/[^\\s\"<>]+$"
                       },
                       {
                         "type": "null"
@@ -211,7 +282,18 @@
                           "package",
                           "component",
                           "start",
-                          "end"
+                          "end",
+                          "sticky",
+                          "card",
+                          "bubble",
+                          "pill",
+                          "avatar",
+                          "badge",
+                          "ribbon",
+                          "folder",
+                          "browser",
+                          "chevron",
+                          "map"
                         ]
                       },
                       {
@@ -266,6 +348,13 @@
                           "center",
                           "right"
                         ]
+                      },
+                      "iconSize": {
+                        "type": "string",
+                        "enum": [
+                          "small",
+                          "large"
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -287,6 +376,7 @@
                   "subtitle",
                   "assetId",
                   "icon",
+                  "link",
                   "shape",
                   "style",
                   "details"
@@ -466,8 +556,78 @@
                           "globe",
                           "bolt",
                           "mail",
-                          "gear"
+                          "gear",
+                          "users",
+                          "heart",
+                          "idea",
+                          "star",
+                          "target",
+                          "flag",
+                          "question",
+                          "check",
+                          "alert",
+                          "coin",
+                          "cart",
+                          "store",
+                          "chart",
+                          "trend",
+                          "briefcase",
+                          "file",
+                          "calendar",
+                          "clock",
+                          "tag",
+                          "box",
+                          "truck",
+                          "chat",
+                          "phone",
+                          "bell",
+                          "laptop",
+                          "wifi",
+                          "home",
+                          "building",
+                          "pin",
+                          "book",
+                          "graduation",
+                          "pencil",
+                          "search",
+                          "key",
+                          "shield",
+                          "leaf",
+                          "play",
+                          "link",
+                          "photo",
+                          "car",
+                          "bus",
+                          "train",
+                          "plane",
+                          "ship",
+                          "bike",
+                          "umbrella",
+                          "sun",
+                          "wave",
+                          "mountain",
+                          "food",
+                          "coffee",
+                          "bed",
+                          "camera",
+                          "map",
+                          "ticket",
+                          "music",
+                          "bag",
+                          "sparkle"
                         ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "link": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "pattern": "^https?:\\/\\/[^\\s\"<>]+$"
                       },
                       {
                         "type": "null"
@@ -503,7 +663,18 @@
                           "package",
                           "component",
                           "start",
-                          "end"
+                          "end",
+                          "sticky",
+                          "card",
+                          "bubble",
+                          "pill",
+                          "avatar",
+                          "badge",
+                          "ribbon",
+                          "folder",
+                          "browser",
+                          "chevron",
+                          "map"
                         ]
                       },
                       {
@@ -556,6 +727,13 @@
                           "left",
                           "center",
                           "right"
+                        ]
+                      },
+                      "iconSize": {
+                        "type": "string",
+                        "enum": [
+                          "small",
+                          "large"
                         ]
                       }
                     },

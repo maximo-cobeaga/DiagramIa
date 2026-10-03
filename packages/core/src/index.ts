@@ -8,3 +8,4 @@ export * from './engine.js';
 export * from './tidy.js';
 export * from './library.js';
 export * from './telemetry.js';
+export * from './design.js';

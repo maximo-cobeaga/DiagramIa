@@ -2,6 +2,47 @@
 
 ## Último checkpoint
 
+03/10/2026 (Argentina, noche, segunda vuelta). El usuario pidió **más estética, más variedad y una vista previa real**, y mostró un viaje que la IA armó sin diseño (`evidencias/evi-1.json`). Se hizo lo siguiente:
+- **Formas y vista previa (ADR 062):**
+  - 11 formas con diseño propio: nota adhesiva, tarjeta con encabezado, globo, píldora, avatar, insignia, cinta, carpeta, ventana, chevron y mapa.
+  - 68 iconos y las categorías «Viajes y planes» y «Procesos».
+  - El elemento real se ve bajo el cursor al ubicarlo y al arrastrarlo, y las miniaturas de la paleta son el nodo real.
+  - Un detalle largo se parte en renglones en lugar de estirar el nodo.
+- **Diseñador automático (ADR 063):**
+  - Le pone a lo que crea la IA un tono por zona, formas por rol e iconos por significado.
+  - Conexiones firmes dentro de una zona y suaves entre zonas.
+  - Recorrido animado incluido.
+  - Botón «✦ Darle diseño» para diagramas existentes: un solo paso, que se deshace con Ctrl+Z.
+  - Distribución en grilla, filas de cinco y estantes.
+- **Enlaces y mapa (ADR 064):** campo `link` (sólo http/https) con dominio visible y botón ↗; la forma mapa es una ilustración editable.
+- **Resultado con el mismo pedido del usuario y DeepSeek:**
+  - Antes: 35 notas iguales, 9 flechas y ninguna animación.
+  - Ahora: 19 a 27 elementos en 3 a 5 formas, 17 a 21 iconos, zonas de color y un recorrido de 13 a 15 pasos. Capturas en `evidencias/`.
+- **Pendiente (P1.7):** vista previa remota de enlaces (requiere protección SSRF), mapas reales y menos cruces entre conexiones de zonas distintas.
+
+03/10/2026 (Argentina, noche). **Revisión manual del usuario (`revision-3-10.md`) aplicada**, en el orden pedido:
+- **Acceso y chat (P8.5, ADR 057):**
+  - «Iniciar sesión» visible en la cabecera y, ya dentro, el email con su inicial; la pestaña Sesión pasó a llamarse Cuenta y muestra la cuenta primero.
+  - El botón del panel lateral es un ícono, y el logo apunta a la landing real (antes, a `localhost:4173`).
+  - Tocar una observación de la IA enfoca y resalta el elemento con el color de su gravedad, sin seleccionarlo, y lo nombra por su nombre visible.
+  - Chat sin selector de modos: el gateway deduce la intención por reglas, sin costo, y se puede corregir con «Lo tomé como».
+  - Respuestas breves y simples, con «Explicar más» (1 crédito).
+  - Las acciones de una propuesta se describen en palabras, y el chat se rediseñó: envío dentro del cuadro e invitación a entrar.
+- **Explicación animada (P2.5, ADR 058):** explicar trae un recorrido de pasos sobre elementos reales, que se ve como presentación sin guardarse y se puede guardar como animación. En toda presentación, un paso sin frame acerca la cámara a lo resaltado.
+- **Elementos para todo público y propios (P1.6, ADR 059–060):**
+  - Schema 1.6.0: iconos de 10 a 49 y `iconSize: large`.
+  - Paleta con Ideas y notas, Personas, Negocio, Educación, Comunicación y tecnología, y Lugares y tiempo, con buscador.
+  - 12 estilos de un toque, y selector de iconos en grilla.
+  - «Guardar como elemento propio» en Propiedades; «Mis elementos» con miniaturas, que se insertan agrupados.
+  - La IA puede usar los iconos al crear.
+- Quedan registradas para después del lanzamiento la voz Premium (P2.6) y la biblioteca de la comunidad (P4.7).
+
+**Atención:** el usuario cargó el Client ID y el Client Secret de Auth0 en `.env.example`, que está versionado (el repositorio es público). No se hizo commit. Antes de cualquier commit hay que dejar `.env.example` como en `HEAD` (`git checkout -- .env.example`); los valores reales ya están en `.env`.
+
+03/10/2026 (Argentina, tarde). **IA real con DeepSeek como proveedor provisorio** mientras no haya clave de OpenAI. Se usa el adaptador compatible existente (`DIAGRAMIA_COMPAT_*`, modelo `deepseek-flash` = DeepSeek-V4.1-Flash, `https://api.deepseek.com`) y `DIAGRAMIA_ACCOUNT_PROVIDERS=compatible`. `npm run smoke:ai -- compatible`: **7/7** (Editar 2,8 s, Explicar, Revisar, ambigüedad, zona homónima, Crear 4 nodos/3 conexiones/0 superposiciones), 6 pedidos, 68.569 tokens de entrada (51.200 de caché) y 3.101 de salida. `npm run doctor` ahora muestra un aviso, no un error, cuando en local sólo hay un proveedor compatible. **Límite:** sin tarifa cargada, el tope en USD del gateway no cubre a DeepSeek; sólo lo frena el tope diario de tokens (400.000) y el saldo prepago de DeepSeek. Esto no verifica P3.1 con Luna: al tener `OPENAI_API_KEY`, borrar las líneas de DeepSeek de `.env`.
+
+Además, **Auth0 real configurado y probado por el usuario** (P4.1): PostgreSQL local, tenant Auth0, login con email y contraseña, y `npm run doctor -- --online` sin problemas. La prueba encontró un bug de UX: la verificación del email sólo se lee al iniciar sesión, y quien verificaba después quedaba bloqueado sin forma clara de salir. Se agregó el botón «Ya lo verifiqué» en la cuenta y en el error del chat, que vuelve a pasar por Auth0 sin pedir contraseña. Comprobado en la base: `email_verified` pasó a `true` con el segundo inicio de sesión. `npm run check` 104/104. La revisión manual del usuario está en `revision-3-10.md`.
+
 03/10/2026 (Argentina). Preparación de lanzamiento sin depender de accesos externos:
 - **`npm run doctor`:** diagnóstico de configuración en castellano, también para `.env.production` y con pruebas reales de OpenAI y Auth0 (`--online`).
 - **Alertas de gasto por webhook:** ntfy, Discord o Slack.
@@ -31,6 +72,10 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 01/10/2026 (Argentina, continuación). Se implementó P5.2: MCP remoto Streamable HTTP con OAuth, autorización por cuenta/proyecto y scopes, conservando stdio. También está implementada P6.3 con import/export PlantUML y BPMN; P4.1, P5.1 y partes de P4.4/P6.4 venían de la sesión anterior. El primer MVP **no está completo**: faltan prueba con Auth0 y hosts MCP reales, P4.3, resto de P4.4/P6.4, P5.3 y cierre de P8. Ver estados por microfase en `BACKLOG.md` y `docs/development-plan.json`.
 
 ## Evidencia
+
+- **03/10/2026 (noche, segunda vuelta).** `npm run check` **110/110**: el test nuevo de diseño de un viaje cubre tonos, formas por rol, iconos, respeto de lo elegido por el modelo, recorrido y ausencia de superposiciones. `npm run schemas` regenerado. `npm run smoke` **36/36** en Chromium, contra un editor y un gateway de demostración aislados; ahora también comprueba la vista previa al ubicar y «Darle diseño». Se corrigieron selectores que contaban las miniaturas de la paleta como nodos y un desborde de 2 px en el celular. Prueba real con DeepSeek, cuatro corridas del pedido «Planificame un viaje a Mar del Plata de 10 días»: 18–26 s y unos 19.000–20.000 tokens por pedido. Se revisaron capturas en cada corrida.
+
+- **03/10/2026 (noche).** `npm run check` **109/109** (16 frases nuevas del clasificador de intención, recorrido de la explicación con IDs filtrados y migración 1.5.0→1.6.0). `npm run smoke` **36/36** en Chromium, contra un editor y un gateway de demostración aislados en 5174 y 8788. Tres comprobaciones nuevas: observación que enfoca sin seleccionar; explicación breve, animada, guardable y ampliable; elementos para todo público y elemento propio reinsertado agrupado. `npm run smoke:ai -- compatible` con DeepSeek real **9/9**: «¿Qué hace este diagrama?» se interpretó como explicación, con 73 palabras y un recorrido de 5 pasos válidos; «Explicar más» dio 180 palabras. Capturas 10, 17, 18 y 19 revisadas.
 
 - **03/10/2026.** `npm run check` 104/104. `npm run smoke` 34/34 con el chequeo de nombres accesibles, que además se comprobó al revés: detecta un botón sin nombre inyectado. `smoke:repository` con PostgreSQL real: purga de respuestas, rechazo del reintento sin respuesta y eliminación de cuenta sin afectar a otras cuentas con el mismo ID de documento. `npm run doctor` probado en local, con el ejemplo de producción y dentro del contenedor `node:22.23.1-alpine`.
 
@@ -67,7 +112,7 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 ## Qué está listo
 
-- **Core 1.5.0** (`packages/core`, en módulos): migraciones 1.0.0→1.1.0→1.2.0→1.3.0→1.4.0→1.5.0, dibujos libres editables, pistas de resaltado/texto/cámara sincronizadas por paso, acciones canónicas, formas y estilos editables, enganches libres en bordes y puntas/líneas, escenarios y estados, assets verificados, routing, layout con espacio para etiquetas, placement con colisiones, pertenencia a zonas, contexto por selección y biblioteca.
+- **Core 1.6.0** (`packages/core`, en módulos): migraciones 1.0.0→1.1.0→1.2.0→1.3.0→1.4.0→1.5.0→1.6.0, 49 iconos con tamaño grande, dibujos libres editables, pistas de resaltado/texto/cámara sincronizadas por paso, acciones canónicas, formas y estilos editables, enganches libres en bordes y puntas/líneas, escenarios y estados, assets verificados, routing, layout con espacio para etiquetas, placement con colisiones, pertenencia a zonas, contexto por selección y biblioteca.
 - **Editor** (`apps/editor/src`): stores separados, guardado recuperable, canvas editable, paleta de arquitectura/flujo/UML, texto en el lugar, inspector, timeline con grilla de pistas, presentación, biblioteca, chat de IA con staging, pestañas independientes, modo oscuro, panel plegable, tutorial y catálogo móvil plegable; import/export (JSON, Mermaid, SVG, PNG, Markdown, timeline).
 - **Interop** (`packages/interop`): Mermaid, draw.io, DOT, PlantUML (clases/secuencia/estados simples), BPMN (proceso básico) y Markdown, con reportes de pérdidas.
 - **IA** (`packages/providers`, `apps/api`): gateway, adapters GPT-6 Luna (structured outputs estrictos, costo con caché) / Claude / compatible OpenAI / demostración, proveedores por plan, modo Crear por inventario convertido a acciones del core, reparación acotada, presupuesto, rate limit, idempotencia y cancelación.
@@ -92,7 +137,8 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
   - completar y hacer revisar el borrador del aviso de privacidad, y decidir sobre el consentimiento en la UE;
   - licencia del código;
   - `DIAGRAMIA_ALERT_WEBHOOK_URL` en producción;
-  - revisión manual del usuario de P1, P2, P4.1, P5.1, P6.3, P7 y P8.1.
+  - revisión manual del usuario de P1, P2, P4.1, P5.1, P6.3, P7 y P8.1, y de lo nuevo del 03/10: P1.6, P2.5 y P8.5;
+  - limpiar `.env.example` antes de cualquier commit (tiene el secreto de Auth0).
 - **Después de lanzar, según datos:** billing con Paddle (P4.6), agente Data/Product (P7.4), assets en almacenamiento (P4.3), export temporal (P6.4), recorte por viewport para más de 500 nodos, y CAPTCHA o señales de riesgo si aparece abuso.
 - **Límite conocido:** el motor detecta las superposiciones modeladas, pero no garantiza que todas las curvas, rutas manuales o cruces entre conexiones queden libres.
 
@@ -106,7 +152,9 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 ## Próxima acción inequívoca
 
-El usuario sigue `docs/GUIA_PASO_A_PASO.md`. Para el agente:
+El usuario prueba a mano lo del 03/10 (chat, explicación animada, paleta, estilos y elementos propios) y sigue `docs/GUIA_PASO_A_PASO.md`: los pasos 2 (base local) y 3 (Auth0) ya están hechos. Para el agente:
+
+0. **Antes de commitear:** `git checkout -- .env.example` (contiene el secreto de Auth0) y commitear el resto sin `.env`.
 
 1. **Con `OPENAI_API_KEY`:** `npm run api` y `npm run smoke:ai -- openai`. Repetirlo con `DIAGRAMIA_OPENAI_REASONING_EFFORT` en none, low y medium, y registrar costo por pedido, latencia y calidad. Con eso P3.1 queda verificada y se ajustan los créditos Free.
 2. **Con el tenant de Auth0:** configurar Google y email con verificación obligatoria, y probar el login real (P4.1). Agregar el email del fundador a `DIAGRAMIA_ADMIN_EMAILS`.
@@ -137,6 +185,9 @@ Ninguno es necesario para levantar el editor. El gateway de IA sólo llama a un 
 | 01/10/2026 (continuación) | P5.2 implementada | MCP remoto Streamable HTTP y OAuth resource server, JWT RS256/JWKS, scopes read/write, audiencia exacta y autorización por proyecto; ADR 042 y guía `docs/MCP_REMOTO.md`. | `npm run check`: 88/88; `npm run smoke:mcp-remote` y `npm run smoke:repository` aprobados. Issuer/JWKS local firmado, sin Auth0 ni host externo. | P4.3; prueba real de Auth0/proxy/hosts y P5.3 |
 | 02/10/2026 (planificación) | Plan reordenado; P4.4, P4.6 y P7 redefinidas | Higgsfield retirado del producto, GPT-6 Luna para Free, Auth0 confirmado, telemetría propia y orden Lean. ADR 044–048; `development-plan.json`, plan, backlog y criterio A16 actualizados; `07_IA_MCP_HIGGSFIELD.md` renombrado a `07_IA_Y_MCP.md`. | `npm run check` 88/88 (sin cambios de código) | P3.1 adapter Luna; P7.1 eventos |
 | 02/10/2026 (noche) | P3.1 (adapter), P4.4, P7.1–P7.3 implementadas; P8.2 implementada; P8.3/P8.4 parciales | Luna con structured outputs, proveedores por plan, telemetría propia y dashboard, antiabuso, ruteo con grilla espacial y poda exacta, checksum de migraciones por LF, artefactos de despliegue. ADR 049–055 | check 102/102; smoke 33/33 ×3 (dev, build prod, contenedor prod); smoke:repository, smoke:shared, smoke:dashboard; prueba de pila prod con respaldo y vuelta atrás | Credenciales (OpenAI, Auth0), autorización de despliegue, revisión manual |
+| 03/10/2026 (noche, 2.ª vuelta) | P1.6 ampliada; P1.7 parcial | Formas con diseño propio, vista previa real, diseñador automático con recorrido, «Darle diseño», distribución nueva, enlaces y mapa. ADR 062–064 | check 110/110; smoke 36/36; 4 corridas reales con DeepSeek | Revisión manual; vista previa remota de enlaces y mapas reales; limpiar `.env.example` |
+| 03/10/2026 (noche) | P8.5, P2.5 y P1.6 implementadas; P2.6 y P4.7 registradas | Revisión manual del usuario: login visible, intención deducida, respuestas breves con «Explicar más», enfoque de observaciones, explicación animada, schema 1.6.0 con iconos y estilos, elementos propios. ADR 057–061 | check 109/109; smoke 36/36; smoke:ai DeepSeek 9/9 | Revisión manual de lo nuevo; limpiar `.env.example`; Luna con clave |
+| 03/10/2026 (tarde) | P3.1 con proveedor provisorio | DeepSeek conectado por el adaptador compatible (sólo `.env`); doctor distingue proveedor de prueba | smoke:ai DeepSeek 7/7; doctor local y con ejemplo de producción | Pasos 2 y 3 de la guía; Luna cuando haya clave |
 | 03/10/2026 | P8.1/P8.3 avanzan (siguen parciales) | Doctor, alertas por webhook, retención mínima, eliminación de cuenta, borrador de privacidad, chequeo de accesibilidad, guía paso a paso, resumen .docx regenerado. ADR 056 | check 104/104; smoke 34/34; smoke:repository con eliminación y purga; doctor en local, producción y contenedor | Pasos 1–3 de la guía (OpenAI, base local, Auth0) |
 
 Instalación limpia comprobada previamente con `npm ci` y `npm run check` 73/73. El primer `npm ci` encontró un binario Rolldown abierto por la instancia Vite del smoke; se cerró ese proceso identificado y la segunda instalación aprobó. En esta sesión se verificó el árbol actualizado con 82/82 pruebas; no se repitió `npm ci`.

@@ -64,7 +64,9 @@ const MIGRATIONS:Record<string,{to:string;run:(d:Raw)=>Raw}>={
   '1.2.0':{to:'1.3.0',run:d=>({...d,schemaVersion:'1.3.0'})},
   // 1.4.0 añade una colección de trazos independiente; documentos viejos conservan contenido e IDs.
   '1.3.0':{to:'1.4.0',run:d=>({...d,schemaVersion:'1.4.0',drawings:[]})},
-  '1.4.0':{to:'1.5.0',run:d=>({...d,schemaVersion:'1.5.0',animations:(d.animations as Raw[]).map(a=>({...a,tracks:[]}))})}
+  '1.4.0':{to:'1.5.0',run:d=>({...d,schemaVersion:'1.5.0',animations:(d.animations as Raw[]).map(a=>({...a,tracks:[]}))})},
+  // 1.6.0 sólo amplía los iconos y agrega un estilo opcional: un documento 1.5.0 ya es válido tal cual.
+  '1.5.0':{to:'1.6.0',run:d=>({...d,schemaVersion:'1.6.0'})}
 };
 /** Abre un documento de cualquier versión legible y lo lleva al schema vigente. */
 export function openDocument(input:unknown):{document:DiagramDocument;migratedFrom:string|null}{

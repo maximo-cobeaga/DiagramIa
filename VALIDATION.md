@@ -218,9 +218,32 @@ Lo siguiente pasó pruebas automáticas y smokes, pero falta tu mirada:
 
 1. **Landing → editor:** `npm run dev:landing` y `npm run dev`. «Crear diagrama» (barra, portada y cierre) abre el editor y la URL queda limpia, sin `aid` ni `sid`.
 2. **Feedback de IA:** después de una respuesta aparece «¿Te sirvió? 👍 👎». Con 👎 se ofrecen motivos y después «Gracias por tu opinión». No debe molestar ni tapar la propuesta.
-3. **Privacidad:** en «Sesión → Privacidad», el interruptor apaga el envío. Con Do Not Track activo en el navegador aparece deshabilitado y explicado.
+3. **Privacidad:** en «Cuenta → Privacidad», el interruptor apaga el envío. Con Do Not Track activo en el navegador aparece deshabilitado y explicado.
 4. **Panel del fundador:** con PostgreSQL, cuentas y tu email en `DIAGRAMIA_ADMIN_EMAILS`, `/#fundador` muestra los 10 indicadores. Con datos reales, revisar que las definiciones (ADR 053) respondan tus preguntas.
 5. **Email no verificado:** una cuenta sin verificar recibe «Verificá tu email para usar la IA» y no gasta créditos.
 6. **Rendimiento en tu equipo y tu teléfono:** abrir un diagrama grande y arrastrar o hacer zoom (`docs/PERFORMANCE.md`).
-7. **Eliminar cuenta:** con una cuenta de prueba, «Sesión → Cuenta y nube → Eliminar mi cuenta». El botón sólo se habilita al escribir ELIMINAR; después vuelve a «Iniciar sesión» y los borradores del navegador siguen ahí.
-8. **Aviso de privacidad:** abrí `/privacidad.html` (enlace en el pie de la landing y en «Sesión → Privacidad») y completá los `[COMPLETAR]` con tus datos.
+7. **Eliminar cuenta:** con una cuenta de prueba, «Cuenta → Cuenta y nube → Eliminar mi cuenta». El botón sólo se habilita al escribir ELIMINAR; después vuelve a «Iniciar sesión» y los borradores del navegador siguen ahí.
+8. **Aviso de privacidad:** abrí `/privacidad.html` (enlace en el pie de la landing y en «Cuenta → Privacidad») y completá los `[COMPLETAR]` con tus datos.
+
+## Revisión manual pendiente de lo agregado el 03/10/2026 (tu revisión `revision-3-10.md`)
+
+Pasó `npm run check` 109/109, `npm run smoke` 36/36 y `npm run smoke:ai -- compatible` 9/9 con DeepSeek real. Falta tu mirada:
+
+1. **Login a la vista:** sin sesión, arriba a la derecha dice «Iniciar sesión» (en lima). Ya dentro, ves tu inicial y tu email; tocarlo abre la pestaña **Cuenta**, que muestra la cuenta primero.
+2. **Botón del panel:** el ícono arriba a la derecha del canvas oculta y muestra el panel lateral.
+3. **Chat sin modos:** escribí como hablarías («¿qué hace esto?», «agregá un pago», «¿qué riesgos ves?»). Debajo de cada respuesta, «Lo tomé como» muestra lo que entendió; si se equivocó, elegí otra opción y lo vuelve a pedir.
+4. **Respuestas breves y «Explicar más»:** una explicación son 2 a 4 oraciones; «Explicar más» la amplía (cuesta 1 crédito).
+5. **Explicación animada:** después de explicar, «▶ Ver explicación animada» recorre el diagrama paso a paso; Esc sale sin cambiar nada. «Guardar como animación» la deja en la línea de tiempo.
+6. **Observaciones:** pedí una revisión y tocá el nombre de un elemento: la vista viaja hasta él y lo marca con el color de la gravedad, sin seleccionarlo.
+7. **Elementos nuevos:** en la paleta, «Ideas y notas», «Personas», «Negocio», «Educación», «Comunicación y tecnología» y «Lugares y tiempo», y el buscador (probá «dinero» o «post-it»).
+8. **Estilos e iconos:** en Propiedades, «Estilo rápido» cambia los colores de uno o varios elementos; «Elegir un icono» muestra los 49 iconos; «Grande, arriba» lo convierte en tarjeta.
+9. **Tu propio elemento:** superponé o combiná formas, seleccionalas y tocá «✦ Guardar como elemento propio». En Biblioteca → Mis elementos aparece con miniatura e «Insertar» lo trae como una sola pieza (Desagrupar lo separa).
+
+### Segunda vuelta del 03/10/2026 (estética y diseño automático)
+
+10. **Vista previa al ubicar:** elegí cualquier elemento de la paleta y pasá el mouse por el canvas: tenés que ver ese mismo elemento, semitransparente. Lo mismo al arrastrarlo.
+11. **Elementos distintos:** «Ideas y notas», «Personas», «Viajes y planes», «Procesos»… tienen notas adhesivas, globos, píldoras, avatares, insignias, cintas, carpetas, ventanas, pasos y un mapa.
+12. **Tu viaje con diseño:** importá `evidencias/evi-1.json` y tocá **✦ Darle diseño**: zonas de color, formas e iconos por tema, el día a día como calendario y un recorrido para ▶ Presentar. Ctrl+Z lo deshace.
+13. **Pedido nuevo a la IA:** pedile de nuevo el viaje a Mar del Plata y compará con `evidencias/evi-2-viaje-con-diseno.png`.
+14. **Enlaces:** en Propiedades, «Enlace (https://…)»; el nodo muestra el dominio y el botón ↗ abre la página.
+
