@@ -53,7 +53,14 @@ const STRICT_SCHEMAS:Partial<Record<Mode,{name:string;schema:Record<string,unkno
 export const strictSchemaFor=(mode:Mode)=>STRICT_SCHEMAS[mode];
 
 export type AssistConfig={maxOutputTokens:number;maxContextChars:number;maxRepairs:number;timeoutMs:number};
-export class AssistError extends Error{constructor(public code:string,message:string,public status=400){super(message);this.name='AssistError';}}
+type AssistUsage={inputTokens:number;outputTokens:number;cachedInputTokens:number;calls:number;estimatedCostUsd:number|null;costBasis:string};
+export class AssistError extends Error{
+  /** Consumo y modelo de un pedido que falló después de llamar al proveedor: también cuesta y se mide. */
+  usage?:AssistUsage;model?:string;
+  constructor(public code:string,message:string,public status=400){super(message);this.name='AssistError';}
+}
+/** Forma común de una respuesta del asistente, para quien la registra o la reenvía. */
+export type AssistAnswer={kind:'proposal'|'clarification'|'text'|'review';model:string;repairs:number;replayed?:boolean;usage:AssistUsage;requestId:string};
 
 const MODE_BRIEF:Record<Mode,string>={
   create:'Creá los elementos pedidos en el documento.',edit:'Editá sólo lo pedido; conservá el resto y los IDs existentes.',
@@ -158,7 +165,7 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   // El presupuesto limita gasto: sólo los proveedores remotos lo consumen. El límite de pedidos por minuto rige para todos.
   const billable=info.kind==='remote';
   const begun=deps.ledger.begin(request.requestId,signature,billable?callCost(messages):0);
-  if(begun)return {...(begun.replay as object),replayed:true};
+  if(begun)return {...(begun.replay as AssistAnswer),replayed:true};
 
   const timeout=AbortSignal.timeout(deps.config.timeoutMs),signal=AbortSignal.any([clientSignal,timeout]);
   let inputTokens=0,outputTokens=0,cachedInputTokens=0,calls=0,model=info.model;
@@ -229,9 +236,11 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   }catch(error){
     const cancelled=clientSignal.aborted||(error instanceof ProviderError&&error.code==='CANCELLED'&&!timeout.aborted);
     settle(cancelled?'cancelled':'failed');
-    if(cancelled)throw new AssistError('CANCELLED','Pedido cancelado. El documento no cambió. El proveedor pudo haber cobrado lo ya procesado.',499);
-    if(timeout.aborted)throw new AssistError('TIMEOUT',`El proveedor no respondió en ${Math.round(deps.config.timeoutMs/1000)} s. No se reintenta automáticamente para no duplicar gasto.`,504);
-    if(error instanceof ProviderError)throw new AssistError(error.code,error.message,error.code==='RATE_LIMIT'?429:error.code==='AUTH'||error.code==='NOT_CONFIGURED'?409:502);
+    const measured=(failure:AssistError)=>{failure.usage=usage();failure.model=model;return failure;};
+    if(cancelled)throw measured(new AssistError('CANCELLED','Pedido cancelado. El documento no cambió. El proveedor pudo haber cobrado lo ya procesado.',499));
+    if(timeout.aborted)throw measured(new AssistError('TIMEOUT',`El proveedor no respondió en ${Math.round(deps.config.timeoutMs/1000)} s. No se reintenta automáticamente para no duplicar gasto.`,504));
+    if(error instanceof ProviderError)throw measured(new AssistError(error.code,error.message,error.code==='RATE_LIMIT'?429:error.code==='AUTH'||error.code==='NOT_CONFIGURED'?409:502));
+    if(error instanceof AssistError)throw measured(error);
     throw error;
   }
 }

@@ -42,8 +42,8 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 | P6.2 | draw.io y Graphviz | implementada |
 | P6.3 | PlantUML, UML y BPMN | implementada |
 | P6.4 | Export visual y artefactos | parcial |
-| P7.1 | Eventos y captura | pendiente |
-| P7.2 | Métricas de IA y feedback | pendiente |
+| P7.1 | Eventos y captura | implementada |
+| P7.2 | Métricas de IA y feedback | implementada |
 | P7.3 | Agregados y dashboard del fundador | pendiente |
 | P7.4 | Agente Data/Product (post-lanzamiento) | pendiente |
 | P8.1 | UX y accesibilidad | parcial |

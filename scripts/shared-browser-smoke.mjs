@@ -12,6 +12,7 @@ import {UsageLedger} from '../apps/api/dist/usage.js';
 import {migrateDocuments,PostgresDocumentRepository} from '../apps/api/dist/repositories/postgres.js';
 import {remoteDocumentBackend} from '../apps/mcp/dist/remote.js';
 import {AccountRepository} from '../apps/api/dist/repositories/accounts.js';
+import {TelemetryRepository} from '../apps/api/dist/repositories/telemetry.js';
 
 const root=fileURLToPath(new URL('../',import.meta.url)),compose=join(root,'infra/compose.dev.yml');
 const suffix=randomUUID().slice(0,8),project=`diagramia-shared-${suffix}`,password=`shared-${suffix}`;
@@ -28,7 +29,7 @@ try{
   pool=new pg.Pool({host:'127.0.0.1',port:dbPort,user:'diagramia',database:'diagramia',password,max:5});
   await migrateDocuments(pool);
   const repo=new PostgresDocumentRepository(pool),accounts=new AccountRepository(pool),alice=await accounts.signIn({issuer:'https://test.example',subject:'alice',email:'alice@example.test'}),origin=`http://127.0.0.1:${editorPort}`;
-  server=createApp({providers:[],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:[origin],documents:repo,documentToken:'shared-test-token',localWorkspace:true,accounts,oidc:{redirectUri:new URL(origin+'/api/v1/auth/callback')},config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
+  server=createApp({providers:[],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:[origin],documents:repo,documentToken:'shared-test-token',localWorkspace:true,accounts,telemetry:new TelemetryRepository(pool),oidc:{redirectUri:new URL(origin+'/api/v1/auth/callback')},config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const apiOrigin=`http://127.0.0.1:${server.address().port}`;
   vite=spawn(process.execPath,[join(root,'apps/editor/node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port',String(editorPort),'--strictPort'],{cwd:join(root,'apps/editor'),env:{...process.env,DIAGRAMIA_API_URL:apiOrigin},stdio:'ignore'});
@@ -83,6 +84,22 @@ try{
   await js("[...document.querySelectorAll('.tabs button')].find(b=>b.textContent.trim()==='Sesión').click()");
   await until(()=>js("document.querySelector('.shared-panel')?.textContent.includes('Reconectado')"),'reconexión tras recargar');
   assert.equal((await saved()).revision,beforeReload.revision);
+  // Telemetría de punta a punta: el navegador envía por lotes, el gateway valida y PostgreSQL guarda sin contenido.
+  let rows=[];
+  for(let i=0;i<120;i++){
+    rows=(await pool.query("SELECT name,user_id,props,context FROM telemetry_events WHERE origin='client'")).rows;
+    const names=new Set(rows.map(row=>row.name));
+    if(['board_opened','node_moved','undo','useful_diagram_created','page_load'].every(name=>names.has(name)))break;
+    await sleep(250);
+  }
+  const names=new Set(rows.map(row=>row.name));
+  for(const name of ['board_opened','node_moved','undo','useful_diagram_created','page_load'])assert.ok(names.has(name),`falta el evento ${name}; llegaron: ${[...names].join(', ')}`);
+  assert.equal(rows.find(row=>row.name==='useful_diagram_created').props.reason,'saved_cloud');
+  assert.ok(rows.every(row=>row.user_id===alice.session.userId),'con sesión, los eventos quedan atribuidos a la cuenta');
+  assert.equal((await pool.query('SELECT user_id FROM telemetry_identities')).rows[0]?.user_id,alice.session.userId,'el visitante quedó vinculado a la cuenta');
+  const stored=JSON.stringify(rows);
+  assert.ok(!stored.includes('Editado por MCP')&&!stored.includes('alice@example.test'),'ni el título del documento ni el email llegan a la telemetría');
+  console.log(`Telemetría: ${rows.length} eventos del navegador (${[...names].sort().join(', ')}) guardados sin contenido.`);
   console.log('Editor ↔ PostgreSQL ↔ MCP: cambio remoto, edición UI, undo durable, nube y reconexión aprobados.');
 }catch(error){failure=error;
 }finally{

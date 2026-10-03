@@ -1,6 +1,7 @@
 import {openDocument,type ActionBatch,type DiagramDocument} from '@diagramia/core';
 import {createStore} from './createStore';
 import {addTab,clearSharedHistory,documentStore,forceSharedDocument,newId,notify,receiveSharedDocument,registerSharedAdapter} from './documentStore';
+import {trackUseful} from '../telemetry';
 import {saveFile} from '../ui';
 
 type Phase='off'|'connecting'|'synced'|'sending'|'offline'|'conflict';
@@ -59,6 +60,7 @@ export async function createSharedDocument(mode:SharedMode='local'){
     saveBinding(tabId,doc.id,mode);
     clearSharedHistory(tabId);
     notify(mode==='cloud'?'Documento guardado en tu nube.':'Documento guardado en PostgreSQL y disponible para MCP.');
+    if(mode==='cloud')trackUseful(doc,'saved_cloud');
   }catch(error){sharedStore.set({phase:'off',message:problem(error)});notify(problem(error),'error');}
 }
 

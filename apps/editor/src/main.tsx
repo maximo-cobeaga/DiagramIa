@@ -26,9 +26,10 @@ import {Presentation} from './presentation/Presentation';
 import {Tutorial,tutorialSeen} from './shell/Tutorial';
 import {SharedPanel} from './shell/SharedPanel';
 import {sharedStore} from './store/sharedStore';
+import {browserOptOut,setTelemetryEnabled,startTelemetry,telemetryEnabled,track,trackReopened} from './telemetry';
 import './styles.css';
 
-const TEMPLATES:[string,unknown][]=[['Arquitectura SaaS',architecture],['Compra confirmada',success],['Rechazo y recuperación',failure],['Inicio de sesión',login]];
+const TEMPLATES:[string,unknown,string][]=[['Arquitectura SaaS',architecture,'saas-architecture'],['Compra confirmada',success,'checkout-success'],['Rechazo y recuperación',failure,'checkout-failure'],['Inicio de sesión',login,'login']];
 // Iconos de 16 × 16 dibujados con trazo.
 const TOOLS:[Tool,string,string,string][]=[
   ['select','Mover','V','M3 2l9 5-4 1.5L6.5 13z'],
@@ -99,7 +100,7 @@ function Tools(){
     <button onClick={()=>imageRef.current?.click()}>Agregar imagen…</button>
     <input ref={imageRef} type="file" hidden accept="image/png,image/jpeg,image/webp,image/svg+xml" data-role="image-input" onChange={e=>{const file=e.target.files?.[0];if(file)void addImage(file);e.target.value='';}}/>
     <span className="eyebrow">DIAGRAMA</span>
-    <select aria-label="Cargar ejemplo" value="" onChange={e=>{resetPlayback();addTab({...openDocument(TEMPLATES[+e.target.value][1]).document,appliedBatches:[]});}}><option value="" disabled>Abrir un ejemplo…</option>{TEMPLATES.map(([label],i)=><option key={label} value={i}>{label}</option>)}</select>
+    <select aria-label="Cargar ejemplo" value="" onChange={e=>{const template=TEMPLATES[+e.target.value];resetPlayback();if(addTab({...openDocument(template[1]).document,appliedBatches:[]}))track('template_used',{template:template[2]});}}><option value="" disabled>Abrir un ejemplo…</option>{TEMPLATES.map(([label],i)=><option key={label} value={i}>{label}</option>)}</select>
     <button disabled={!ids.length} onClick={deleteSelection}>Eliminar selección</button>
     <details className="elements"><summary>Elementos · {elements.length}</summary>
       <div className="element-list">{elements.map(([id,label,kind])=>
@@ -146,7 +147,18 @@ function SessionPanel(){
     <h3>Otra IA o MCP</h3>
     <ManualChannel/>
     <SharedPanel/>
+    <PrivacySettings/>
   </div>;
+}
+
+/** Medición anónima de uso: qué se usa y dónde se traba la gente, nunca el contenido de los diagramas. */
+function PrivacySettings(){
+  const [enabled,setEnabled]=useState(telemetryEnabled()),blocked=browserOptOut();
+  return <section aria-label="Privacidad">
+    <h3>Privacidad</h3>
+    <label className="check"><input type="checkbox" checked={enabled&&!blocked} disabled={blocked} onChange={e=>{setTelemetryEnabled(e.target.checked);setEnabled(e.target.checked);}}/>Enviar datos anónimos de uso</label>
+    <p className="inline-note">{blocked?'Tu navegador pide no ser rastreado (Do Not Track o Global Privacy Control): no se envía nada.':'Sirven para mejorar Diagramia: qué herramientas se usan, errores y tiempos. Nunca se envía el texto de tus diagramas ni tus pedidos a la IA.'}</p>
+  </section>;
 }
 
 function SidePanel(){
@@ -178,4 +190,6 @@ function App(){
     {tutorial&&<Tutorial/>}
   </>;
 }
+startTelemetry();
+trackReopened(documentStore.get().doc);
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);

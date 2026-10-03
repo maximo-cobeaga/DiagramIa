@@ -8,6 +8,7 @@ import {migrateDocuments,PostgresDocumentRepository} from './repositories/postgr
 import {AccountRepository} from './repositories/accounts.js';
 import {OidcAuthenticator} from './auth/oidc.js';
 import {RemoteMcpService} from './mcp.js';
+import {TelemetryRepository} from './repositories/telemetry.js';
 
 const root=fileURLToPath(new URL('../../../',import.meta.url));
 // Carga opcional de .env en la raíz del repo (el archivo está en .gitignore). Las variables ya definidas tienen prioridad.
@@ -44,12 +45,15 @@ async function start(){
       documentToken:pool?env.DIAGRAMIA_DOCUMENTS_TOKEN:undefined,
       localWorkspace:env.DIAGRAMIA_LOCAL_WORKSPACE==='1'&&['127.0.0.1','localhost','::1'].includes(host),
       accounts,remoteMcp,
+      // Telemetría propia (ADR 046): requiere PostgreSQL; DIAGRAMIA_TELEMETRY=0 la apaga.
+      telemetry:pool&&env.DIAGRAMIA_TELEMETRY!=='0'?new TelemetryRepository(pool):undefined,
+      eventsPerMinute:number('DIAGRAMIA_EVENTS_PER_MINUTE',60),trustProxy:env.DIAGRAMIA_TRUST_PROXY==='1',
       // Plan Free: GPT-6 Luna por defecto (ADR 045). Lista separada por comas de IDs de proveedor.
       accountProviders:(env.DIAGRAMIA_ACCOUNT_PROVIDERS??'openai').split(',').map(id=>id.trim()).filter(Boolean),
       oidc:configured.length?new OidcAuthenticator({issuer:env.DIAGRAMIA_OIDC_ISSUER!,clientId:env.DIAGRAMIA_OIDC_CLIENT_ID!,clientSecret:env.DIAGRAMIA_OIDC_CLIENT_SECRET!,redirectUri:env.DIAGRAMIA_OIDC_REDIRECT_URI!,homeUrl:env.DIAGRAMIA_OIDC_HOME_URL!}):undefined,
       ready:pool?async()=>{try{await pool.query('SELECT 1');return true;}catch{return false;}}:undefined,
       log:entry=>{if(entry.path!=='/health'&&entry.path!=='/ready')console.log(JSON.stringify(entry));},
-      allowedOrigins:(env.DIAGRAMIA_ALLOWED_ORIGINS??'http://127.0.0.1:5173,http://localhost:5173').split(',').map(o=>o.trim()).filter(Boolean),
+      allowedOrigins:(env.DIAGRAMIA_ALLOWED_ORIGINS??'http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:4173,http://localhost:4173').split(',').map(o=>o.trim()).filter(Boolean),
       config:{maxOutputTokens:number('DIAGRAMIA_MAX_OUTPUT_TOKENS',8000),maxContextChars:number('DIAGRAMIA_MAX_CONTEXT_CHARS',60_000),maxRepairs:Math.min(3,Math.round(number('DIAGRAMIA_MAX_REPAIRS',1))),timeoutMs:number('DIAGRAMIA_REQUEST_TIMEOUT_MS',120_000)}
     });
     server.listen(port,host,()=>{

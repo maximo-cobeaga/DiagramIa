@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {useStore} from '../store/createStore';
 import {documentStore} from '../store/documentStore';
+import {flush as flushTelemetry,track} from '../telemetry';
 import {createSharedDocument,detachSharedDocument,listSharedDocuments,openSharedDocument,recoverShared,retryShared,sharedStore,type SharedMode} from '../store/sharedStore';
 
 type Entry={id:string;title:string;revision:number};
@@ -37,7 +38,7 @@ export function SharedPanel(){
     <h3>Cuenta y nube</h3>
     {auth==='loading'&&<p className="inline-note">Comprobando la sesión…</p>}
     {auth==='unavailable'&&<p className="inline-note">La cuenta aún no está configurada en este servidor. Podés seguir con el borrador local y exportar el JSON.</p>}
-    {auth==='guest'&&<div className="step-actions"><p className="inline-note">Iniciá sesión para guardar en la nube.</p><button onClick={()=>window.location.assign('/api/v1/auth/login')}>Iniciar sesión</button></div>}
+    {auth==='guest'&&<div className="step-actions"><p className="inline-note">Iniciá sesión para guardar en la nube.</p><button onClick={()=>{track('signup_started',{trigger:'cloud'});void flushTelemetry(true).finally(()=>window.location.assign('/api/v1/auth/login'));}}>Iniciar sesión</button></div>}
     {account&&<>
       <p className="inline-note">{account.session.email??'Cuenta activa'} · {account.storage.documents}/{account.storage.maxDocuments} diagramas · {mb(account.storage.bytes)}/{mb(account.storage.maxBytes)} usados.</p>
       <p className="inline-note">Esta pestaña ocupa {mb(bodyBytes)}; el máximo por diagrama, incluidas sus versiones, es {mb(account.storage.maxDocumentBytes)}.</p>

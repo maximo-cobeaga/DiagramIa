@@ -1,4 +1,5 @@
 import type {DiagramDocument,DiagramNode,Rect} from '@diagramia/core';
+import {trackThrottled} from '../telemetry';
 import {createStore} from './createStore';
 
 export type Camera={x:number;y:number;zoom:number};
@@ -40,6 +41,7 @@ export const clampZoom=(zoom:number)=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,zoom))
 /** Zoom que mantiene fijo el punto de pantalla (sx, sy), medido desde la esquina del canvas. */
 export function zoomAt(sx:number,sy:number,zoom:number){
   const {camera}=viewStore.get(),next=clampZoom(zoom);
+  trackThrottled('zoom',{});
   viewStore.set({camera:{zoom:next,x:camera.x+sx/camera.zoom-sx/next,y:camera.y+sy/camera.zoom-sy/next}});
 }
 export function zoomBy(factor:number){const {camera,viewport}=viewStore.get();zoomAt(viewport.width/2,viewport.height/2,camera.zoom*factor);}

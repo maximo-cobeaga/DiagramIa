@@ -5,6 +5,8 @@ import {commit,documentStore,newId,notify,transact} from '../store/documentStore
 import {select,selectionStore} from '../store/selectionStore';
 import {fit,viewStore} from '../store/viewStore';
 import {saveFile} from '../ui';
+import {FEEDBACK_REASONS} from '@diagramia/core';
+import {flush as flushTelemetry,track,trackAiApplied} from '../telemetry';
 
 // El gateway se alcanza por el proxy del servidor de desarrollo: el navegador nunca ve claves de proveedores.
 const API='/api';
@@ -21,7 +23,9 @@ type Result=Common&(
   |{kind:'clarification';summary:string;clarification:string}
   |{kind:'text';text:string}
   |{kind:'review';summary:string;findings:Finding[]});
-type Turn={id:string;prompt:string;mode:string;body:string;status:'sending'|'done'|'error';result?:Result;error?:{message:string;retryable:boolean};outcome?:'applied'|'rejected'|'saved'};
+type Turn={id:string;prompt:string;mode:string;body:string;status:'sending'|'done'|'error';result?:Result;error?:{message:string;retryable:boolean};outcome?:'applied'|'rejected'|'saved';feedback?:'asking-reason'|'sent'};
+type AiMode='create'|'edit'|'transform'|'animate'|'explain'|'review'|'document';
+const REASON_LABELS:Record<typeof FEEDBACK_REASONS[number],string>={misunderstood:'No entendió el pedido',incorrect:'Resultado incorrecto',too_simple:'Demasiado simple',too_complex:'Demasiado complejo',bad_layout:'Diseño malo',missing_elements:'Faltan elementos',other:'Otro'};
 
 const MODES:[string,string,string][]=[
   ['edit','Editar','Cambia sólo lo pedido, con la selección como contexto.'],['create','Crear','Arma elementos o un diagrama nuevo.'],
@@ -47,7 +51,7 @@ const replyOf=(result:Result)=>(result.kind==='proposal'?`Propuse ${result.batch
 export function Chat(){
   const {doc}=useStore(documentStore),{ids}=useStore(selectionStore),{staging}=useStore(viewStore);
   const [providers,setProviders]=useState<ProviderInfo[]|null>(null),[budget,setBudget]=useState<Budget|null>(null),[credits,setCredits]=useState<Credits|null>(null),[offline,setOffline]=useState(false),[authRequired,setAuthRequired]=useState(false),[providerId,setProviderId]=useState(''),[mode,setMode]=useState('edit'),[prompt,setPrompt]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[stageNote,setStageNote]=useState('');
-  const controller=useRef<AbortController|null>(null),threadRef=useRef<HTMLDivElement>(null);
+  const controller=useRef<AbortController|null>(null),threadRef=useRef<HTMLDivElement>(null),opened=useRef(false);
   const last=turns[turns.length-1],sending=last?.status==='sending';
   const patch=(id:string,changes:Partial<Turn>)=>setTurns(list=>list.map(turn=>turn.id===id?{...turn,...changes}:turn));
 
@@ -70,7 +74,7 @@ export function Chat(){
     setTurns(list=>[...list.filter(t=>t.id!==turn.id),{...turn,status:'sending',error:undefined}]);
     try{
       const response=await fetch(API+'/v1/assist',{method:'POST',headers:HEADERS,body:turn.body,signal:controller.current.signal}),data=await response.json();
-      if(!response.ok){patch(turn.id,{status:'error',error:{message:data?.error?.message??`El gateway respondió ${response.status}.`,retryable:[429,502,504].includes(response.status)}});return;}
+      if(!response.ok){track('api_error',{route:'assist',status:response.status});patch(turn.id,{status:'error',error:{message:data?.error?.message??`El gateway respondió ${response.status}.`,retryable:[429,502,504].includes(response.status)}});return;}
       patch(turn.id,{status:'done',result:data as Result});
       void loadProviders();
     }catch(error){
@@ -146,12 +150,25 @@ export function Chat(){
         </div>}
         {stale&&<p className="warn" role="alert">⚠ Editaste el documento mientras la IA respondía (ahora r{doc.revision}). La propuesta no se aplica sobre tu trabajo nuevo: regenerala con la revisión actual.</p>}
         <div className="button-grid two">
-          {stale?<button className="primary" onClick={()=>submit(turn.prompt,turn.mode)}>Regenerar</button>
-            :<button className="primary" onClick={()=>{unstage();if(commit(result.batch,'Propuesta de IA aplicada'))patch(turn.id,{outcome:'applied'});}}>Aceptar y aplicar</button>}
-          <button onClick={()=>{unstage();patch(turn.id,{outcome:'rejected'});notify('Propuesta rechazada. El documento no cambió.');}}>Rechazar</button>
+          {stale?<button className="primary" onClick={()=>{track('ai_regenerated',{requestId:turn.id,mode:turn.mode as AiMode});submit(turn.prompt,turn.mode);}}>Regenerar</button>
+            :<button className="primary" onClick={()=>{unstage();if(commit(result.batch,'Propuesta de IA aplicada','ai')){trackAiApplied(turn.id,turn.mode as AiMode,result.batch.actions.length);patch(turn.id,{outcome:'applied'});}}}>Aceptar y aplicar</button>}
+          <button onClick={()=>{unstage();track('ai_proposal_discarded',{requestId:turn.id,mode:turn.mode as AiMode});patch(turn.id,{outcome:'rejected'});notify('Propuesta rechazada. El documento no cambió.');}}>Rechazar</button>
         </div>
       </>}
     </>;
+  }
+
+  /** ¿Te sirvió? Opcional y breve: un toque, y el motivo sólo si la respuesta fue negativa. */
+  function feedback(turn:Turn){
+    if(turn.result?.replayed)return null;
+    const send=(rating:'up'|'down',reason:typeof FEEDBACK_REASONS[number]|null)=>{track('ai_feedback',{requestId:turn.id,rating,reason});patch(turn.id,{feedback:'sent'});};
+    if(turn.feedback==='sent')return <small className="feedback-done">Gracias por tu opinión.</small>;
+    if(turn.feedback==='asking-reason')return <div className="feedback" role="group" aria-label="¿Qué falló?"><small>¿Qué falló?</small>
+      {FEEDBACK_REASONS.map(reason=><button key={reason} className="chip-button" onClick={()=>send('down',reason)}>{REASON_LABELS[reason]}</button>)}
+      <button className="quiet" onClick={()=>send('down',null)}>Prefiero no decir</button></div>;
+    return <div className="feedback" role="group" aria-label="¿Te sirvió este resultado?"><small>¿Te sirvió?</small>
+      <button className="quiet" aria-label="Sí, me sirvió" onClick={()=>send('up',null)}>👍</button>
+      <button className="quiet" aria-label="No me sirvió" onClick={()=>patch(turn.id,{feedback:'asking-reason'})}>👎</button></div>;
   }
 
   return <div className="chat">
@@ -160,7 +177,7 @@ export function Chat(){
       <button className="quiet" disabled={!turns.length||sending} onClick={()=>{setTurns([]);unstage();}}>Nueva conversación</button>
     </div>
     <div className="chat-thread" ref={threadRef} aria-live="polite">
-      {authRequired&&<div className="bubble system">Iniciá sesión para usar la IA y ver tus créditos. <button className="quiet" onClick={()=>window.location.assign('/api/v1/auth/login')}>Iniciar sesión</button></div>}
+      {authRequired&&<div className="bubble system">Iniciá sesión para usar la IA y ver tus créditos. <button className="quiet" onClick={()=>{track('signup_started',{trigger:'ai'});void flushTelemetry(true).finally(()=>window.location.assign('/api/v1/auth/login'));}}>Iniciar sesión</button></div>}
       {offline&&<div className="bubble system">⚠ El gateway de IA no está corriendo. Inicialo con <code>npm run api</code>. <button className="quiet" onClick={()=>void loadProviders()}>Reintentar</button></div>}
       {providers&&!providerId&&<div className="bubble system">{providers.map(p=>p.missing).filter(Boolean).join(' ')} Las claves se configuran en el entorno del gateway, nunca en el navegador.</div>}
       {!turns.length&&<div className="chat-welcome">
@@ -171,12 +188,14 @@ export function Chat(){
         <div className="bubble user"><span className="bubble-meta">{MODES.find(m=>m[0]===turn.mode)?.[1]}</span>{turn.prompt}</div>
         {turn.status==='sending'&&<div className="bubble assistant typing" role="status"><span/><span/><span/><em>Interpretando con {provider?.label}… el documento no cambia mientras tanto.</em></div>}
         {turn.status==='error'&&<div className="bubble assistant error" role="alert">✕ {turn.error!.message} {turn.error!.retryable&&turn===last&&<button className="quiet" onClick={()=>void send(turn)}>Reintentar</button>}</div>}
-        {turn.status==='done'&&<div className={'bubble assistant kind-'+turn.result!.kind}>{answer(turn)}<span className="bubble-meta">{usageLine(turn.result!)}</span></div>}
+        {turn.status==='done'&&<div className={'bubble assistant kind-'+turn.result!.kind}>{answer(turn)}{feedback(turn)}<span className="bubble-meta">{usageLine(turn.result!)}</span></div>}
       </div>)}
     </div>
     <div className="chat-composer">
       {provider?.kind==='mock'&&<p className="inline-note warn">⚠ DEMOSTRACIÓN: este proveedor no es una IA; devuelve siempre la misma propuesta.</p>}
       <textarea id="chat-prompt" rows={2} maxLength={4000} value={prompt} aria-label="Mensaje para el asistente" placeholder={ids.length?`Sobre la selección (${ids.length})…`:'Escribí tu pedido…'} onChange={e=>setPrompt(e.target.value)}
+        // El panel de IA se ve por defecto: la intención de usarla es enfocar el cuadro, no abrir el editor.
+        onFocus={()=>{if(!opened.current){opened.current=true;track('ai_opened',{});}}}
         onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit();}}}/>
       <div className="composer-row">
         <select id="chat-mode" aria-label="Modo" value={mode} title={MODES.find(m=>m[0]===mode)?.[2]} onChange={e=>setMode(e.target.value)}>{MODES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select>

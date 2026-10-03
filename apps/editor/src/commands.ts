@@ -1,6 +1,7 @@
 import {documentBounds,groupMembers,instantiateComponent,nodeRect,resolveMembership,rootGroupId,type ActionInput,type DiagramComponent,type DiagramDocument,type DiagramEdge,type DiagramNode} from '@diagramia/core';
 import {documentStore,newId,notify,transact} from './store/documentStore';
 import {select,selectionStore} from './store/selectionStore';
+import {track} from './telemetry';
 import {fit,viewStore} from './store/viewStore';
 
 const state=()=>({doc:documentStore.get().doc,ids:selectionStore.get().ids});
@@ -65,9 +66,9 @@ function insert(clip:Clip,offset:number,label:string){
 export function copy(){
   const clip=capture();
   if(!clip){notify('Seleccioná al menos un nodo para copiar.','warn');return false;}
-  clipboard=clip;pastes=0;notify(`${clip.nodes.length} nodo(s) copiados.`);return true;
+  clipboard=clip;pastes=0;notify(`${clip.nodes.length} nodo(s) copiados.`);track('copy',{count:clip.nodes.length});return true;
 }
-export function paste(){if(!clipboard){notify('No hay nada copiado en esta sesión.','warn');return;}pastes++;insert(clipboard,24*pastes,'Elementos pegados');}
+export function paste(){if(!clipboard){notify('No hay nada copiado en esta sesión.','warn');return;}track('paste',{count:clipboard.nodes.length});pastes++;insert(clipboard,24*pastes,'Elementos pegados');}
 export function cut(){if(copy())deleteSelection();}
 export function duplicate(){const clip=capture();if(clip)insert(clip,24,'Selección duplicada');}
 

@@ -340,3 +340,8 @@ ol.staged li.shown{color:var(--blue)}
 .shared-documents{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
 .shared-documents button{width:100%;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px;overflow-wrap:anywhere}
 .shared-documents small{font-size:11px;opacity:.75}
+/* Opinión sobre una respuesta de la IA: discreta, opcional, y con botones de tamaño táctil. */
+.feedback{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+.feedback small,.feedback-done{font-size:12px;color:var(--muted)}
+.feedback .quiet{min-width:36px;min-height:32px}
+.feedback-done{display:block;margin-top:10px}

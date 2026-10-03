@@ -6,6 +6,7 @@ import {kindOf,select,selectionStore} from '../store/selectionStore';
 import {currentAnimation,playbackStore} from '../store/playbackStore';
 import {snap,viewStore,zoomAt,type Camera,type NodeTemplate} from '../store/viewStore';
 import {fitAll,moveActions,selectionUnit} from '../commands';
+import {trackThrottled} from '../telemetry';
 import {DiagramLayer} from './DiagramLayer';
 
 type BoxKind='node'|'zone'|'frame';
@@ -207,7 +208,7 @@ export function Canvas(){
     // El puntero está capturado por el SVG: el nodo de destino se busca por coordenadas, no por e.target.
     const nodeUnder=(except?:string)=>{const over=hit(document.elementFromPoint(e.clientX,e.clientY));return over?.type==='node'&&over.id!==except?over.id:null;};
     switch(g.type){
-      case 'pan':viewStore.set({camera:{...g.camera,x:g.camera.x-(e.clientX-g.cx)/g.camera.zoom,y:g.camera.y-(e.clientY-g.cy)/g.camera.zoom}});return g;
+      case 'pan':trackThrottled('pan',{});viewStore.set({camera:{...g.camera,x:g.camera.x-(e.clientX-g.cx)/g.camera.zoom,y:g.camera.y-(e.clientY-g.cy)/g.camera.zoom}});return g;
       case 'marquee':case 'draw':return {...g,current:world};
       case 'stroke':{
         const last=g.points[g.points.length-1];

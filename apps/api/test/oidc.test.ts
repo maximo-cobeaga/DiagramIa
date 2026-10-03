@@ -52,7 +52,8 @@ test('OIDC validates PKCE, state, browser binding, nonce, signature and single-u
     badSignature=false;
 
     // El proxy Vite quita /api antes de entregar el callback. El servidor debe enviar al proveedor la URI pública registrada.
-    const options:any={providers:[],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null}),config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000},productPrompt:'Prueba',allowedOrigins:[],token:null,accounts:{signIn:async()=>({token:'session-test'})}};
+    const recorded:[string,string|null][]=[];
+    const options:any={providers:[],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null}),config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000},productPrompt:'Prueba',allowedOrigins:[],token:null,accounts:{signIn:async()=>({token:'session-test',session:{userId:'user-test'},created:true})},telemetry:{record:async(event:any,userId:string|null)=>{recorded.push([event.name,userId]);}}};
     const app=createApp(options);
     await new Promise<void>(resolve=>app.listen(0,'127.0.0.1',resolve));
     try{
@@ -66,6 +67,7 @@ test('OIDC validates PKCE, state, browser binding, nonce, signature and single-u
       const callback=await fetch(gateway+'/v1/auth/callback?code=good&state='+encodeURIComponent(target.searchParams.get('state')!),{headers:{cookie:flowCookie},redirect:'manual'});
       assert.equal(callback.status,302);
       assert.ok(callback.headers.get('set-cookie')?.includes('diagramia_session=session-test'));
+      assert.deepEqual(recorded,[['signup_completed','user-test']],'el alta de cuenta queda medida para el embudo');
     }finally{await new Promise<void>(resolve=>app.close(resolve));}
   }finally{await new Promise<void>(resolve=>server.close(resolve));}
 });

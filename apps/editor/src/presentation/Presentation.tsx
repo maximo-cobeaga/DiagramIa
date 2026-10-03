@@ -4,6 +4,7 @@ import {useStore} from '../store/createStore';
 import {documentStore} from '../store/documentStore';
 import {currentAnimation,playbackStore,rawAnimation,seek,seekStep,stepBy,togglePlay} from '../store/playbackStore';
 import {cameraFor,viewStore,type Camera} from '../store/viewStore';
+import {track} from '../telemetry';
 import {DiagramLayer} from '../canvas/DiagramLayer';
 
 const MOVE_MS=700;
@@ -27,6 +28,7 @@ export function Presentation(){
   useEffect(()=>{
     const stage=stageRef.current!,observer=new ResizeObserver(([entry])=>{const {width,height}=entry.contentRect;if(width&&height)setViewport({width,height});});
     observer.observe(stage);rootRef.current?.focus();
+    track('presentation_started',{steps:slides});
     return()=>observer.disconnect();
   },[]);
   // La cámara viaja hacia el encuadre del paso; con reduced-motion salta sin animar.

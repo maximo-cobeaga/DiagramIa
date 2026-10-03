@@ -186,7 +186,7 @@
           ],
           "acceptance": "Un provider real y uno local compatible funcionan con credenciales disponibles; error sin clave visible; mock marcado separado.",
           "status": "implemented",
-          "evidence": "Gateway + adapters. Proveedor local REAL comprobado (Ollama, qwen2.5-coder:7b) con npm run smoke:ai: 6/6 en tres corridas seguidas. Error sin clave visible y demostración marcada. FALTA SÓLO: correr «npm run smoke:ai -- anthropic» cuando exista ANTHROPIC_API_KEY. 02/10/2026: el usuario eligió GPT-6 Luna (`gpt-6-luna`, OpenAI) como modelo de la IA Free (ADR 045). Pendiente: adapter con structured outputs estrictos y esfuerzo de razonamiento configurable, costo por pedido y `npm run smoke:ai` real con OPENAI_API_KEY. Claude queda como proveedor alternativo, no bloqueante."
+          "evidence": "Gateway + adapters. Proveedor local REAL comprobado (Ollama, qwen2.5-coder:7b) con npm run smoke:ai: 6/6 en tres corridas seguidas. Error sin clave visible y demostración marcada. FALTA SÓLO: correr «npm run smoke:ai -- anthropic» cuando exista ANTHROPIC_API_KEY. 02/10/2026: adapter GPT-6 Luna (`openai`, ADR 045/050) con structured outputs estrictos en Crear/Revisar, `max_completion_tokens`, `reasoning_effort` y costo con caché; pruebas de contrato contra un servidor que imita OpenAI (forma del pedido, negativa, clave faltante, flujo Crear sin reparaciones, costo). Las cuentas sólo usan proveedores de su plan (ADR 049). Bloqueado: smoke real con OPENAI_API_KEY (`npm run smoke:ai -- openai`)."
         },
         {
           "id": "P3.2",
@@ -434,7 +434,8 @@
             "apps/api"
           ],
           "acceptance": "Embudo landing_view → useful_diagram_created reconstruible desde la base; eventos inválidos rechazados; el editor funciona igual si la ingesta falla; ningún evento contiene texto del diagrama, prompts completos ni claves; rate limit de ingesta.",
-          "status": "pending"
+          "status": "implemented",
+          "evidence": "02/10/2026: contrato cerrado en core (sin texto libre), ingesta `/v1/events` con origen/header/64 KB/límite por IP, PostgreSQL idempotente con vínculo anónimo→cuenta y reloj acotado, cliente del editor por lotes con DNT/GPC y opt-out, landing con «Crear diagrama» que pasa `aid`/`sid`/UTM. Pruebas: core (contrato y contexto), gateway (ruta, 400/429/503), `smoke:repository` (idempotencia, vínculo, reloj, respaldo) y `smoke:shared` en Chromium + PostgreSQL (11 eventos reales guardados sin título ni email). Pendiente: revisión manual y decisión legal sobre consentimiento UE."
         },
         {
           "id": "P7.2",
@@ -445,7 +446,8 @@
             "apps/editor"
           ],
           "acceptance": "AI Acceptance/Regeneration/Edit/Immediate Undo Rate y costo por usuario y por diagrama útil calculables; el feedback es opcional y no interrumpe.",
-          "status": "pending"
+          "status": "implemented",
+          "evidence": "02/10/2026: `ai_request` del servidor por cada pedido (resultado, código, tokens, caché, costo USD, latencia, llamadas, reparaciones, replay), incluidos los fallidos que ya gastaron; eventos del editor de aplicar, descartar, regenerar, deshacer antes de 60 s y primera edición manual antes de 5 min; 👍/👎 con motivo en el chat. Probado en gateway (éxito y fallo con costo, sin texto del pedido) y en Chromium con proveedor de demostración. Las tasas se calculan en P7.3."
         },
         {
           "id": "P7.3",

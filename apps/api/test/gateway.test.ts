@@ -439,3 +439,54 @@ test('a signed-in account only sees and uses the providers of its plan; another 
     assert.equal(allowed.status,200);assert.deepEqual(reserved,['r2']);assert.equal(free.calls.length,1);
   }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 });
+
+/** Doble del repositorio de telemetría: guarda en memoria lo que el gateway le entrega. */
+function telemetrySpy(){
+  const batches:{batch:any;userId:string|null}[]=[],server:{event:any;userId:string|null}[]=[];
+  return {batches,server,repo:{ingest:async(batch:unknown,userId:string|null)=>{batches.push({batch,userId});return {accepted:(batch as {events:unknown[]}).events.length};},
+    record:async(event:unknown,userId:string|null)=>{server.push({event,userId});}} as any};
+}
+const eventBatch=(events:object[])=>({v:1,anonymousId:'11111111-1111-4111-8111-111111111111',sessionId:'22222222-2222-4222-8222-222222222222',
+  context:{app:'editor',appVersion:'0.1.0',utmSource:null,utmMedium:null,utmCampaign:null,referrerHost:null,landingPath:'/',device:'desktop',browser:'chrome',os:'windows',language:'es',viewport:{width:1280,height:800}},events});
+const undoEvent=(n:number)=>({id:`33333333-3333-4333-8333-${String(n).padStart(12,'0')}`,name:'undo',at:new Date().toISOString(),props:{}});
+
+test('the events endpoint stores valid batches, links a signed-in visitor, and rejects content, floods and missing storage',async()=>{
+  const spy=telemetrySpy(),ledger=new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null});
+  const accounts:any={readSession:async(token?:string)=>token==='s1'?{userId:'u1'}:null};
+  const base={providers:[],ledger,productPrompt:'p',allowedOrigins:['http://127.0.0.1:5173'],token:'gateway-secret',config:{maxOutputTokens:10,maxContextChars:10,maxRepairs:0,timeoutMs:1000}};
+  const server=createApp({...base,telemetry:spy.repo,accounts,eventsPerMinute:3}),offline=createApp(base);
+  const url=await listen(server),offlineUrl=await listen(offline),headers={'content-type':'application/json','x-diagramia-client':'editor'};
+  const post=(target:string,body:object,extra:Record<string,string>={})=>fetch(target+'/v1/events',{method:'POST',headers:{...headers,...extra},body:JSON.stringify(body)});
+  try{
+    // Un visitante anónimo no tiene el token del gateway: la ingesta es pública, acotada por origen, header y frecuencia.
+    const anonymous=await post(url,eventBatch([undoEvent(1),undoEvent(2)]));
+    assert.equal(anonymous.status,202);assert.deepEqual(await anonymous.json(),{accepted:2});
+    const signedIn=await post(url,eventBatch([undoEvent(3)]),{cookie:'diagramia_session=s1'});
+    assert.equal(signedIn.status,202);assert.deepEqual(spy.batches.map(b=>b.userId),[null,'u1']);
+    const content=await post(url,eventBatch([{...undoEvent(4),name:'node_created',props:{count:1,source:'user',label:'Clientes VIP'}}]));
+    assert.equal(content.status,400);assert.equal(spy.batches.length,2,'un lote con texto libre no llega a la base');
+    assert.equal((await post(url,eventBatch([undoEvent(5)]))).status,429,'cuarto lote del minuto desde la misma IP');
+    assert.equal((await fetch(url+'/v1/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(eventBatch([undoEvent(6)]))})).status,400);
+    const unavailable=await post(offlineUrl,eventBatch([undoEvent(7)]));
+    assert.equal(unavailable.status,503);assert.equal((await unavailable.json()).error.code,'TELEMETRY_UNAVAILABLE');
+  }finally{for(const s of [server,offline]){s.closeAllConnections();await new Promise(resolve=>s.close(resolve));}}
+});
+test('every AI request is recorded with outcome, tokens, cost and latency, including failures that already spent tokens',async()=>{
+  const spy=telemetrySpy(),broken=JSON.stringify({summary:'',actions:[{type:'ADD_EDGE',edge:{id:'x',from:'api',to:'ghost'}}]});
+  const {provider}=scripted([redis(),broken,broken]);
+  const ledger=new UsageLedger({dailyTokenBudget:1_000_000,dailyUsdBudget:5,requestsPerMinute:100,ledgerPath:null});
+  const server=createApp({providers:[provider],ledger,productPrompt:'p',allowedOrigins:[],token:null,telemetry:spy.repo,config:{maxOutputTokens:2000,maxContextChars:60000,maxRepairs:1,timeoutMs:5000}});
+  const url=await listen(server),headers={'content-type':'application/json','x-diagramia-client':'editor'};
+  const ask=(requestId:string)=>fetch(url+'/v1/assist',{method:'POST',headers,body:JSON.stringify({requestId,providerId:'fake',mode:'edit',prompt:'Agregá Redis debajo de API dentro de Backend',document:architecture(),selectedIds:['api']})});
+  try{
+    assert.equal((await ask('ok-1')).status,200);
+    assert.equal((await ask('bad-1')).status,422);
+    await new Promise(resolve=>setTimeout(resolve,20));
+    const [ok,bad]=spy.server.map(s=>s.event);
+    assert.equal(ok.name,'ai_request');
+    assert.deepEqual({...ok.props,latencyMs:0},{requestId:'ok-1',mode:'edit',provider:'fake',model:'fake-1',outcome:'proposal',errorCode:null,inputTokens:1000,cachedInputTokens:0,outputTokens:200,costUsd:(1000*4+200*20)/1e6,latencyMs:0,calls:1,repairs:0,replayed:false});
+    assert.equal(bad.props.outcome,'failed');assert.equal(bad.props.errorCode,'PROPOSAL_REJECTED');
+    assert.equal(bad.props.calls,2,'el intento y su reparación');assert.equal(bad.props.inputTokens,2000);assert.ok(bad.props.costUsd>0,'lo gastado en un fallo también se mide');
+    assert.ok(!JSON.stringify(spy.server).includes('Redis'),'el pedido del usuario no queda en la telemetría');
+  }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});

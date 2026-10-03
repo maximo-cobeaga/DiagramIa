@@ -6,6 +6,7 @@ import {documentStore,newId,notify,replaceDocument,transact} from './store/docum
 import {select,selectionStore} from './store/selectionStore';
 import {fit,viewStore} from './store/viewStore';
 import {playbackStore} from './store/playbackStore';
+import {track,trackUseful} from './telemetry';
 import {saveFile} from './ui';
 
 const PADDING=32,MAX_CANVAS=8192;
@@ -88,6 +89,7 @@ export const EXPORT_FORMATS:[ExportFormat,string][]=[['json','JSON de Diagramia 
 export async function exportDocument(format:ExportFormat){
   const {doc}=documentStore.get();
   try{
+    track('export',{format});trackUseful(doc,'exported');
     switch(format){
       case 'json':saveFile(`${doc.id}.diagramia.json`,JSON.stringify(doc,null,2)+'\n','application/json');notify('JSON exportado: es el único formato que conserva todo el documento.');break;
       case 'svg':{
@@ -136,35 +138,43 @@ export async function exportDocument(format:ExportFormat){
 
 /** Importa formatos editables reconocidos. Un error deja el documento actual intacto. */
 export async function importFile(file:File){
+  let format:'json'|'mermaid'|'drawio'|'dot'|'plantuml'|'bpmn'|'other'='other';
   try{
     if(file.size>3_000_000)throw new Error('El archivo supera 3 MB.');
     const text=await file.text();
     if(text.trimStart().startsWith('{')){
+      format='json';
       const {document,migratedFrom}=openDocument(JSON.parse(text));
       replaceDocument(document,migratedFrom?`Documento importado y migrado del schema ${migratedFrom} sin cambiar IDs.`:'Documento importado y validado.');
     }else if(/\.bpmn$/i.test(file.name)||/xmlns(?::[A-Za-z0-9_-]+)?=["']http:\/\/www\.omg\.org\/spec\/BPMN\/20100524\/MODEL["']/.test(text)){
       const base=file.name.replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_-]/g,'-').replace(/^-+/,'').slice(0,60)||'imported';
+      format='bpmn';
       const {document,report}=importBpmn(text,{id:base}),notes=summarize(report);
       replaceDocument(document,`BPMN importado: ${document.nodes.length} elementos, ${document.edges.length} secuencias. ${notes.join(' ')}`,report.unsupported.length?'warn':'info');
     }else if(/\.(puml|plantuml)$/i.test(file.name)||/^\s*@startuml\b/.test(text)){
       const base=file.name.replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_-]/g,'-').replace(/^-+/,'').slice(0,60)||'imported';
+      format='plantuml';
       const {document,report,kind}=importPlantUml(text,{id:base}),notes=summarize(report);
       replaceDocument(document,`PlantUML ${kind} importado: ${document.nodes.length} elementos, ${document.edges.length} relaciones. ${notes.join(' ')}`,report.unsupported.length?'warn':'info');
     }else if(text.trimStart().startsWith('<')||/\.(drawio|xml)$/i.test(file.name)){
       const base=file.name.replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_-]/g,'-').replace(/^-+/,'').slice(0,60)||'imported';
+      format='drawio';
       const {document,report}=await importDrawio(text,{id:base}),notes=summarize(report);
       replaceDocument(document,`draw.io importado: ${document.nodes.length} nodos, ${document.edges.length} conexiones. ${notes.join(' ')}`,report.unsupported.length?'warn':'info');
     }else if(/\.(dot|gv)$/i.test(file.name)||/^\s*(strict\s+)?(di)?graph\b/.test(text)){
       const base=file.name.replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_-]/g,'-').replace(/^-+/,'').slice(0,60)||'imported';
+      format='dot';
       const {document,report}=importDot(text,{id:base}),notes=summarize(report);
       replaceDocument(document,`DOT importado: ${document.nodes.length} nodos, ${document.edges.length} conexiones. ${notes.join(' ')}`,report.unsupported.length?'warn':'info');
     }else{
       const base=file.name.replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_-]/g,'-').replace(/^-+/,'').slice(0,60)||'imported';
+      format='mermaid';
       const {document,report}=importMermaid(text,{id:base}),notes=summarize(report);
       replaceDocument(document,`Mermaid importado: ${document.nodes.length} nodos, ${document.edges.length} conexiones. ${notes.join(' ')}`,report.unsupported.length?'warn':'info');
     }
     fit(documentBounds(documentStore.get().doc));
-  }catch(e){notify(`No se importó nada; el documento actual sigue intacto. ${describeError(e)}`,'error');}
+    track('import',{format,ok:true});
+  }catch(e){track('import',{format,ok:false});notify(`No se importó nada; el documento actual sigue intacto. ${describeError(e)}`,'error');}
 }
 
 const readDataUrl=(blob:Blob)=>new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});

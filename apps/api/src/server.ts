@@ -1,20 +1,26 @@
 import {createServer,type IncomingMessage,type Server,type ServerResponse} from 'node:http';
 import {createHash,timingSafeEqual} from 'node:crypto';
 import {z} from 'zod';
-import {DiagramError,SCHEMA_VERSION,describeError} from '@diagramia/core';
+import {DiagramError,SCHEMA_VERSION,TelemetryBatchSchema,describeError,type ServerEvent} from '@diagramia/core';
 import type {Provider} from '@diagramia/providers';
-import {AssistError,MODES,assist,systemPrompt,type AssistConfig} from './assist.js';
+import {AssistError,MODES,assist,systemPrompt,type AssistAnswer,type AssistConfig} from './assist.js';
 import {UsageError,UsageLedger} from './usage.js';
 import {PostgresDocumentRepository,RepositoryError} from './repositories/postgres.js';
 import {AccountRepository,CreditError} from './repositories/accounts.js';
 import {OidcAuthenticator} from './auth/oidc.js';
 import {RemoteMcpService} from './mcp.js';
+import {RateLimiter,TelemetryRepository} from './repositories/telemetry.js';
 
 export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistConfig;productPrompt:string;allowedOrigins:string[];token:string|null;documents?:PostgresDocumentRepository;documentToken?:string;localWorkspace?:boolean;accounts?:AccountRepository;oidc?:OidcAuthenticator;remoteMcp?:RemoteMcpService;
   /** IDs de proveedor que puede usar una cuenta (plan Free). Sin lista, todos los configurados. */
-  accountProviders?:string[];ready?:()=>Promise<boolean>;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void};
+  accountProviders?:string[];
+  /** Telemetría propia (P7.1). Sin repositorio, /v1/events responde 503 y el editor deja de enviar. */
+  telemetry?:TelemetryRepository;eventsPerMinute?:number;
+  /** Detrás de un reverse proxy propio: la IP del cliente es la última de X-Forwarded-For. */
+  trustProxy?:boolean;ready?:()=>Promise<boolean>;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void};
 const MAX_BODY=4_000_000;
 const MAX_DOCUMENT_BODY=10_500_000;
+const MAX_EVENTS_BODY=64_000;
 const USAGE_STATUS={RATE_LIMITED:429,BUDGET_EXCEEDED:402,IN_PROGRESS:409,IDEMPOTENCY_CONFLICT:409} as const;
 
 async function readJson(req:IncomingMessage,maxBytes=MAX_BODY):Promise<unknown>{
@@ -33,6 +39,11 @@ function cookie(req:IncomingMessage,name:string){
   if(!value)return undefined;
   try{return decodeURIComponent(value.slice(name.length+1));}catch{return undefined;}
 }
+/** IP del cliente para límites de frecuencia. Sólo se confía en X-Forwarded-For si el despliegue lo declara. */
+function clientIp(req:IncomingMessage,trustProxy=false){
+  const forwarded=trustProxy?String(req.headers['x-forwarded-for']??'').split(',').map(part=>part.trim()).filter(Boolean).at(-1):undefined;
+  return forwarded??req.socket.remoteAddress??'unknown';
+}
 const sessionCookie=(token:string,secure:boolean,maxAge:number)=>`diagramia_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure?'; Secure':''}`;
 const flowCookie=(token:string,secure:boolean,maxAge:number)=>`diagramia_oidc_flow=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure?'; Secure':''}`;
 
@@ -42,7 +53,9 @@ const flowCookie=(token:string,secure:boolean,maxAge:number)=>`diagramia_oidc_fl
  * Con OIDC configurado, las rutas de cuenta aíslan documentos por proyecto.
  */
 export function createApp(options:AppOptions):Server{
-  const system=systemPrompt(options.productPrompt);
+  const system=systemPrompt(options.productPrompt),eventLimiter=new RateLimiter(options.eventsPerMinute??60,60_000);
+  // La telemetría nunca rompe el producto: un fallo al registrar queda en el log sin datos del pedido.
+  const record=(event:ServerEvent,userId:string|null)=>{void options.telemetry?.record(event,userId).catch(error=>console.error('[telemetry] no se registró',event.name+':',error instanceof Error?error.name:'error'));};
   return createServer(async(req:IncomingMessage,res:ServerResponse)=>{
     const started=Date.now();let route='unknown';
     const origin=req.headers.origin,allowed=!origin||options.allowedOrigins.includes(origin);
@@ -86,11 +99,20 @@ export function createApp(options:AppOptions):Server{
         callback.search=new URL(req.url??'/','http://gateway').search;
         let identity:Awaited<ReturnType<OidcAuthenticator['finish']>>;
         try{identity=await options.oidc.finish(callback,cookie(req,'diagramia_oidc_flow'));}catch{return fail(400,'AUTH_FAILED','No se completó el inicio de sesión. Volvé a intentarlo.');}
-        const {token}=await options.accounts.signIn(identity),secure=options.oidc.redirectUri.protocol==='https:';
+        const {token,session,created}=await options.accounts.signIn(identity);
+        record({name:created?'signup_completed':'signed_in',props:{provider:'oidc'}},session.userId);
+        const secure=options.oidc.redirectUri.protocol==='https:';
         res.writeHead(302,{location:options.oidc.homeUrl.href,'set-cookie':[flowCookie('',secure,0),sessionCookie(token,secure,30*86_400)],'cache-control':'no-store'});return void res.end();
       }
       // El header propio obliga a un preflight CORS: una página ajena no puede disparar pedidos «simples» contra el gateway local.
       if(req.headers['x-diagramia-client']!=='editor')return fail(400,'MISSING_CLIENT_HEADER','Falta el header x-diagramia-client.');
+      if(path==='/v1/events'&&req.method==='POST'){
+        if(!options.telemetry)return fail(503,'TELEMETRY_UNAVAILABLE','La telemetría no está configurada en este gateway.');
+        if(!eventLimiter.allow(clientIp(req,options.trustProxy)))return fail(429,'RATE_LIMITED','Demasiados envíos de eventos. Se reintenta más tarde.');
+        const batch=TelemetryBatchSchema.parse(await readJson(req,MAX_EVENTS_BODY));
+        const session=options.accounts?await options.accounts.readSession(cookie(req,'diagramia_session')):null;
+        return send(202,await options.telemetry.ingest(batch,session?.userId??null));
+      }
       if(path==='/v1/auth/status'&&req.method==='GET')return send(200,{configured:!!options.oidc&&!!options.accounts});
       if(path==='/v1/auth/me'&&req.method==='GET'){
         const session=await options.accounts?.readSession(cookie(req,'diagramia_session'));
@@ -173,15 +195,30 @@ export function createApp(options:AppOptions):Server{
       if(path==='/v1/providers'&&req.method==='GET')return send(200,{modes:MODES,providers:providers.map(p=>p.info()),usage:options.ledger.summary(),credits:session?await options.accounts!.creditUsage(session.userId):null});
       if(path==='/v1/usage'&&req.method==='GET')return send(200,{...options.ledger.summary(),credits:session?await options.accounts!.creditUsage(session.userId):null});
       if(path==='/v1/assist'&&req.method==='POST'){
-        const body=await readJson(req),abort=new AbortController();
+        const body=await readJson(req),abort=new AbortController(),started=Date.now();
         // Si el cliente corta la conexión antes de la respuesta, se cancela la llamada al proveedor.
         res.on('close',()=>{if(!res.writableEnded)abort.abort();});
+        const meta=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES),providerId:z.string().min(1).max(40)}).safeParse(body);
+        // Cada pedido de IA queda medido con su resultado, tokens, costo y latencia (P7.2), con el requestId del cliente.
+        const track=(outcome:{answer?:AssistAnswer;error?:unknown;refused?:boolean})=>{
+          if(!meta.success)return;
+          const known=outcome.error instanceof AssistError||outcome.error instanceof UsageError||outcome.error instanceof CreditError?outcome.error:null;
+          const failure=outcome.error instanceof AssistError?outcome.error:null,usage=outcome.answer?.usage??failure?.usage;
+          const code=outcome.refused?'PROVIDER_NOT_IN_PLAN':known?known.code:outcome.error?'UNEXPECTED':null;
+          record({name:'ai_request',props:{requestId:meta.data.requestId,mode:meta.data.mode,provider:meta.data.providerId.replace(/[^a-zA-Z0-9._-]/g,'_'),
+            model:(outcome.answer?.model??failure?.model??'none').replace(/[^a-zA-Z0-9._:/-]/g,'_').slice(0,100),
+            outcome:outcome.refused?'refused_by_plan':outcome.answer?outcome.answer.kind:code==='CANCELLED'?'cancelled':'failed',
+            errorCode:code&&/^[A-Z_]{1,40}$/.test(code)?code:code?'UNEXPECTED':null,
+            inputTokens:usage?.inputTokens??0,cachedInputTokens:usage?.cachedInputTokens??0,outputTokens:usage?.outputTokens??0,costUsd:usage?.estimatedCostUsd??null,
+            latencyMs:Math.min(3_600_000,Date.now()-started),calls:usage?.calls??0,repairs:Math.max(0,outcome.answer?.repairs??0),replayed:Boolean(outcome.answer?.replayed)}},session?.userId??null);
+        };
+        try{
         if(session){
           const input=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES),providerId:z.string().max(40)}).parse(body),credits=input.mode==='create'?2:1;
-          if(!providers.some(p=>p.info().id===input.providerId))return fail(403,'PROVIDER_NOT_IN_PLAN',`El proveedor «${input.providerId}» no está incluido en tu plan.`);
+          if(!providers.some(p=>p.info().id===input.providerId)){track({refused:true});return fail(403,'PROVIDER_NOT_IN_PLAN',`El proveedor «${input.providerId}» no está incluido en tu plan.`);}
           const fingerprint=createHash('sha256').update(JSON.stringify(body)).digest('hex');
           const reservation=await options.accounts!.reserveCredits(session.userId,input.requestId,fingerprint,credits);
-          if(reservation.replayed)return send(200,{...(reservation.replayed as object),replayed:true});
+          if(reservation.replayed){const replay={...(reservation.replayed as AssistAnswer),replayed:true};track({answer:replay});return send(200,replay);}
           try{
             // El ledger del proceso es global: su ID interno incluye la cuenta para que dos usuarios
             // que elijan el mismo requestId nunca compartan una respuesta ni un recibo.
@@ -189,10 +226,12 @@ export function createApp(options:AppOptions):Server{
             const answer=await assist({...body as object,requestId:privateId},{providers,ledger:options.ledger,config:options.config,system},abort.signal);
             const publicAnswer={...answer,requestId:input.requestId};
             await options.accounts!.settleCredits(session.userId,input.requestId,publicAnswer);
-            return send(200,publicAnswer);
+            track({answer:publicAnswer});return send(200,publicAnswer);
           }catch(error){await options.accounts!.releaseCredits(session.userId,input.requestId);throw error;}
         }
-        return send(200,await assist(body,{providers:options.providers,ledger:options.ledger,config:options.config,system},abort.signal));
+        const answer=await assist(body,{providers:options.providers,ledger:options.ledger,config:options.config,system},abort.signal);
+        track({answer});return send(200,answer);
+        }catch(error){track({error});throw error;}
       }
       return fail(404,'NOT_FOUND','Ruta inexistente.');
     }catch(error){

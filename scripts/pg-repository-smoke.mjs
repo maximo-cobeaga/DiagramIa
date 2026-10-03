@@ -10,6 +10,7 @@ import {UsageLedger} from '../apps/api/dist/usage.js';
 import {emptyDocument,applyBatch} from '../packages/core/dist/index.js';
 import {remoteDocumentBackend} from '../apps/mcp/dist/remote.js';
 import {AccountRepository} from '../apps/api/dist/repositories/accounts.js';
+import {TelemetryRepository} from '../apps/api/dist/repositories/telemetry.js';
 import {mockProvider} from '../packages/providers/dist/index.js';
 
 const compose=fileURLToPath(new URL('../infra/compose.dev.yml',import.meta.url));
@@ -70,7 +71,7 @@ try{
 
   const accounts=new AccountRepository(sourcePool),alice=await accounts.signIn({issuer:'https://oidc.example',subject:'alice',email:'alice@example.test'}),bob=await accounts.signIn({issuer:'https://oidc.example',subject:'bob',email:'bob@example.test'});
   assert.notEqual(alice.session.projectId,bob.session.projectId);
-  const server=createApp({providers:[mockProvider(1)],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:100,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:['http://127.0.0.1:5173'],documents:reopened,documentToken:'private-test-token',localWorkspace:true,accounts,config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
+  const server=createApp({providers:[mockProvider(1)],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:100,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:['http://127.0.0.1:5173'],documents:reopened,documentToken:'private-test-token',localWorkspace:true,accounts,telemetry:new TelemetryRepository(sourcePool),config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   try{
     const url=`http://127.0.0.1:${server.address().port}/v1/documents`,headers={'x-diagramia-client':'editor',authorization:'Bearer private-test-token','content-type':'application/json'};
@@ -140,6 +141,22 @@ try{
     const nextDay=new Date(Date.UTC(year,month,24,12));
     assert.equal((await accounts.creditUsage(charlie.session.userId,nextDay)).monthly,20);
     await assert.rejects(accounts.reserveCredits(charlie.session.userId,'monthly-20','fingerprint-20',1,nextDay),{code:'CREDIT_LIMIT'});
+    // Telemetría (P7.1): ingesta idempotente, vínculo anónimo → cuenta, reloj desfasado y pedidos de IA medidos sin su texto.
+    const anonymousId=randomUUID(),eventId=n=>`${suffix.padEnd(8,'0').slice(0,8)}-0000-4000-8000-${String(n).padStart(12,'0')}`;
+    const telemetryBatch=events=>({v:1,anonymousId,sessionId:randomUUID(),context:{app:'editor',appVersion:'smoke',utmSource:'smoke',utmMedium:null,utmCampaign:null,referrerHost:null,landingPath:'/',device:'desktop',browser:'chrome',os:'linux',language:'es',viewport:{width:1280,height:800}},events});
+    const sendEvents=(body,cookie)=>fetch(`${origin}/v1/events`,{method:'POST',headers:{'content-type':'application/json','x-diagramia-client':'editor',...(cookie?{cookie:`diagramia_session=${cookie}`}:{})},body:JSON.stringify(body)});
+    const firstBatch=telemetryBatch([{id:eventId(1),name:'board_opened',at:new Date().toISOString(),props:{returning:false,fromLanding:true}},{id:eventId(2),name:'node_created',at:'2001-01-01T00:00:00.000Z',props:{count:2,source:'user'}}]);
+    assert.deepEqual(await(await sendEvents(firstBatch)).json(),{accepted:2});
+    assert.deepEqual(await(await sendEvents(firstBatch,alice.token)).json(),{accepted:0},'un reintento del mismo lote no duplica eventos');
+    assert.equal((await sendEvents(telemetryBatch([{id:eventId(3),name:'export',at:new Date().toISOString(),props:{format:'svg'}}]),alice.token)).status,202);
+    const linked=await sourcePool.query('SELECT user_id FROM telemetry_identities WHERE anonymous_id=$1',[anonymousId]);
+    assert.equal(linked.rows[0]?.user_id,alice.session.userId,'el visitante anónimo quedó vinculado a la cuenta');
+    const skewed=await sourcePool.query('SELECT occurred_at,received_at FROM telemetry_events WHERE id=$1',[eventId(2)]);
+    assert.equal(skewed.rows[0].occurred_at.getTime(),skewed.rows[0].received_at.getTime(),'un reloj desfasado no se cree');
+    const aiRows=await sourcePool.query("SELECT props FROM telemetry_events WHERE origin='server' AND name='ai_request' AND user_id=$1",[alice.session.userId]);
+    assert.ok(aiRows.rows.length>=7,`se esperaban los pedidos de IA de Alice medidos, hubo ${aiRows.rows.length}`);
+    assert.ok(aiRows.rows.some(r=>r.props.outcome==='text')&&aiRows.rows.some(r=>r.props.errorCode==='CREDIT_LIMIT'),'éxitos y cortes por cuota quedan registrados');
+    assert.ok(!JSON.stringify(aiRows.rows).includes('Explicá el diagrama'),'el texto del pedido no se guarda');
     await sourcePool.query("UPDATE auth_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1",[alice.session.userId]);
     assert.equal((await fetch(`${origin}/v1/auth/me`,{headers:as(alice.token)})).status,401,'sesión vencida rechazada');
   }finally{await new Promise(resolve=>server.close(resolve));}
@@ -158,6 +175,7 @@ try{
   assert.equal((await recovered.getVersion(id,2)).nodes.length,2);
   assert.equal((await recovered.versions(id)).length,105);
   assert.equal((await recovered.audit(id)).length,105);
+  assert.ok((await targetPool.query('SELECT count(*)::int AS n FROM telemetry_events')).rows[0].n>=10,'la telemetría viaja en el respaldo');
   assert.equal((await recovered.apply(id,winner)).replayed,true);
   assert.equal((await recovered.restore(id,0,2,'restore-empty')).replayed,true);
   assert.equal((await recovered.get(id)).revision,104,'los reintentos no alteran el documento recuperado');

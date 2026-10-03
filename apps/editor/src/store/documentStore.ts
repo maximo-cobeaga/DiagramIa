@@ -3,6 +3,7 @@ import architecture from '../../../../examples/architecture.diagramia.json';
 import {createStore} from './createStore';
 import {pruneSelection,selectionStore} from './selectionStore';
 import {fit,viewStore,type Camera} from './viewStore';
+import {track,trackBatch,trackThrottled,trackUndo} from '../telemetry';
 
 // Cada pestaña es un documento independiente, guardado con su propia clave. El índice dice cuáles hay y cuál está abierta.
 const WORKSPACE='diagramia.workspace',DOC='diagramia.doc.',LEGACY=['diagramia.document','diagramia.starter.document.v1'];
@@ -78,7 +79,7 @@ function install(doc:DiagramDocument,previous:DiagramDocument,extra:{log?:string
 }
 
 /** Aplica un lote ya armado (propuestas de IA, MCP pegado a mano). Devuelve true si el documento cambió. */
-export function commit(batch:unknown,label='Cambio aplicado'):boolean{
+export function commit(batch:unknown,label='Cambio aplicado',source:'user'|'ai'='user'):boolean{
   const {doc,activeId}=documentStore.get();
   try{
     const next=applyBatch(doc,batch);
@@ -87,6 +88,7 @@ export function commit(batch:unknown,label='Cambio aplicado'):boolean{
     install(next,doc,{history:'push',log:`r${next.revision} · ${label}`,notice:pruned.length
       ?{text:`${label}. Se quitaron referencias en ${pruned.length} paso(s) de animación: revisá sus textos (${pruned.map(p=>p.stepId).join(', ')}).`,tone:'warn'}
       :{text:`${label}. Revisión ${next.revision}.`,tone:'info'}});
+    trackBatch((batch as {actions?:{type:string}[]}).actions??[],source);
     if(sharedAdapter?.active(activeId))sharedAdapter.send(activeId,BatchSchema.parse(batch));
     return true;
   }catch(e){
@@ -100,6 +102,7 @@ export const transact=(actions:ActionInput[],label?:string)=>actions.length?comm
 function travel(direction:'undo'|'redo'){
   const {doc,past,future,activeId}=documentStore.get(),stack=direction==='undo'?past:future;
   if(!stack.length)return;
+  if(direction==='undo')trackUndo();else track('redo',{});
   if(sharedAdapter?.active(activeId)){
     sharedAdapter.restore(activeId,stack[stack.length-1]!.revision,doc.revision,direction);
     return;
@@ -146,6 +149,7 @@ function write(){
     localStorage.setItem(DOC+activeId,body);localStorage.setItem(WORKSPACE,JSON.stringify({tabs:order(),active:activeId}));lastWritten=body;
     documentStore.set({save:{status:'saved',detail:`Guardado en este navegador · r${doc.revision}`}});
   }catch{
+    trackThrottled('save_failed',{target:'local'},300_000);
     documentStore.set({save:{status:'error',detail:'Sin guardar'},notice:{text:'No se pudo guardar en este navegador (almacenamiento lleno o bloqueado). Tus cambios siguen en esta pestaña: exportá el JSON para no perderlos.',tone:'error'}});
   }
 }
@@ -201,6 +205,7 @@ export function addTab(doc?:DiagramDocument):boolean{
   if(tabs.length>=MAX_TABS){notify(`El máximo es ${MAX_TABS} pestañas. Cerrá o exportá alguna.`,'warn');return false;}
   flush();stash();
   const id=newId('tab'),next=doc??emptyDocument(newId('doc'),`Diagrama ${tabs.length+1}`);
+  track('tab_created',{});
   states.set(id,blank(next));
   show(id,[...tabs,{id,title:next.title}],{text:doc?`«${next.title}» abierto en una pestaña nueva.`:'Pestaña nueva con un canvas vacío.',tone:'info'});
   return true;

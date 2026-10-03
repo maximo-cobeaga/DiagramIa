@@ -1,9 +1,14 @@
 import type {DiagramDocument} from '@diagramia/core';
 import {createStore} from './createStore';
+import {trackThrottled} from '../telemetry';
 
 // Los IDs son únicos en todo el documento, así que una sola lista alcanza para todas las piezas seleccionables.
 export const selectionStore=createStore({ids:[] as string[]});
-export const select=(ids:string[])=>selectionStore.set({ids:[...new Set(ids)]});
+export const select=(ids:string[])=>{
+  const unique=[...new Set(ids)];
+  if(unique.length>1)trackThrottled('multi_select',{count:unique.length});
+  selectionStore.set({ids:unique});
+};
 export function pruneSelection(d:DiagramDocument){
   const alive=new Set([...d.nodes,...d.edges,...d.drawings,...d.zones,...d.frames].map(x=>x.id)),{ids}=selectionStore.get();
   if(ids.some(id=>!alive.has(id)))selectionStore.set({ids:ids.filter(id=>alive.has(id))});
