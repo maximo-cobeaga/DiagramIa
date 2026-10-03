@@ -1,0 +1,2 @@
+# Las migraciones se validan por checksum: deben tener los mismos bytes en Windows y en Linux.
+*.sql text eol=lf

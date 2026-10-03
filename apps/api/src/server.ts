@@ -67,7 +67,7 @@ export function createApp(options:AppOptions):Server{
     const origin=req.headers.origin,allowed=!origin||options.allowedOrigins.includes(origin);
     const send=(status:number,body:unknown)=>{
       if(res.writableEnded||res.destroyed)return;
-      res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...(origin&&allowed?{'access-control-allow-origin':origin,'access-control-allow-credentials':'true',vary:'Origin'}:{})});
+      res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...(origin&&allowed?{'access-control-allow-origin':origin,'access-control-allow-credentials':'true',vary:'Origin'}:{})});
       res.end(JSON.stringify(body));
       options.log?.({event:'http',method:req.method??'UNKNOWN',path:route,status,durationMs:Date.now()-started});
     };
@@ -219,7 +219,8 @@ export function createApp(options:AppOptions):Server{
           const known=outcome.error instanceof AssistError||outcome.error instanceof UsageError||outcome.error instanceof CreditError?outcome.error:null;
           const failure=outcome.error instanceof AssistError?outcome.error:null,usage=outcome.answer?.usage??failure?.usage;
           const code=outcome.refused?'PROVIDER_NOT_IN_PLAN':outcome.blocked??(known?known.code:outcome.error?'UNEXPECTED':null);
-          record({name:'ai_request',props:{requestId:meta.data.requestId,mode:meta.data.mode,provider:meta.data.providerId.replace(/[^a-zA-Z0-9._-]/g,'_'),
+          // Un requestId que no tiene forma de ID no se guarda: podría ser texto libre del cliente.
+          record({name:'ai_request',props:{requestId:/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/.test(meta.data.requestId)?meta.data.requestId:'invalid-id',mode:meta.data.mode,provider:meta.data.providerId.replace(/[^a-zA-Z0-9._-]/g,'_'),
             model:(outcome.answer?.model??failure?.model??'none').replace(/[^a-zA-Z0-9._:/-]/g,'_').slice(0,100),
             outcome:outcome.refused?'refused_by_plan':outcome.blocked?'blocked':outcome.answer?outcome.answer.kind:code==='CANCELLED'?'cancelled':'failed',
             errorCode:code&&/^[A-Z_]{1,40}$/.test(code)?code:code?'UNEXPECTED':null,

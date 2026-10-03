@@ -63,6 +63,8 @@ async function start(){
       allowedOrigins:(env.DIAGRAMIA_ALLOWED_ORIGINS??'http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:4173,http://localhost:4173').split(',').map(o=>o.trim()).filter(Boolean),
       config:{maxOutputTokens:number('DIAGRAMIA_MAX_OUTPUT_TOKENS',8000),maxContextChars:number('DIAGRAMIA_MAX_CONTEXT_CHARS',60_000),maxRepairs:Math.min(3,Math.round(number('DIAGRAMIA_MAX_REPAIRS',1))),timeoutMs:number('DIAGRAMIA_REQUEST_TIMEOUT_MS',120_000)}
     });
+    // Detrás de un proxy sin DIAGRAMIA_TRUST_PROXY, todos los visitantes comparten la IP del proxy y los límites por IP se vuelven globales.
+    if(configured.length&&env.DIAGRAMIA_TRUST_PROXY!=='1')console.warn('Atención: con cuentas activas y sin DIAGRAMIA_TRUST_PROXY=1, los límites por IP usan la IP de la conexión. Detrás del reverse proxy, activalo.');
     server.listen(port,host,()=>{
       console.log(`Gateway de Diagramia en http://${host}:${port}${pool?' · documentos PostgreSQL listos':''}`);
       for(const provider of providers){const info=provider.info();console.log(`  ${info.id.padEnd(10)} ${info.configured?'listo':'sin configurar'} · ${info.model}${info.kind==='mock'?' · DEMOSTRACIÓN, no es un modelo':''}${info.missing?' · '+info.missing:''}`);}

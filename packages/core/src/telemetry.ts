@@ -84,7 +84,7 @@ export const ServerEventSchema=z.discriminatedUnion('name',[
   z.strictObject({name:z.literal('signup_completed'),props:z.strictObject({provider:z.literal('oidc')})}),
   z.strictObject({name:z.literal('signed_in'),props:z.strictObject({provider:z.literal('oidc')})}),
   z.strictObject({name:z.literal('ai_request'),props:z.strictObject({
-    requestId:z.string().min(1).max(200),mode:z.enum(AI_MODES),provider:Slug,model:z.string().regex(/^[a-zA-Z0-9._:/-]{1,100}$/),
+    requestId:Id,mode:z.enum(AI_MODES),provider:Slug,model:z.string().regex(/^[a-zA-Z0-9._:/-]{1,100}$/),
     outcome:z.enum(['proposal','clarification','text','review','failed','cancelled','refused_by_plan','blocked']),errorCode:z.string().regex(/^[A-Z_]{1,40}$/).nullable(),
     inputTokens:Count.max(10_000_000),cachedInputTokens:Count.max(10_000_000),outputTokens:Count.max(10_000_000),
     costUsd:z.number().min(0).max(1000).nullable(),latencyMs:Millis,calls:Count,repairs:Count,replayed:z.boolean()})})

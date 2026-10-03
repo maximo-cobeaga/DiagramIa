@@ -6,6 +6,8 @@ import {BatchSchema,Id,DiagramError,applyBatch,canonical,emptyDocument,openDocum
 const migrationUrls=[new URL('../../migrations/001_documents.sql',import.meta.url),new URL('../../migrations/002_accounts.sql',import.meta.url),new URL('../../migrations/003_telemetry.sql',import.meta.url),new URL('../../migrations/004_email_verified.sql',import.meta.url),new URL('../../migrations/005_telemetry_daily.sql',import.meta.url)];
 const checksum=(value:string)=>createHash('sha256').update(value).digest('hex');
 const fingerprint=(value:unknown)=>checksum(canonical(value));
+/** Checksum de una migración independiente del fin de línea: el mismo archivo en Windows (CRLF) y Linux (LF) es la misma migración. */
+export const migrationChecksum=(sql:string)=>checksum(sql.replace(/\r\n/g,'\n'));
 
 export class RepositoryError extends Error{
   constructor(public readonly code:'NOT_FOUND'|'ALREADY_EXISTS'|'REVISION_CONFLICT'|'IDEMPOTENCY_CONFLICT'|'CORRUPT_DOCUMENT',message:string){super(message);this.name='RepositoryError';}
@@ -18,9 +20,10 @@ export async function migrateDocuments(pool:Pool):Promise<void>{
     await client.query('SELECT pg_advisory_xact_lock(1358469633)');
     await client.query('CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())');
     for(const url of migrationUrls){
-      const name=url.pathname.split('/').at(-1)!,sql=await readFile(url,'utf8'),hash=checksum(sql);
+      const name=url.pathname.split('/').at(-1)!,sql=await readFile(url,'utf8'),hash=migrationChecksum(sql);
       const found=await client.query<{checksum:string}>('SELECT checksum FROM schema_migrations WHERE name=$1',[name]);
-      if(found.rows.length){if(found.rows[0]!.checksum!==hash)throw new Error(`La migración ${name} cambió después de aplicarse.`);}
+      // Se acepta también el checksum de los bytes tal cual, que usaban las bases migradas antes de normalizar.
+      if(found.rows.length){if(found.rows[0]!.checksum!==hash&&found.rows[0]!.checksum!==checksum(sql))throw new Error(`La migración ${name} cambió después de aplicarse.`);}
       else{
         await client.query(sql);
         await client.query('INSERT INTO schema_migrations (name, checksum) VALUES ($1,$2)',[name,hash]);
