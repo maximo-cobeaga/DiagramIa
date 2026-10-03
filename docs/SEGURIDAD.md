@@ -18,13 +18,14 @@ Revisión hecha el 02/10/2026 sobre el código y la configuración de despliegue
 | Contenedores | Gateway sin root, filesystem de sólo lectura, sin capabilities, `no-new-privileges`, con límites de CPU, memoria y procesos. Base y gateway sin puertos publicados. | `infra/compose.prod.yml` |
 | IP detrás de proxy | `real_ip` en nginx y `DIAGRAMIA_TRUST_PROXY` en el gateway. El gateway avisa si se arranca con cuentas y sin esa variable. | Prueba con dos clientes |
 | Migraciones | Checksum independiente del fin de línea, `.gitattributes` con LF, y vuelta atrás probada. | ADR 055, `migrations.test.ts` |
+| Retención y borrado | Respuestas de IA: 24 h. Recibos: 90 días. Sesiones vencidas: se purgan. La eliminación de cuenta borra todo lo propio y desvincula la telemetría, sin tocar a otras cuentas con el mismo ID de documento. | ADR 056, `smoke:repository` |
 | Contenido del modelo | La IA sólo propone acciones; el engine valida. Sin `eval` ni HTML ejecutable. Los SVG con script se rechazan. | Invariantes de `AGENTS.md`, smoke |
 
 ## Pendiente antes de lanzar
 
 - **Auth0 real:** configurar el tenant, exigir el email verificado, revisar la pantalla de login con la marca y probar el login completo en HTTPS.
-- **Privacidad:** texto del aviso de privacidad y términos, y decisión legal sobre el consentimiento de visitantes de la UE (ADR 051).
+- **Privacidad:** completar y hacer revisar el borrador `apps/editor/public/privacidad.html`, y decidir sobre el consentimiento de visitantes de la UE (ADR 051). Retención mínima y eliminación de cuenta ya implementadas (ADR 056).
 - **Licencia del código:** el repositorio es público y todavía no tiene licencia elegida (ADR 043).
-- **Alerta de gasto:** conectar la línea JSON del log a un canal real.
+- **Alerta de gasto:** fijar `DIAGRAMIA_ALERT_WEBHOOK_URL` en producción (guía, paso 5).
 - **Revisión externa:** al tener tráfico real o antes de cobrar, una revisión independiente de autenticación y del MCP remoto.
 - El endpoint de eventos acepta pedidos sin header `Origin` (scripts). El límite por IP y el contrato cerrado acotan el daño a **ensuciar métricas**. Si pasa, filtrar por IP o exigir un token por sesión anónima.

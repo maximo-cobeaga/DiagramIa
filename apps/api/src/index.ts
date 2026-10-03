@@ -4,6 +4,7 @@ import {providersFromEnv} from '@diagramia/providers';
 import {Pool} from 'pg';
 import {createApp} from './server.js';
 import {UsageLedger} from './usage.js';
+import {sendAlert} from './alerts.js';
 import {migrateDocuments,PostgresDocumentRepository} from './repositories/postgres.js';
 import {AccountRepository} from './repositories/accounts.js';
 import {OidcAuthenticator} from './auth/oidc.js';
@@ -27,7 +28,11 @@ const ledger=new UsageLedger({
   requestsPerMinute:number('DIAGRAMIA_REQUESTS_PER_MINUTE',10),ledgerPath:root+'state/usage-ledger.json',
   // Tope mensual de la IA incluida y alerta al cruzar una fracción: una línea JSON en el log, para conectar a un aviso externo.
   monthlyUsdBudget:number('DIAGRAMIA_MONTHLY_USD_BUDGET',20),alertRatio:Math.min(1,number('DIAGRAMIA_SPEND_ALERT_RATIO',0.8)),
-  onAlert:alert=>console.warn(JSON.stringify(alert))
+  onAlert:alert=>{
+    console.warn(JSON.stringify(alert));
+    // Opcional: aviso en el celular o en un canal (ntfy, Discord o Slack). Ver docs/GUIA_PASO_A_PASO.md, paso 5.
+    if(env.DIAGRAMIA_ALERT_WEBHOOK_URL)void sendAlert(env.DIAGRAMIA_ALERT_WEBHOOK_URL,alert).then(sent=>{if(!sent)console.warn('No se pudo enviar la alerta de gasto al webhook.');});
+  }
 });
 const providers=providersFromEnv(env);
 async function start(){
@@ -43,6 +48,11 @@ async function start(){
   try{
     if(pool)await migrateDocuments(pool);
     const documents=pool?new PostgresDocumentRepository(pool):undefined,accounts=pool&&configured.length?new AccountRepository(pool):undefined;
+    // Retención mínima: al iniciar y cada 6 h se borran respuestas de IA de más de 24 h, recibos viejos y sesiones vencidas.
+    if(accounts){
+      const purge=()=>accounts.purgeExpired().catch(error=>console.error('No se pudo purgar datos vencidos:',error instanceof Error?error.message:String(error)));
+      await purge();setInterval(()=>void purge(),6*3_600_000).unref();
+    }
     const remoteMcp=mcpConfigured.length&&documents&&accounts?new RemoteMcpService({resourceUrl:env.DIAGRAMIA_MCP_RESOURCE_URL!,issuer:env.DIAGRAMIA_OIDC_ISSUER!,jwksUrl:env.DIAGRAMIA_MCP_JWKS_URL!},accounts,documents):undefined;
     const server=createApp({
       providers,ledger,productPrompt,token,documents,

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacidad · Diagramia</title>
+<!-- BORRADOR técnico (03/10/2026). Describe lo que el sistema hace de verdad; los datos legales marcados [COMPLETAR]
+     y la redacción final deben revisarse con un profesional antes de publicar. Fuente técnica: docs/TELEMETRIA.md y docs/SEGURIDAD.md. -->
+<style>
+@font-face{font-family:Manrope;src:url('/fonts/Manrope.ttf');font-weight:200 800;font-display:swap}
+:root{--ink:#141619;--paper:#f4f6f8;--muted:#606975;--line:#d7dce2;--blue:#245cf6}
+@media (prefers-color-scheme:dark){:root{--ink:#e8ebef;--paper:#0f1114;--muted:#9aa4b2;--line:#2e343d;--blue:#7d9cff}}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 Manrope,system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+h1{font-size:34px;line-height:1.15;margin:0 0 8px}h2{font-size:20px;margin:36px 0 8px}
+p,li{color:var(--ink)}small,.note{color:var(--muted)}a{color:var(--blue)}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+.draft{border:1px solid var(--line);border-radius:8px;padding:12px 16px;font-size:14px}
+.table{overflow-x:auto}
+</style>
+</head>
+<body>
+<main>
+<p class="draft"><strong>Borrador.</strong> Este texto describe cómo funciona Diagramia hoy. Los datos marcados [COMPLETAR] y la redacción final están pendientes de revisión legal.</p>
+<h1>Cómo tratamos tus datos</h1>
+<p class="note">Última actualización: [COMPLETAR fecha de publicación]</p>
+
+<h2>En pocas palabras</h2>
+<ul>
+  <li>Podés usar la pizarra <strong>sin cuenta</strong>: tus diagramas quedan en tu navegador.</li>
+  <li>Medimos <strong>cómo se usa</strong> Diagramia (qué herramientas, errores, tiempos), <strong>nunca el contenido</strong> de tus diagramas.</li>
+  <li>Cuando usás la IA, el pedido y la parte del diagrama necesaria se envían al proveedor del modelo para generar la propuesta.</li>
+  <li>Podés apagar la medición, y podés eliminar tu cuenta y todo lo que guardaste en la nube cuando quieras.</li>
+</ul>
+
+<h2>Quién es responsable</h2>
+<p>[COMPLETAR: nombre o razón social, domicilio, CUIT si corresponde y email de contacto para privacidad].</p>
+
+<h2>Qué datos usamos y para qué</h2>
+<div class="table"><table>
+  <thead><tr><th>Dato</th><th>Para qué</th><th>Dónde y por cuánto tiempo</th></tr></thead>
+  <tbody>
+    <tr><td>Tus diagramas sin cuenta</td><td>Que no pierdas tu trabajo</td><td>Sólo en tu navegador (almacenamiento local). No llegan a nuestros servidores salvo que los guardes en la nube o uses la IA.</td></tr>
+    <tr><td>Datos de uso anónimos: herramientas usadas, cantidad de elementos, exportaciones, errores (sin mensajes), tiempos de carga, tipo de dispositivo y navegador, idioma, sitio de origen (sólo el dominio) y campaña</td><td>Entender qué funciona y dónde se traba la gente, para mejorar el producto</td><td>En nuestra base de datos. Se identifican con un código aleatorio guardado en tu navegador, no con tu nombre. [COMPLETAR plazo de conservación]</td></tr>
+    <tr><td>Cuenta: email, si está verificado, y el identificador que da el servicio de inicio de sesión</td><td>Iniciar sesión, guardar en la nube y usar la IA con su cuota</td><td>Mientras tengas la cuenta.</td></tr>
+    <tr><td>Diagramas guardados en la nube y sus versiones</td><td>Que los abras desde cualquier dispositivo y recuperes versiones</td><td>Mientras tengas la cuenta, y en copias de seguridad hasta 14 días después de borrarlos.</td></tr>
+    <tr><td>Pedidos a la IA: tu texto y la parte del diagrama necesaria</td><td>Generar la propuesta</td><td>Se envían al proveedor del modelo. Guardamos la respuesta 24 horas para reintentos y, durante 90 días, sólo el registro de créditos usados, sin contenido.</td></tr>
+    <tr><td>Tu opinión sobre una respuesta (👍/👎 y motivo)</td><td>Mejorar la IA</td><td>Junto con los datos de uso. No incluye texto libre.</td></tr>
+    <tr><td>Dirección IP</td><td>Limitar abusos (cantidad de pedidos por minuto)</td><td>Sólo en memoria, durante un minuto. No se guarda en la base.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Cookies y almacenamiento en tu navegador</h2>
+<ul>
+  <li><strong>Sesión</strong> (<code>diagramia_session</code>): necesaria para mantenerte dentro de tu cuenta. Dura hasta 30 días o hasta que cerrás sesión.</li>
+  <li><strong>Inicio de sesión</strong> (<code>diagramia_oidc_flow</code>): dura 10 minutos, sólo durante el login.</li>
+  <li><strong>Almacenamiento local</strong>: tus borradores, tus preferencias (tema, tutorial) y el código anónimo de medición.</li>
+  <li>No usamos cookies de publicidad ni herramientas de analítica de terceros.</li>
+</ul>
+
+<h2>Con quién compartimos datos</h2>
+<p>Sólo con proveedores que necesitamos para que Diagramia funcione, y sólo lo necesario:</p>
+<ul>
+  <li><strong>Auth0 (Okta)</strong>: inicio de sesión. Si entrás con Google, también Google.</li>
+  <li><strong>OpenAI</strong>: genera las propuestas de la IA a partir de tu pedido. [COMPLETAR: revisar y enlazar las condiciones de uso de datos de la API vigentes al publicar]</li>
+  <li><strong>Hostinger</strong>: servidor donde corre Diagramia. [COMPLETAR ubicación del servidor]</li>
+</ul>
+<p>No vendemos tus datos.</p>
+
+<h2>Tus decisiones y derechos</h2>
+<ul>
+  <li><strong>Apagar la medición:</strong> en el editor, «Sesión → Privacidad». Si tu navegador pide no ser rastreado (Do Not Track o Global Privacy Control), no medimos nada.</li>
+  <li><strong>Eliminar tu cuenta:</strong> en «Sesión → Cuenta y nube → Eliminar mi cuenta». Se borran tu cuenta, tus diagramas en la nube con sus versiones y tus créditos. Los datos de uso que ya enviaste quedan desvinculados de tu cuenta.</li>
+  <li><strong>Acceso, corrección o consultas:</strong> escribinos a [COMPLETAR email]. Podés reclamar ante la autoridad de protección de datos de tu país. En Argentina, la Agencia de Acceso a la Información Pública. [COMPLETAR según la revisión legal]</li>
+</ul>
+
+<h2>Seguridad</h2>
+<p>Las conexiones van cifradas (HTTPS). Las claves de los proveedores nunca llegan a tu navegador. Cada cuenta sólo puede ver sus propios diagramas, y hacemos copias de seguridad diarias.</p>
+
+<h2>Menores</h2>
+<p>[COMPLETAR edad mínima para crear una cuenta según la revisión legal].</p>
+
+<h2>Cambios</h2>
+<p>Si cambiamos algo importante, lo vamos a avisar en esta página y en el editor antes de que aplique.</p>
+</main>
+</body>
+</html>

@@ -5,12 +5,13 @@ import {flush as flushTelemetry,track} from '../telemetry';
 import {createSharedDocument,detachSharedDocument,listSharedDocuments,openSharedDocument,recoverShared,retryShared,sharedStore,type SharedMode} from '../store/sharedStore';
 
 type Entry={id:string;title:string;revision:number};
-type Account={session:{email:string|null;projectId:string};storage:{documents:number;bytes:number;maxDocuments:number;maxBytes:number;maxDocumentBytes:number}};
+type Account={session:{email:string|null;emailVerified:boolean;projectId:string};storage:{documents:number;bytes:number;maxDocuments:number;maxBytes:number;maxDocumentBytes:number}};
 const authHeaders={'x-diagramia-client':'editor'};
 const mb=(bytes:number)=>(bytes/1_000_000).toFixed(1)+' MB';
 
 export function SharedPanel(){
   const {activeId,doc}=useStore(documentStore),shared=useStore(sharedStore);
+  const [deleting,setDeleting]=useState<'closed'|'open'|'working'>('closed'),[confirmation,setConfirmation]=useState(''),[deleteError,setDeleteError]=useState('');
   const [local,setLocal]=useState<Entry[]>([]),[cloud,setCloud]=useState<Entry[]>([]),[account,setAccount]=useState<Account|null>(null),[auth,setAuth]=useState<'loading'|'unavailable'|'guest'|'signed-in'>('loading'),[loading,setLoading]=useState(false);
   const attached=shared.tabId===activeId,bodyBytes=new TextEncoder().encode(JSON.stringify(doc)).length;
   const refresh=async()=>{
@@ -33,6 +34,14 @@ export function SharedPanel(){
     if(attached&&shared.mode==='cloud')detachSharedDocument();
     await refresh();
   };
+  /** Borra la cuenta en el servidor. Los borradores de este navegador no se tocan: siguen siendo del usuario. */
+  const deleteAccount=async()=>{
+    setDeleting('working');setDeleteError('');
+    const response=await fetch('/api/v1/auth/delete-account',{method:'POST',headers:{...authHeaders,'content-type':'application/json'},body:JSON.stringify({confirm:confirmation.trim()})}).catch(()=>null);
+    if(!response?.ok){setDeleting('open');setDeleteError((await response?.json().catch(()=>null))?.error?.message??'No se pudo contactar al servidor. Probá de nuevo.');return;}
+    if(attached&&shared.mode==='cloud')detachSharedDocument();
+    setDeleting('closed');setConfirmation('');await refresh();
+  };
   const list=(items:Entry[],mode:SharedMode)=>items.length?<ul className="shared-documents">{items.map(item=><li key={item.id}><button onClick={()=>void open(item.id,mode)} title={item.id}>{item.title}<small>r{item.revision} · {item.id}</small></button></li>)}</ul>:<p className="inline-note">Todavía no hay diagramas guardados.</p>;
   return <section className="shared-panel" aria-label="Guardado y espacios compartidos">
     <h3>Cuenta y nube</h3>
@@ -40,11 +49,20 @@ export function SharedPanel(){
     {auth==='unavailable'&&<p className="inline-note">La cuenta aún no está configurada en este servidor. Podés seguir con el borrador local y exportar el JSON.</p>}
     {auth==='guest'&&<div className="step-actions"><p className="inline-note">Iniciá sesión para guardar en la nube.</p><button onClick={()=>{track('signup_started',{trigger:'cloud'});void flushTelemetry(true).finally(()=>window.location.assign('/api/v1/auth/login'));}}>Iniciar sesión</button></div>}
     {account&&<>
-      <p className="inline-note">{account.session.email??'Cuenta activa'} · {account.storage.documents}/{account.storage.maxDocuments} diagramas · {mb(account.storage.bytes)}/{mb(account.storage.maxBytes)} usados.</p>
+      {!account.session.emailVerified&&<p className="inline-note warn" role="status">⚠ Tu email todavía no está verificado: la IA se habilita cuando lo confirmes desde el correo que te enviamos y vuelvas a iniciar sesión.</p>}
+      <p className="inline-note">{account.session.email??'Cuenta activa'}{account.session.emailVerified?' ✓ verificado':''} · {account.storage.documents}/{account.storage.maxDocuments} diagramas · {mb(account.storage.bytes)}/{mb(account.storage.maxBytes)} usados.</p>
       <p className="inline-note">Esta pestaña ocupa {mb(bodyBytes)}; el máximo por diagrama, incluidas sus versiones, es {mb(account.storage.maxDocumentBytes)}.</p>
       <div className="step-actions"><button disabled={account.storage.documents>=account.storage.maxDocuments||bodyBytes>account.storage.maxDocumentBytes||attached} onClick={()=>void share('cloud')}>Guardar esta pestaña en la nube</button><button disabled={attached&&shared.mode==='cloud'&&shared.pending>0} onClick={()=>void signOut()}>Cerrar sesión</button></div>
       <div className="shared-list-head"><strong>Mis diagramas</strong><button className="quiet" disabled={loading} onClick={()=>void refresh()}>Actualizar</button></div>
       {list(cloud,'cloud')}
+      <details className="danger-zone" open={deleting!=='closed'} onToggle={e=>setDeleting((e.target as HTMLDetailsElement).open?'open':'closed')}>
+        <summary>Eliminar mi cuenta</summary>
+        <p className="inline-note">Se borran tu cuenta, tus {account.storage.documents} diagrama(s) en la nube con sus versiones y tus créditos. No se puede deshacer. Los borradores guardados en este navegador no se tocan. Si querés conservar algo de la nube, exportalo antes.</p>
+        <label className="field" htmlFor="delete-confirm">Escribí ELIMINAR para confirmar</label>
+        <input id="delete-confirm" value={confirmation} autoComplete="off" onChange={e=>setConfirmation(e.target.value)}/>
+        {deleteError&&<p className="inline-note warn" role="alert">{deleteError}</p>}
+        <button className="danger" disabled={confirmation.trim()!=='ELIMINAR'||deleting==='working'} onClick={()=>void deleteAccount()}>{deleting==='working'?'Eliminando…':'Eliminar definitivamente'}</button>
+      </details>
     </>}
     <h3>Espacio compartido local</h3>
     <p className="inline-note">Con PostgreSQL local, MCP puede editar el mismo documento. Esta opción no crea una cuenta ni publica el archivo.</p>

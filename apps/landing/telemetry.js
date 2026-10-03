@@ -41,5 +41,7 @@
       Promise.race([send('landing_cta_clicked',{placement:link.dataset.cta}),new Promise(resolve=>setTimeout(resolve,300))]).then(()=>location.assign(link.href));
     });
   }
+  // Páginas que viven en el editor (privacidad): mismo origen que la app, para tener una sola fuente.
+  if(app)for(const link of document.querySelectorAll('[data-app-path]'))link.href=new URL(link.dataset.appPath,new URL(app,location.href)).href;
   void send('landing_view',{});
 })();

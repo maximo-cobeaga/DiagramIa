@@ -125,6 +125,16 @@ export function createApp(options:AppOptions):Server{
         if(!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para usar la nube.');
         return send(200,{session,storage:await options.accounts!.storage(session.projectId),credits:await options.accounts!.creditUsage(session.userId)});
       }
+      if(path==='/v1/auth/delete-account'&&req.method==='POST'){
+        const session=await options.accounts?.readSession(cookie(req,'diagramia_session'));
+        if(!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para eliminar tu cuenta.');
+        // Confirmación explícita en el cuerpo: un clic accidental o un pedido reenviado sin ella no borra nada.
+        const input=z.strictObject({confirm:z.literal('ELIMINAR')}).safeParse(await readJson(req));
+        if(!input.success)return fail(400,'CONFIRMATION_REQUIRED','Para eliminar la cuenta, confirmá escribiendo ELIMINAR.');
+        const result=await options.accounts!.deleteAccount(session.userId);
+        res.setHeader('set-cookie',sessionCookie('',options.oidc?.redirectUri.protocol==='https:',0));
+        return send(200,{deleted:true,documents:result.documents});
+      }
       if(path==='/v1/auth/logout'&&req.method==='POST'){
         await options.accounts?.endSession(cookie(req,'diagramia_session'));
         res.setHeader('set-cookie',sessionCookie('',options.oidc?.redirectUri.protocol==='https:',0));

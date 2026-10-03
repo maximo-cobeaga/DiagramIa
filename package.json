@@ -32,7 +32,8 @@
     "smoke:mcp-remote": "npm run build -w @diagramia/mcp && npm run build -w @diagramia/api && node scripts/mcp-remote-smoke.mjs",
     "smoke:dashboard": "npm run build -w @diagramia/api && node scripts/dashboard-smoke.mjs",
     "perf:core": "npm run build -w @diagramia/core && node scripts/perf-core.mjs",
-    "perf:browser": "node scripts/perf-browser.mjs"
+    "perf:browser": "node scripts/perf-browser.mjs",
+    "doctor": "node scripts/doctor.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3",

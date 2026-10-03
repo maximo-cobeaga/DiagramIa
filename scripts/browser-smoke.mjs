@@ -502,6 +502,30 @@ try{
     await tap('[aria-label="Cambiar a modo claro"]');await sleep(200);
     return `canvas ${light} → ${dark.canvas}`;
   });
+  await check('todo control visible tiene nombre accesible y toda imagen su texto alternativo, en los cuatro paneles',async()=>{
+    // Lo que un lector de pantalla necesita para anunciar un control: aria-label, aria-labelledby, un <label>, texto propio o title.
+    const unnamed=()=>js(`(()=>{
+      const visible=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.visibility!=='hidden'&&!el.closest('[hidden],[aria-hidden="true"]');};
+      const named=el=>{
+        if(el.getAttribute('aria-label')?.trim())return true;
+        const by=el.getAttribute('aria-labelledby');if(by&&by.split(/\\s+/).some(id=>document.getElementById(id)?.textContent.trim()))return true;
+        if(el.labels&&[...el.labels].some(l=>l.textContent.trim()))return true;
+        if(!['INPUT','SELECT','TEXTAREA'].includes(el.tagName)&&el.textContent.trim())return true;
+        return Boolean(el.getAttribute('title')?.trim());
+      };
+      const describe=el=>el.tagName.toLowerCase()+(el.id?'#'+el.id:'')+(typeof el.className==='string'&&el.className?'.'+el.className.trim().split(/\\s+/)[0]:'')+(el.getAttribute('type')?'['+el.getAttribute('type')+']':'');
+      const controls=[...document.querySelectorAll('button,a[href],input:not([type=hidden]),select,textarea,summary,[role=button],[role=tab],[role=slider]')].filter(visible).filter(el=>!named(el)).map(describe);
+      const images=[...document.querySelectorAll('img')].filter(visible).filter(img=>!img.hasAttribute('alt')).map(describe);
+      return [...controls,...images];
+    })()`);
+    const found=new Set();
+    for(const tab of ['IA','Propiedades','Biblioteca','Sesión']){
+      await js(`[...document.querySelectorAll('.tabs button')].find(b=>b.textContent.trim()===${JSON.stringify(tab)})?.click()`);await sleep(250);
+      for(const item of await unnamed())found.add(`${tab}: ${item}`);
+    }
+    expect(!found.size,`sin nombre accesible: ${[...found].slice(0,12).join(' · ')}`);
+    return 'IA, Propiedades, Biblioteca y Sesión revisados';
+  });
   for(const [width,height,label] of [[1024,768,'tablet'],[390,844,'mobile']]){
     await check(`layout ${label} ${width}×${height} sin desborde horizontal`,async()=>{
       await viewport(width,height,label==='mobile');await sleep(400);await key('1');await sleep(200);

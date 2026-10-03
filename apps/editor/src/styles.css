@@ -363,3 +363,9 @@ ol.staged li.shown{color:var(--blue)}
 .founder-table th,.founder-table td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--ink)}
 .founder-table th:first-child{text-align:left}
 .founder-table thead th{color:var(--muted);font-weight:600}
+/* Eliminar cuenta: plegado por defecto, con confirmación escrita; el rojo acompaña al texto, nunca lo reemplaza. */
+.danger-zone{margin-top:16px;border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.danger-zone summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.danger-zone input{width:100%;margin:4px 0 8px}
+button.danger{background:#b42318;color:#fff;border-color:#b42318}
+button.danger:disabled{opacity:.5}

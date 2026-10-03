@@ -222,3 +222,5 @@ Lo siguiente pasó pruebas automáticas y smokes, pero falta tu mirada:
 4. **Panel del fundador:** con PostgreSQL, cuentas y tu email en `DIAGRAMIA_ADMIN_EMAILS`, `/#fundador` muestra los 10 indicadores. Con datos reales, revisar que las definiciones (ADR 053) respondan tus preguntas.
 5. **Email no verificado:** una cuenta sin verificar recibe «Verificá tu email para usar la IA» y no gasta créditos.
 6. **Rendimiento en tu equipo y tu teléfono:** abrir un diagrama grande y arrastrar o hacer zoom (`docs/PERFORMANCE.md`).
+7. **Eliminar cuenta:** con una cuenta de prueba, «Sesión → Cuenta y nube → Eliminar mi cuenta». El botón sólo se habilita al escribir ELIMINAR; después vuelve a «Iniciar sesión» y los borradores del navegador siguen ahí.
+8. **Aviso de privacidad:** abrí `/privacidad.html` (enlace en el pie de la landing y en «Sesión → Privacidad») y completá los `[COMPLETAR]` con tus datos.

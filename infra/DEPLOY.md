@@ -20,7 +20,7 @@ Internet ──TLS──▶ reverse proxy del VPS (ya atiende a ReservApp)
 ## Primera instalación
 
 1. En el VPS, con Docker y Compose v2: `git clone` del repositorio (el checkout debe quedar en LF; ver «Fin de línea»).
-2. `cp infra/env.production.example .env.production` y completar los valores. Los secretos se generan con `openssl rand -hex 32`.
+2. `cp infra/env.production.example .env.production` y completar los valores. Los secretos se generan con `openssl rand -hex 32`. Revisarlo con `docker run --rm -v "$PWD":/app -w /app node:22.23.1-alpine node scripts/doctor.mjs --env .env.production --online`.
 3. En Auth0: crear la aplicación Regular Web con Google y email, y la callback `https://app.<tld>/api/v1/auth/callback`. Exigir la verificación de email.
 4. Construir y levantar:
    ```sh
@@ -38,7 +38,7 @@ Internet ──TLS──▶ reverse proxy del VPS (ya atiende a ReservApp)
    10 3 * * * cd /srv/diagramia && DIAGRAMIA_BACKUP_DIR=/var/backups/diagramia infra/backup.sh >> /var/log/diagramia-backup.log 2>&1
    ```
    Conviene copiar `/var/backups/diagramia` fuera del VPS.
-8. **Alerta de gasto:** el gateway escribe una línea JSON `{"event":"alert","kind":"ai_spend",...}` al cruzar el 80 % del tope diario o mensual. Conectarla a un aviso, por ejemplo un filtro de logs que mande un mail.
+8. **Alerta de gasto:** al cruzar el 80 % del tope diario o mensual, el gateway escribe una línea JSON `{"event":"alert","kind":"ai_spend",...}` en el log y, si está `DIAGRAMIA_ALERT_WEBHOOK_URL`, la envía a ntfy, Discord o Slack (`docs/GUIA_PASO_A_PASO.md`, paso 5).
 
 ## Actualizar
 

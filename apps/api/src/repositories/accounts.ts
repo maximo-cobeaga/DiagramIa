@@ -89,7 +89,8 @@ export class AccountRepository{
       const old=prior.rows[0];
       if(old){
         if(old.fingerprint!==fingerprint||old.credits!==credits)throw new CreditError('IDEMPOTENCY_CONFLICT','El ID del pedido ya se usó con otro contenido.');
-        if(old.status==='committed')return {replayed:old.response};
+        // La respuesta guardada se borra a las 24 h (purgeExpired): sin ella no hay nada que repetir y no se vuelve a llamar gratis al proveedor.
+        if(old.status==='committed'){if(old.response===null)throw new CreditError('IDEMPOTENCY_CONFLICT','Ese pedido ya se completó. Enviá uno nuevo.');return {replayed:old.response};}
         if(old.status==='reserved'&&old.expires_at.getTime()>at.getTime())throw new CreditError('CREDIT_IN_PROGRESS','Este pedido de IA todavía se está procesando.');
       }
       const usage=await client.query<{daily:string;monthly:string}>(
@@ -110,6 +111,41 @@ export class AccountRepository{
   async releaseCredits(userId:string,requestId:string){
     await this.pool.query("UPDATE ai_credit_receipts SET status='released',expires_at=now() WHERE user_id=$1 AND request_id=$2 AND status='reserved'",[userId,requestId]);
   }
+  /**
+   * Retención mínima: la respuesta de la IA (que incluye texto del diagrama) sólo se guarda 24 h para reintentos;
+   * los recibos de crédito se borran a los 90 días y las sesiones vencidas al momento. Idempotente.
+   */
+  async purgeExpired(at=new Date()){
+    const responses=await this.pool.query("UPDATE ai_credit_receipts SET response=NULL WHERE response IS NOT NULL AND created_at < $1::timestamptz - interval '24 hours'",[at]);
+    const receipts=await this.pool.query("DELETE FROM ai_credit_receipts WHERE created_at < $1::timestamptz - interval '90 days'",[at]);
+    const sessions=await this.pool.query('DELETE FROM auth_sessions WHERE expires_at < $1',[at]);
+    return {responses:responses.rowCount??0,receipts:receipts.rowCount??0,sessions:sessions.rowCount??0};
+  }
+
+  /**
+   * Elimina la cuenta y todo lo que es suyo: diagramas en la nube con sus versiones, recibos, sesiones y proyecto.
+   * La telemetría se desvincula (los eventos quedan sin cuenta, como los de un visitante anónimo).
+   */
+  async deleteAccount(userId:string):Promise<{documents:number}>{
+    return tx(this.pool,async client=>{
+      const owned=await client.query<{document_id:string}>('SELECT c.document_id FROM cloud_documents c JOIN projects p ON p.id=c.project_id WHERE p.owner_id=$1',[userId]);
+      const ids=owned.rows.map(row=>row.document_id);
+      if(ids.length){
+        await client.query('DELETE FROM cloud_documents WHERE document_id = ANY($1)',[ids]);
+        for(const table of ['document_audit','document_receipts','document_versions','documents'])
+          await client.query(`DELETE FROM ${table} WHERE ${table==='documents'?'id':'document_id'} = ANY($1)`,[ids]);
+      }
+      await client.query('DELETE FROM ai_credit_receipts WHERE user_id=$1',[userId]);
+      await client.query('DELETE FROM auth_sessions WHERE user_id=$1',[userId]);
+      await client.query('DELETE FROM telemetry_identities WHERE user_id=$1',[userId]);
+      await client.query('UPDATE telemetry_events SET user_id=NULL WHERE user_id=$1',[userId]);
+      await client.query('DELETE FROM project_memberships WHERE user_id=$1 OR project_id IN (SELECT id FROM projects WHERE owner_id=$1)',[userId]);
+      await client.query('DELETE FROM projects WHERE owner_id=$1',[userId]);
+      await client.query('DELETE FROM users WHERE id=$1',[userId]);
+      return {documents:ids.length};
+    });
+  }
+
   async creditUsage(userId:string,at=new Date()){
     const {day,month}=period(at);
     const found=await this.pool.query<{daily:string;monthly:string}>(

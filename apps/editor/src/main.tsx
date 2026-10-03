@@ -157,7 +157,7 @@ function PrivacySettings(){
   return <section aria-label="Privacidad">
     <h3>Privacidad</h3>
     <label className="check"><input type="checkbox" checked={enabled&&!blocked} disabled={blocked} onChange={e=>{setTelemetryEnabled(e.target.checked);setEnabled(e.target.checked);}}/>Enviar datos anónimos de uso</label>
-    <p className="inline-note">{blocked?'Tu navegador pide no ser rastreado (Do Not Track o Global Privacy Control): no se envía nada.':'Sirven para mejorar Diagramia: qué herramientas se usan, errores y tiempos. Nunca se envía el texto de tus diagramas ni tus pedidos a la IA.'}</p>
+    <p className="inline-note">{blocked?'Tu navegador pide no ser rastreado (Do Not Track o Global Privacy Control): no se envía nada.':'Sirven para mejorar Diagramia: qué herramientas se usan, errores y tiempos. Nunca se envía el texto de tus diagramas ni tus pedidos a la IA.'} <a href="/privacidad.html" target="_blank" rel="noopener">Cómo tratamos tus datos</a></p>
   </section>;
 }
 

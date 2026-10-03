@@ -2,6 +2,18 @@
 
 ## Último checkpoint
 
+03/10/2026 (Argentina). Preparación de lanzamiento sin depender de accesos externos:
+- **`npm run doctor`:** diagnóstico de configuración en castellano, también para `.env.production` y con pruebas reales de OpenAI y Auth0 (`--online`).
+- **Alertas de gasto por webhook:** ntfy, Discord o Slack.
+- **Retención mínima:** respuestas de IA borradas a las 24 h, recibos a los 90 días y sesiones vencidas. Además se corrigió un reintento que, sin respuesta guardada, habría podido llamar gratis al proveedor.
+- **Eliminar mi cuenta** con confirmación escrita, y el estado de verificación del email visible en la cuenta.
+- **Borrador de aviso de privacidad** (`/privacidad.html`), con datos legales `[COMPLETAR]`.
+- **Comprobación automática de nombres accesibles** en el smoke.
+- **`docs/GUIA_PASO_A_PASO.md`:** lo que tiene que hacer el usuario, explicado para principiantes.
+- `docs/Estado_Diagramia_MVP.docx` regenerado (una página, verificado con Word).
+
+Sin push ni despliegue.
+
 02/10/2026 (Argentina, noche). Se ejecutó el bloque «antes del lanzamiento» del plan Lean salvo lo bloqueado por credenciales:
 - **P3.1:** adapter GPT-6 Luna, más proveedores por plan.
 - **P7.1–P7.3:** telemetría propia, métricas de IA con 👍/👎 y dashboard del fundador.
@@ -19,6 +31,8 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 01/10/2026 (Argentina, continuación). Se implementó P5.2: MCP remoto Streamable HTTP con OAuth, autorización por cuenta/proyecto y scopes, conservando stdio. También está implementada P6.3 con import/export PlantUML y BPMN; P4.1, P5.1 y partes de P4.4/P6.4 venían de la sesión anterior. El primer MVP **no está completo**: faltan prueba con Auth0 y hosts MCP reales, P4.3, resto de P4.4/P6.4, P5.3 y cierre de P8. Ver estados por microfase en `BACKLOG.md` y `docs/development-plan.json`.
 
 ## Evidencia
+
+- **03/10/2026.** `npm run check` 104/104. `npm run smoke` 34/34 con el chequeo de nombres accesibles, que además se comprobó al revés: detecta un botón sin nombre inyectado. `smoke:repository` con PostgreSQL real: purga de respuestas, rechazo del reintento sin respuesta y eliminación de cuenta sin afectar a otras cuentas con el mismo ID de documento. `npm run doctor` probado en local, con el ejemplo de producción y dentro del contenedor `node:22.23.1-alpine`.
 
 - **Sesión del 02/10 (noche).** Commits `099da82`…`74afa38`. `npm run check` 102/102.
   - Smokes con PostgreSQL Docker real:
@@ -64,6 +78,8 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 - **MCP remoto (P5.2)**: `/mcp` usa Streamable HTTP y OAuth bearer con JWT RS256/JWKS, audience exacta, scopes y autorización por proyecto. Los metadatos del recurso se publican para discovery. Probado localmente con cliente MCP oficial; la conexión externa requiere configurar issuer, audience, proxy y hosts.
 - **Free y antiabuso (P4.4)**: 3 documentos, 10 MB por documento y 30 MB por proyecto, 20 créditos IA mensuales y 6 diarios por usuario. Además, email verificado, 20 pedidos/min por IP y 6 por cuenta, reserva USD de pedidos en curso, tope diario y mensual (20 USD) con alerta al 80 %. Pro, billing y BYOK pasan a P4.6.
 - **Medición (P7.1–P7.3)**: contrato de eventos sin texto libre, ingesta `/v1/events`, cliente del editor con DNT/GPC y opt-out, landing con «Crear diagrama», `ai_request` del servidor, 👍/👎 con motivo, agregados diarios y `/#fundador` con los 10 indicadores. Ver `docs/TELEMETRIA.md`.
+- **Privacidad y cuenta**: retención mínima, eliminación de cuenta, estado de verificación del email y borrador de aviso de privacidad enlazado desde la landing y el editor (ADR 056).
+- **Operación**: `npm run doctor` y alertas de gasto por webhook.
 - **Despliegue preparado (P8.4)**: `infra/Dockerfile`, `compose.prod.yml`, `nginx.conf`, `backup.sh` y `DEPLOY.md`, probados en local. Sin desplegar.
 - **Export P6.4 parcial**: SVG, PNG y PDF estático; PDF multipágina de pasos de presentación. No exporta movimiento temporal ni video.
 - **Interop P6.2**: import/export draw.io XML plano o comprimido y Graphviz DOT en subconjuntos editables, con límites, errores recuperables y reportes de pérdidas; también avisan que omiten trazos libres. Controles de import/export en editor. Mapping en `docs/INTEROP.md`.
@@ -73,9 +89,9 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 - **Bloqueado por accesos externos:** smoke real de Luna y medición de costo, Auth0 real, despliegue (P8.4) y hosts MCP (P5.3).
 - **Antes de lanzar:**
-  - aviso de privacidad y decisión sobre consentimiento en la UE;
+  - completar y hacer revisar el borrador del aviso de privacidad, y decidir sobre el consentimiento en la UE;
   - licencia del código;
-  - canal para la alerta de gasto;
+  - `DIAGRAMIA_ALERT_WEBHOOK_URL` en producción;
   - revisión manual del usuario de P1, P2, P4.1, P5.1, P6.3, P7 y P8.1.
 - **Después de lanzar, según datos:** billing con Paddle (P4.6), agente Data/Product (P7.4), assets en almacenamiento (P4.3), export temporal (P6.4), recorte por viewport para más de 500 nodos, y CAPTCHA o señales de riesgo si aparece abuso.
 - **Límite conocido:** el motor detecta las superposiciones modeladas, pero no garantiza que todas las curvas, rutas manuales o cruces entre conexiones queden libres.
@@ -89,6 +105,8 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 - Despliegue: los artefactos están listos y probados en local (`infra/DEPLOY.md`), pero faltan autorización, acceso al VPS, dominio y `.env.production` con secretos. No hay despliegue de la aplicación. El repositorio de código sí se publicó en GitHub por instrucción del usuario. No se activaron cobros ni servicios pagos.
 
 ## Próxima acción inequívoca
+
+El usuario sigue `docs/GUIA_PASO_A_PASO.md`. Para el agente:
 
 1. **Con `OPENAI_API_KEY`:** `npm run api` y `npm run smoke:ai -- openai`. Repetirlo con `DIAGRAMIA_OPENAI_REASONING_EFFORT` en none, low y medium, y registrar costo por pedido, latencia y calidad. Con eso P3.1 queda verificada y se ajustan los créditos Free.
 2. **Con el tenant de Auth0:** configurar Google y email con verificación obligatoria, y probar el login real (P4.1). Agregar el email del fundador a `DIAGRAMIA_ADMIN_EMAILS`.
@@ -119,6 +137,7 @@ Ninguno es necesario para levantar el editor. El gateway de IA sólo llama a un 
 | 01/10/2026 (continuación) | P5.2 implementada | MCP remoto Streamable HTTP y OAuth resource server, JWT RS256/JWKS, scopes read/write, audiencia exacta y autorización por proyecto; ADR 042 y guía `docs/MCP_REMOTO.md`. | `npm run check`: 88/88; `npm run smoke:mcp-remote` y `npm run smoke:repository` aprobados. Issuer/JWKS local firmado, sin Auth0 ni host externo. | P4.3; prueba real de Auth0/proxy/hosts y P5.3 |
 | 02/10/2026 (planificación) | Plan reordenado; P4.4, P4.6 y P7 redefinidas | Higgsfield retirado del producto, GPT-6 Luna para Free, Auth0 confirmado, telemetría propia y orden Lean. ADR 044–048; `development-plan.json`, plan, backlog y criterio A16 actualizados; `07_IA_MCP_HIGGSFIELD.md` renombrado a `07_IA_Y_MCP.md`. | `npm run check` 88/88 (sin cambios de código) | P3.1 adapter Luna; P7.1 eventos |
 | 02/10/2026 (noche) | P3.1 (adapter), P4.4, P7.1–P7.3 implementadas; P8.2 implementada; P8.3/P8.4 parciales | Luna con structured outputs, proveedores por plan, telemetría propia y dashboard, antiabuso, ruteo con grilla espacial y poda exacta, checksum de migraciones por LF, artefactos de despliegue. ADR 049–055 | check 102/102; smoke 33/33 ×3 (dev, build prod, contenedor prod); smoke:repository, smoke:shared, smoke:dashboard; prueba de pila prod con respaldo y vuelta atrás | Credenciales (OpenAI, Auth0), autorización de despliegue, revisión manual |
+| 03/10/2026 | P8.1/P8.3 avanzan (siguen parciales) | Doctor, alertas por webhook, retención mínima, eliminación de cuenta, borrador de privacidad, chequeo de accesibilidad, guía paso a paso, resumen .docx regenerado. ADR 056 | check 104/104; smoke 34/34; smoke:repository con eliminación y purga; doctor en local, producción y contenedor | Pasos 1–3 de la guía (OpenAI, base local, Auth0) |
 
 Instalación limpia comprobada previamente con `npm ci` y `npm run check` 73/73. El primer `npm ci` encontró un binario Rolldown abierto por la instancia Vite del smoke; se cerró ese proceso identificado y la segunda instalación aprobó. En esta sesión se verificó el árbol actualizado con 82/82 pruebas; no se repitió `npm ci`.
 

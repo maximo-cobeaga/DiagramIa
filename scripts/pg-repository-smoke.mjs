@@ -161,6 +161,39 @@ try{
     assert.ok(aiRows.rows.length>=7,`se esperaban los pedidos de IA de Alice medidos, hubo ${aiRows.rows.length}`);
     assert.ok(aiRows.rows.some(r=>r.props.outcome==='text')&&aiRows.rows.some(r=>r.props.errorCode==='CREDIT_LIMIT'),'éxitos y cortes por cuota quedan registrados');
     assert.ok(!JSON.stringify(aiRows.rows).includes('Explicá el diagrama'),'el texto del pedido no se guarda');
+    // Retención: a las 24 h se borra la respuesta guardada de la IA y un reintento ya no puede volver a llamar gratis al proveedor.
+    const purgeAt=new Date(Date.now()+2*86_400_000),purged=await accounts.purgeExpired(purgeAt);
+    assert.ok(purged.responses>=7,`se esperaban respuestas purgadas, hubo ${purged.responses}`);
+    assert.equal((await sourcePool.query("SELECT count(*)::int AS n FROM ai_credit_receipts WHERE response IS NOT NULL AND created_at < $1::timestamptz - interval '24 hours'",[purgeAt])).rows[0].n,0,'ninguna respuesta de más de 24 h queda guardada');
+    const stale=await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(bob.token),body:JSON.stringify(aiBody(0))});
+    assert.equal(stale.status,409,'un pedido completado sin respuesta guardada no se repite gratis');
+    // Eliminar la cuenta: se va todo lo de Dave y nada de los demás, aunque compartan el ID semántico del documento.
+    const dave=await accounts.signIn({issuer:'https://oidc.example',subject:'dave',email:'dave@example.test'});
+    assert.equal((await fetch(cloud,{method:'POST',headers:as(dave.token),body:JSON.stringify(emptyDocument(cloudId,'De Dave'))})).status,201);
+    assert.equal((await fetch(`${cloud}/${cloudId}/batches`,{method:'POST',headers:as(dave.token),body:JSON.stringify({id:'dave-edit',baseRevision:0,actions:[{type:'UPDATE_DOCUMENT',changes:{title:'De Dave, editado'}}]})})).status,200);
+    assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(dave.token),body:JSON.stringify({...aiBody(0),requestId:'dave-ai'})})).status,200);
+    assert.equal((await sendEvents(telemetryBatch([{id:eventId(90),name:'export',at:new Date().toISOString(),props:{format:'png1'}}]),dave.token)).status,202);
+    const daveDocument=(await sourcePool.query('SELECT document_id FROM cloud_documents WHERE project_id=$1',[dave.session.projectId])).rows[0].document_id;
+    const before=(await sourcePool.query('SELECT count(*)::int AS n FROM telemetry_events')).rows[0].n;
+    assert.equal((await fetch(`${origin}/v1/auth/delete-account`,{method:'POST',headers:as(dave.token),body:JSON.stringify({})})).status,400,'sin confirmación no se borra nada');
+    const deleted=await fetch(`${origin}/v1/auth/delete-account`,{method:'POST',headers:as(dave.token),body:JSON.stringify({confirm:'ELIMINAR'})});
+    assert.equal(deleted.status,200);assert.deepEqual(await deleted.json(),{deleted:true,documents:1});
+    assert.match(deleted.headers.get('set-cookie')??'',/diagramia_session=;.*Max-Age=0/,'la cookie de sesión se borra');
+    const left=async(sql,params)=>(await sourcePool.query(sql,params)).rows[0].n;
+    for(const [sql,params,what] of [
+      ['SELECT count(*)::int AS n FROM users WHERE id=$1',[dave.session.userId],'usuario'],
+      ['SELECT count(*)::int AS n FROM projects WHERE owner_id=$1',[dave.session.userId],'proyecto'],
+      ['SELECT count(*)::int AS n FROM documents WHERE id=$1',[daveDocument],'documento'],
+      ['SELECT count(*)::int AS n FROM document_versions WHERE document_id=$1',[daveDocument],'versiones'],
+      ['SELECT count(*)::int AS n FROM document_audit WHERE document_id=$1',[daveDocument],'auditoría'],
+      ['SELECT count(*)::int AS n FROM ai_credit_receipts WHERE user_id=$1',[dave.session.userId],'recibos'],
+      ['SELECT count(*)::int AS n FROM auth_sessions WHERE user_id=$1',[dave.session.userId],'sesiones'],
+      ['SELECT count(*)::int AS n FROM telemetry_events WHERE user_id=$1',[dave.session.userId],'eventos con cuenta'],
+      ['SELECT count(*)::int AS n FROM telemetry_identities WHERE user_id=$1',[dave.session.userId],'vínculo de telemetría']])assert.equal(await left(sql,params),0,`quedó ${what} de Dave`);
+    assert.equal(await left('SELECT count(*)::int AS n FROM telemetry_events',[]),before,'los eventos quedan, desvinculados de la cuenta');
+    assert.equal((await fetch(`${cloud}/${cloudId}`,{headers:as(alice.token)})).status,200,'el documento de Alice con el mismo ID sigue');
+    assert.equal((await fetch(`${cloud}/${cloudId}`,{headers:as(bob.token)})).status,200,'el de Bob también');
+    assert.equal((await fetch(`${origin}/v1/auth/me`,{headers:as(dave.token)})).status,401,'la sesión de Dave ya no existe');
     await sourcePool.query("UPDATE auth_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1",[alice.session.userId]);
     assert.equal((await fetch(`${origin}/v1/auth/me`,{headers:as(alice.token)})).status,401,'sesión vencida rechazada');
   }finally{await new Promise(resolve=>server.close(resolve));}

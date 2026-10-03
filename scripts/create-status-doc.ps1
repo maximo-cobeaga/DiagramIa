@@ -24,36 +24,30 @@ function Add-Entry($archive, [string]$name, [string]$content) {
 
 $paragraphs = @(
   (New-Paragraph 'Diagramia: estado del MVP' 'Title')
-  (New-Paragraph 'Resumen simple · 1 de octubre de 2026' 'Subtitle')
-  (New-Paragraph 'HOY: existe una versión funcional para probar, pero todavía no está lista para publicarse.' 'Callout')
+  (New-Paragraph 'Resumen simple · 3 de octubre de 2026' 'Subtitle')
+  (New-Paragraph 'HOY: el producto está listo para lanzarse en cuanto conectes tres servicios externos (OpenAI, Auth0 y el servidor). Nada se publicó todavía.' 'Callout')
 
   (New-Paragraph '¿Qué es?' 'Heading1')
   (New-Paragraph 'Una pizarra para dibujar diagramas, pedir cambios a una IA y convertirlos en explicaciones animadas. Las formas, flechas y pasos siguen siendo editables después de usar la IA.')
 
   (New-Paragraph 'Lo que ya funciona' 'Heading1')
-  (New-Paragraph '• Dibujar y editar nodos, texto, zonas, conexiones, líneas, flechas y trazos a mano. Hay deshacer, varios diagramas y guardado local.')
-  (New-Paragraph '• Crear o modificar diagramas con IA. Antes de aplicar un cambio se ve la propuesta; el sistema la valida. Se probó con un modelo local real.')
-  (New-Paragraph '• Animar un recorrido por pasos, con textos, resaltados, cámara y caminos alternativos; presentarlo desde la misma app.')
-  (New-Paragraph '• Usar cuentas y proyectos privados con versiones y límites iniciales del plan Gratis. Una IA externa puede acceder por MCP con permisos.')
-  (New-Paragraph '• Importar varios formatos de diagramas y exportar JSON, imágenes y PDF. Algunas conversiones pierden detalles y lo informan.')
+  (New-Paragraph '• Editor completo: formas, zonas, conexiones, dibujo libre, animaciones, presentación, importar y exportar (JSON, imágenes, PDF y otros formatos).')
+  (New-Paragraph '• IA del plan gratis con GPT-6 Luna, lista para conectar. Cada cuenta sólo usa el modelo de su plan, con créditos, email verificado y un tope de gasto diario y mensual que avisa al 80 %.')
+  (New-Paragraph '• Medición propia desde el primer día: embudo de la landing al registro, uso del editor y de la IA, opinión 👍/👎 y un panel del fundador con los 10 indicadores clave.')
+  (New-Paragraph '• Privacidad: no se mide el contenido de los diagramas, se respeta «no rastrear», se puede eliminar la cuenta y hay un borrador de aviso de privacidad.')
+  (New-Paragraph '• Rápido hasta 500 elementos; seguridad revisada; despliegue en tu servidor preparado y probado, incluida la vuelta atrás.')
 
-  (New-Paragraph 'Qué falta para lanzar la primera versión' 'Heading1')
-  (New-Paragraph '• Conectar GPT-6 Luna como IA del plan Gratis y medir su costo real por pedido.')
-  (New-Paragraph '• Medir el uso desde el primer día: embudo de registro, uso del editor y de la IA, errores y opinión de los usuarios.')
-  (New-Paragraph '• Probar el inicio de sesión con Auth0 real, dos dispositivos y dos aplicaciones externas conectadas por MCP.')
-  (New-Paragraph '• Protección contra abuso del plan Gratis: email verificado, límites por IP y un tope global de gasto. Pagos y plan Pro, después del lanzamiento.')
-  (New-Paragraph '• Terminar y revisar accesibilidad, velocidad, seguridad y exportación con movimiento. El PDF actual muestra imágenes fijas.')
+  (New-Paragraph 'Lo que necesito de vos (paso a paso en docs/GUIA_PASO_A_PASO.md)' 'Heading1')
+  (New-Paragraph '1. Una clave de OpenAI con crédito, para probar Luna de verdad y medir el costo.')
+  (New-Paragraph '2. Una cuenta de Auth0, para el inicio de sesión real.')
+  (New-Paragraph '3. Dominio y acceso al servidor, y tu autorización para publicar.')
+  (New-Paragraph '4. Decisiones tuyas: la licencia del código y la revisión legal del aviso de privacidad.')
 
-  (New-Paragraph 'Decisiones a tomar' 'Heading1')
-  (New-Paragraph '1. Lanzamiento: ¿alcanza con animaciones dentro de Diagramia y PDF fijo, o el video exportable es obligatorio? Sugerencia: lanzar con la primera opción y sumar video después.')
-  (New-Paragraph '2. Límites de IA: el modelo ya está elegido (GPT-6 Luna). Los 20 créditos al mes y 6 al día son una hipótesis; ajustarlos con el costo medido.')
-  (New-Paragraph '3. Despliegue: autorizar el uso del VPS compartido con ReservApp y elegir el dominio.')
+  (New-Paragraph 'Después del lanzamiento' 'Heading1')
+  (New-Paragraph 'Con datos reales: cobros y plan Pro, un asistente que analice las métricas cada semana, imágenes en la nube, exportar video y conexión con más asistentes de IA externos.')
 
-  (New-Paragraph 'Cómo se vería el producto terminado' 'Heading1')
-  (New-Paragraph 'Una persona entra y dibuja sin cuenta. Si inicia sesión, guarda en la nube, pide a la IA que cree o cambie sólo una parte del diagrama, revisa el resultado y lo acepta. Luego arma una explicación animada, la presenta y la exporta. Sus archivos se mantienen privados, puede recuperar versiones y conoce sus límites de uso.')
-
-  (New-Paragraph 'Próximo paso' 'Heading1')
-  (New-Paragraph 'Conectar GPT-6 Luna y construir la medición de uso. Después, conectar Auth0 real, revisar seguridad y desplegar. El código pasó 88 pruebas automáticas y 33 recorridos de navegador; eso todavía no reemplaza las pruebas de lanzamiento.')
+  (New-Paragraph 'Cómo saber que funciona' 'Heading1')
+  (New-Paragraph '102 pruebas automáticas y 34 recorridos en un navegador real, sumados a pruebas con base de datos y con el servidor de producción armado en esta PC. Falta tu revisión a mano: la lista está en VALIDATION.md.')
 )
 
 $document = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +

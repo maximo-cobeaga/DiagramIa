@@ -491,7 +491,7 @@
           ],
           "acceptance": "Recorridos de aceptación completos; no clipping; texto y controles legibles; colores no son único indicador.",
           "status": "partial",
-          "evidence": "Editor con pestañas independientes, modo oscuro, panel plegable, IA primero, chat con burbujas y tutorial modal. Smoke Chrome 30/30 en desktop/tablet/móvil; catálogo móvil plegado deja el canvas en primera pantalla. Falta revisión manual con dispositivos reales, teclado completo, lector de pantalla, zoom de accesibilidad y feedback de usuarios; el zoom inicial móvil todavía puede dejar labels pequeños. Se agregaron herramientas explícitas de línea, flecha libre y dibujo a mano alzada, con persistencia canónica y migración 1.3.0→1.4.0. Falta la revisión manual visual y accesible."
+          "evidence": "Editor con pestañas independientes, modo oscuro, panel plegable, IA primero, chat con burbujas y tutorial modal. Smoke Chrome 30/30 en desktop/tablet/móvil; catálogo móvil plegado deja el canvas en primera pantalla. Falta revisión manual con dispositivos reales, teclado completo, lector de pantalla, zoom de accesibilidad y feedback de usuarios; el zoom inicial móvil todavía puede dejar labels pequeños. Se agregaron herramientas explícitas de línea, flecha libre y dibujo a mano alzada, con persistencia canónica y migración 1.3.0→1.4.0. Falta la revisión manual visual y accesible. 03/10/2026: el smoke comprueba que todo control visible de los cuatro paneles tenga nombre accesible y toda imagen texto alternativo (34/34), y se verificó que detecta un botón sin nombre inyectado."
         },
         {
           "id": "P8.2",
@@ -517,7 +517,7 @@
           ],
           "acceptance": "Checks y pruebas de contrato reales; sin claves/build leaks; bloqueos reales abiertos no se ocultan bajo status completed.",
           "status": "partial",
-          "evidence": "02/10/2026: revisión registrada en docs/SEGURIDAD.md (npm audit sin vulnerabilidades, búsqueda de secretos, sesión, CSRF, aislamiento, antiabuso, telemetría, cabeceras, contenedores, IP detrás de proxy). Corregidos en esta revisión: checksum de migraciones dependiente del fin de línea (habría impedido arrancar al cambiar de Windows a Linux), requestId libre en telemetría y falta de nosniff. Pendiente: Auth0 real, aviso de privacidad y consentimiento UE, licencia del código, canal de la alerta de gasto y revisión externa."
+          "evidence": "02/10/2026: revisión registrada en docs/SEGURIDAD.md (npm audit sin vulnerabilidades, búsqueda de secretos, sesión, CSRF, aislamiento, antiabuso, telemetría, cabeceras, contenedores, IP detrás de proxy). Corregidos en esta revisión: checksum de migraciones dependiente del fin de línea (habría impedido arrancar al cambiar de Windows a Linux), requestId libre en telemetría y falta de nosniff. Pendiente: Auth0 real, aviso de privacidad y consentimiento UE, licencia del código, canal de la alerta de gasto y revisión externa. 03/10/2026 (ADR 056): retención mínima de respuestas de IA y recibos, eliminación de cuenta con confirmación (probada en PostgreSQL real sin afectar otras cuentas), borrador de aviso de privacidad, alertas por webhook y `npm run doctor`."
         },
         {
           "id": "P8.4",
