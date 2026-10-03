@@ -159,12 +159,15 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   const nodeIndex=doc.nodes.length?`\n\nNODOS (ID → nombre): ${doc.nodes.slice(0,80).map(n=>`${n.id} → ${n.label}`).join('; ')}${doc.nodes.length>80?'; …':''}`:'';
   const zoneIndex=doc.zones.length?`\n\nZONAS (ID → nombre): ${doc.zones.slice(0,60).map(z=>`${z.id} → ${z.label}`).join('; ')}`:'';
   const first=`MODO: ${request.mode}\n${MODE_BRIEF[request.mode]}\n\nCONTEXTO DEL DOCUMENTO (JSON):\n${context.body}${nodeIndex}${zoneIndex}${choice?.chosen?`\nEl usuario eligió la zona de ID "${choice.chosen.id}" entre las ${choice.twins.length} que se llaman «${choice.chosen.label}». Usá ese ID.`:''}\n\nPEDIDO DEL USUARIO:\n${request.prompt}\n\nFORMATO DE RESPUESTA:\n${OUTPUT_CONTRACT(request.mode)}`;
-  const callCost=(messages:ChatMessage[])=>estimateTokens(deps.system.length+messages.reduce((sum,m)=>sum+m.content.length,0))+deps.config.maxOutputTokens;
+  const inputEstimate=(messages:ChatMessage[])=>estimateTokens(deps.system.length+messages.reduce((sum,m)=>sum+m.content.length,0));
+  const callCost=(messages:ChatMessage[])=>inputEstimate(messages)+deps.config.maxOutputTokens;
+  // Peor caso en USD: toda la entrada sin caché y la salida máxima. Se reserva antes de llamar y se libera al liquidar.
+  const callUsd=(messages:ChatMessage[])=>costOf(info.pricing,inputEstimate(messages),deps.config.maxOutputTokens)??0;
   const messages:ChatMessage[]=[...request.history,{role:'user',content:first}];
   const signature=canonical({provider:info.id,mode:request.mode,prompt:request.prompt,revision:doc.revision,documentId:doc.id,selectedIds,history:request.history});
   // El presupuesto limita gasto: sólo los proveedores remotos lo consumen. El límite de pedidos por minuto rige para todos.
   const billable=info.kind==='remote';
-  const begun=deps.ledger.begin(request.requestId,signature,billable?callCost(messages):0);
+  const begun=deps.ledger.begin(request.requestId,signature,billable?callCost(messages):0,billable?callUsd(messages):0);
   if(begun)return {...(begun.replay as AssistAnswer),replayed:true};
 
   const timeout=AbortSignal.timeout(deps.config.timeoutMs),signal=AbortSignal.any([clientSignal,timeout]);
@@ -174,7 +177,7 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   const base=()=>({requestId:request.requestId,mode:request.mode,provider:info.id,providerKind:info.kind,model,baseRevision:doc.revision,contextTruncated:context.truncated,repairs:calls-1,replayed:false,usage:usage()});
   try{
     for(;;){
-      if(calls>0&&billable)deps.ledger.reserveMore(request.requestId,callCost(messages));
+      if(calls>0&&billable)deps.ledger.reserveMore(request.requestId,callCost(messages),callUsd(messages));
       const result=await provider.generate({system:deps.system,messages,maxOutputTokens:deps.config.maxOutputTokens,signal,json:request.mode!=='explain'&&request.mode!=='document',schema:strictSchemaFor(request.mode)});
       calls++;inputTokens+=result.usage.inputTokens;outputTokens+=result.usage.outputTokens;cachedInputTokens+=result.usage.cachedInputTokens??0;model=result.model;
       let problem:string;

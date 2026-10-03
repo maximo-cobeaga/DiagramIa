@@ -23,7 +23,10 @@ if(!['127.0.0.1','localhost','::1'].includes(host)&&!token){
 const productPrompt=readFileSync(root+'prompts/06_SYSTEM_PROMPT_PRODUCTO.md','utf8').split('\n').slice(1).join('\n');
 const ledger=new UsageLedger({
   dailyTokenBudget:number('DIAGRAMIA_DAILY_TOKEN_BUDGET',400_000),dailyUsdBudget:number('DIAGRAMIA_DAILY_USD_BUDGET',2),
-  requestsPerMinute:number('DIAGRAMIA_REQUESTS_PER_MINUTE',10),ledgerPath:root+'state/usage-ledger.json'
+  requestsPerMinute:number('DIAGRAMIA_REQUESTS_PER_MINUTE',10),ledgerPath:root+'state/usage-ledger.json',
+  // Tope mensual de la IA incluida y alerta al cruzar una fracción: una línea JSON en el log, para conectar a un aviso externo.
+  monthlyUsdBudget:number('DIAGRAMIA_MONTHLY_USD_BUDGET',20),alertRatio:Math.min(1,number('DIAGRAMIA_SPEND_ALERT_RATIO',0.8)),
+  onAlert:alert=>console.warn(JSON.stringify(alert))
 });
 const providers=providersFromEnv(env);
 async function start(){
@@ -48,6 +51,7 @@ async function start(){
       // Telemetría propia (ADR 046): requiere PostgreSQL; DIAGRAMIA_TELEMETRY=0 la apaga.
       telemetry:pool&&env.DIAGRAMIA_TELEMETRY!=='0'?new TelemetryRepository(pool):undefined,
       eventsPerMinute:number('DIAGRAMIA_EVENTS_PER_MINUTE',60),trustProxy:env.DIAGRAMIA_TRUST_PROXY==='1',
+      requireVerifiedEmail:env.DIAGRAMIA_REQUIRE_VERIFIED_EMAIL!=='0',aiPerIpPerMinute:number('DIAGRAMIA_AI_PER_IP_PER_MINUTE',20),aiPerUserPerMinute:number('DIAGRAMIA_AI_PER_USER_PER_MINUTE',6),
       // Plan Free: GPT-6 Luna por defecto (ADR 045). Lista separada por comas de IDs de proveedor.
       accountProviders:(env.DIAGRAMIA_ACCOUNT_PROVIDERS??'openai').split(',').map(id=>id.trim()).filter(Boolean),
       oidc:configured.length?new OidcAuthenticator({issuer:env.DIAGRAMIA_OIDC_ISSUER!,clientId:env.DIAGRAMIA_OIDC_CLIENT_ID!,clientSecret:env.DIAGRAMIA_OIDC_CLIENT_SECRET!,redirectUri:env.DIAGRAMIA_OIDC_REDIRECT_URI!,homeUrl:env.DIAGRAMIA_OIDC_HOME_URL!}):undefined,

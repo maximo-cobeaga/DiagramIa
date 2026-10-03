@@ -71,7 +71,9 @@ try{
 
   const accounts=new AccountRepository(sourcePool),alice=await accounts.signIn({issuer:'https://oidc.example',subject:'alice',email:'alice@example.test'}),bob=await accounts.signIn({issuer:'https://oidc.example',subject:'bob',email:'bob@example.test'});
   assert.notEqual(alice.session.projectId,bob.session.projectId);
-  const server=createApp({providers:[mockProvider(1)],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:100,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:['http://127.0.0.1:5173'],documents:reopened,documentToken:'private-test-token',localWorkspace:true,accounts,telemetry:new TelemetryRepository(sourcePool),config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
+  const server=createApp({providers:[mockProvider(1)],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:100,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:['http://127.0.0.1:5173'],documents:reopened,documentToken:'private-test-token',localWorkspace:true,accounts,telemetry:new TelemetryRepository(sourcePool),
+    // Este recorrido prueba créditos e idempotencia con pedidos seguidos; los límites por minuto tienen su propia prueba en gateway.test.ts.
+    aiPerUserPerMinute:100,aiPerIpPerMinute:100,config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   try{
     const url=`http://127.0.0.1:${server.address().port}/v1/documents`,headers={'x-diagramia-client':'editor',authorization:'Bearer private-test-token','content-type':'application/json'};
@@ -132,6 +134,8 @@ try{
     assert.equal(bobAi.status,200,'la cuota de Bob es independiente');
     assert.equal((await bobAi.json()).replayed,false,'Bob no recibe el resultado cacheado de Alice por usar el mismo requestId');
     const charlie=await accounts.signIn({issuer:'https://oidc.example',subject:'charlie',email:null});
+    const unverified=await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(charlie.token),body:JSON.stringify({...aiBody(0),requestId:'charlie-1'})});
+    assert.equal(unverified.status,403,'sin email verificado no hay IA');assert.equal((await unverified.json()).error.code,'EMAIL_NOT_VERIFIED');
     const year=new Date().getUTCFullYear(),month=new Date().getUTCMonth();
     for(let i=0;i<20;i++){
       const at=new Date(Date.UTC(year,month,20+Math.floor(i/5),12));

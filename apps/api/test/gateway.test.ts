@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer,type Server} from 'node:http';
-import {readFileSync} from 'node:fs';
+import {mkdtempSync,readFileSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import type {AddressInfo} from 'node:net';
 import {applyBatch,emptyDocument,findOverlaps} from '@diagramia/core';
 import {anthropicProvider,openAICompatibleProvider,openAIProvider,mockProvider,ProviderError,type Provider,type ProviderRequest} from '@diagramia/providers';
@@ -423,7 +425,7 @@ test('create through GPT-6 Luna: strict answers with explicit nulls become canon
 });
 test('a signed-in account only sees and uses the providers of its plan; another provider is refused before reserving credits',async()=>{
   const reserved:string[]=[];
-  const accounts:any={readSession:async(token?:string)=>token==='s1'?{userId:'u1'}:null,creditUsage:async()=>({monthly:0,daily:0}),
+  const accounts:any={readSession:async(token?:string)=>token==='s1'?{userId:'u1',emailVerified:true}:null,creditUsage:async()=>({monthly:0,daily:0}),
     reserveCredits:async(_user:string,requestId:string)=>{reserved.push(requestId);return {replayed:null};},settleCredits:async()=>{},releaseCredits:async()=>{}};
   const free=scripted([redis()]),premium:Provider={info:()=>info('premium'),generate:async()=>{throw new Error('no debe llamarse');}};
   const ledger=new UsageLedger({dailyTokenBudget:1_000_000,dailyUsdBudget:5,requestsPerMinute:100,ledgerPath:null});
@@ -488,5 +490,56 @@ test('every AI request is recorded with outcome, tokens, cost and latency, inclu
     assert.equal(bad.props.outcome,'failed');assert.equal(bad.props.errorCode,'PROPOSAL_REJECTED');
     assert.equal(bad.props.calls,2,'el intento y su reparación');assert.equal(bad.props.inputTokens,2000);assert.ok(bad.props.costUsd>0,'lo gastado en un fallo también se mide');
     assert.ok(!JSON.stringify(spy.server).includes('Redis'),'el pedido del usuario no queda en la telemetría');
+  }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
+
+test('the spending cap counts in-flight requests, adds a monthly cap and alerts once per period, surviving a restart',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'diagramia-ledger-')),path=join(dir,'ledger.json'),alerts:unknown[]=[];
+  let now=Date.UTC(2026,9,2,12);
+  const ledger=(monthly?:number)=>new UsageLedger({dailyTokenBudget:1_000_000,dailyUsdBudget:1,monthlyUsdBudget:monthly,requestsPerMinute:100,ledgerPath:path,alertRatio:0.8,onAlert:alert=>alerts.push(alert)},()=>now);
+  const settle=(l:UsageLedger,id:string,usd:number)=>l.settle({requestId:id,provider:'openai',model:'gpt-6-luna',status:'completed',billable:true,inputTokens:10,outputTokens:10,costUsd:usd,calls:1});
+  try{
+    const day=ledger(3);
+    assert.equal(day.begin('a','sig-a',100,0.6),null);
+    // Con 0,6 USD reservados, otro pedido de peor caso 0,6 superaría el tope diario de 1: se corta sin llamar al proveedor.
+    assert.throws(()=>day.begin('b','sig-b',100,0.6),{code:'BUDGET_EXCEEDED'});
+    settle(day,'a',0.85);
+    assert.deepEqual(alerts,[{event:'alert',kind:'ai_spend',period:'day',key:'2026-10-02',usd:0.85,budget:1,ratio:0.85}]);
+    assert.equal(day.begin('c','sig-c',100,0.1),null);settle(day,'c',0.05);
+    assert.equal(alerts.length,1,'la alerta diaria no se repite');
+    // Reinicio del proceso: el gasto del día y del mes y la alerta ya enviada se conservan.
+    const restarted=ledger(3);
+    assert.equal(restarted.summary().estimatedUsd,0.9);assert.equal(restarted.summary().monthlyEstimatedUsd,0.9);
+    assert.throws(()=>restarted.begin('d','sig-d',100,0.2),{code:'BUDGET_EXCEEDED'});
+    // Días siguientes del mismo mes: el diario se renueva, el mensual acumula hasta su tope y avisa al 80 %.
+    for(let d=3;d<=5;d++){now=Date.UTC(2026,9,d,12);const l=ledger(3);assert.equal(l.begin(`day-${d}`,'s',100,0.1),null);settle(l,`day-${d}`,0.7);}
+    // 0,7 USD por día no cruza el 80 % diario; el mensual llega a 3 de 3 y avisa una sola vez.
+    assert.deepEqual(alerts.map(a=>(a as {period:string}).period),['day','month']);
+    now=Date.UTC(2026,9,6,12);
+    assert.throws(()=>ledger(3).begin('over','s',100,0.1),/mensual/);
+    now=Date.UTC(2026,10,1,12);
+    assert.equal(ledger(3).begin('next-month','s',100,0.1),null,'el mes nuevo empieza en cero');
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+test('the included AI needs a verified email and per-account and per-IP limits stop floods before credits are reserved',async()=>{
+  const reserved:string[]=[];
+  const accounts:any={readSession:async(token?:string)=>token==='verified'?{userId:'u1',emailVerified:true}:token==='unverified'?{userId:'u2',emailVerified:false}:token==='other'?{userId:'u3',emailVerified:true}:null,
+    creditUsage:async()=>({monthly:0,daily:0}),reserveCredits:async(_user:string,requestId:string)=>{reserved.push(requestId);return {replayed:null};},settleCredits:async()=>{},releaseCredits:async()=>{}};
+  const {provider,calls}=scripted([redis()]),spy=telemetrySpy();
+  const ledger=new UsageLedger({dailyTokenBudget:1_000_000,dailyUsdBudget:5,requestsPerMinute:100,ledgerPath:null});
+  const server=createApp({providers:[provider],ledger,productPrompt:'p',allowedOrigins:[],token:null,accounts,telemetry:spy.repo,aiPerUserPerMinute:2,aiPerIpPerMinute:4,config:{maxOutputTokens:2000,maxContextChars:60000,maxRepairs:1,timeoutMs:5000}});
+  const url=await listen(server);
+  const ask=(session:string,requestId:string)=>fetch(url+'/v1/assist',{method:'POST',headers:{'content-type':'application/json','x-diagramia-client':'editor',cookie:`diagramia_session=${session}`},
+    body:JSON.stringify({requestId,providerId:'fake',mode:'explain',prompt:'Explicá',document:architecture(),selectedIds:[]})});
+  try{
+    const unverified=await ask('unverified','u-1');
+    assert.equal(unverified.status,403);assert.equal((await unverified.json()).error.code,'EMAIL_NOT_VERIFIED');
+    assert.equal((await ask('verified','v-1')).status,200);assert.equal((await ask('verified','v-2')).status,200);
+    const flood=await ask('verified','v-3');
+    assert.equal(flood.status,429,'tercer pedido de la misma cuenta en el minuto');
+    assert.equal((await ask('other','o-1')).status,429,'quinto pedido desde la misma IP, aunque sea otra cuenta');
+    assert.deepEqual(reserved,['v-1','v-2'],'los pedidos bloqueados no reservan créditos');assert.equal(calls.length,2);
+    await new Promise(resolve=>setTimeout(resolve,20));
+    assert.deepEqual(spy.server.map(s=>[s.event.props.outcome,s.event.props.errorCode]),[['blocked','EMAIL_NOT_VERIFIED'],['text',null],['text',null],['blocked','RATE_LIMITED'],['blocked','RATE_LIMITED']]);
   }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 });

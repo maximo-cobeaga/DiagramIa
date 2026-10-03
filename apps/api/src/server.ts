@@ -17,7 +17,9 @@ export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistCon
   /** Telemetría propia (P7.1). Sin repositorio, /v1/events responde 503 y el editor deja de enviar. */
   telemetry?:TelemetryRepository;eventsPerMinute?:number;
   /** Detrás de un reverse proxy propio: la IP del cliente es la última de X-Forwarded-For. */
-  trustProxy?:boolean;ready?:()=>Promise<boolean>;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void};
+  trustProxy?:boolean;
+  /** Antiabuso de la IA incluida (P4.4). Por defecto exige email verificado y limita 20 pedidos/min por IP y 6 por cuenta. */
+  requireVerifiedEmail?:boolean;aiPerIpPerMinute?:number;aiPerUserPerMinute?:number;ready?:()=>Promise<boolean>;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void};
 const MAX_BODY=4_000_000;
 const MAX_DOCUMENT_BODY=10_500_000;
 const MAX_EVENTS_BODY=64_000;
@@ -54,6 +56,7 @@ const flowCookie=(token:string,secure:boolean,maxAge:number)=>`diagramia_oidc_fl
  */
 export function createApp(options:AppOptions):Server{
   const system=systemPrompt(options.productPrompt),eventLimiter=new RateLimiter(options.eventsPerMinute??60,60_000);
+  const aiPerIp=new RateLimiter(options.aiPerIpPerMinute??20,60_000),aiPerUser=new RateLimiter(options.aiPerUserPerMinute??6,60_000);
   // La telemetría nunca rompe el producto: un fallo al registrar queda en el log sin datos del pedido.
   const record=(event:ServerEvent,userId:string|null)=>{void options.telemetry?.record(event,userId).catch(error=>console.error('[telemetry] no se registró',event.name+':',error instanceof Error?error.name:'error'));};
   return createServer(async(req:IncomingMessage,res:ServerResponse)=>{
@@ -200,18 +203,25 @@ export function createApp(options:AppOptions):Server{
         res.on('close',()=>{if(!res.writableEnded)abort.abort();});
         const meta=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES),providerId:z.string().min(1).max(40)}).safeParse(body);
         // Cada pedido de IA queda medido con su resultado, tokens, costo y latencia (P7.2), con el requestId del cliente.
-        const track=(outcome:{answer?:AssistAnswer;error?:unknown;refused?:boolean})=>{
+        const track=(outcome:{answer?:AssistAnswer;error?:unknown;refused?:boolean;blocked?:string})=>{
           if(!meta.success)return;
           const known=outcome.error instanceof AssistError||outcome.error instanceof UsageError||outcome.error instanceof CreditError?outcome.error:null;
           const failure=outcome.error instanceof AssistError?outcome.error:null,usage=outcome.answer?.usage??failure?.usage;
-          const code=outcome.refused?'PROVIDER_NOT_IN_PLAN':known?known.code:outcome.error?'UNEXPECTED':null;
+          const code=outcome.refused?'PROVIDER_NOT_IN_PLAN':outcome.blocked??(known?known.code:outcome.error?'UNEXPECTED':null);
           record({name:'ai_request',props:{requestId:meta.data.requestId,mode:meta.data.mode,provider:meta.data.providerId.replace(/[^a-zA-Z0-9._-]/g,'_'),
             model:(outcome.answer?.model??failure?.model??'none').replace(/[^a-zA-Z0-9._:/-]/g,'_').slice(0,100),
-            outcome:outcome.refused?'refused_by_plan':outcome.answer?outcome.answer.kind:code==='CANCELLED'?'cancelled':'failed',
+            outcome:outcome.refused?'refused_by_plan':outcome.blocked?'blocked':outcome.answer?outcome.answer.kind:code==='CANCELLED'?'cancelled':'failed',
             errorCode:code&&/^[A-Z_]{1,40}$/.test(code)?code:code?'UNEXPECTED':null,
             inputTokens:usage?.inputTokens??0,cachedInputTokens:usage?.cachedInputTokens??0,outputTokens:usage?.outputTokens??0,costUsd:usage?.estimatedCostUsd??null,
             latencyMs:Math.min(3_600_000,Date.now()-started),calls:usage?.calls??0,repairs:Math.max(0,outcome.answer?.repairs??0),replayed:Boolean(outcome.answer?.replayed)}},session?.userId??null);
         };
+        // Límites antes de cualquier reserva: por IP siempre, por cuenta si hay sesión. Un pedido rechazado no gasta créditos.
+        if(!aiPerIp.allow(clientIp(req,options.trustProxy))||(session&&!aiPerUser.allow(session.userId))){
+          track({blocked:'RATE_LIMITED'});return fail(429,'RATE_LIMITED','Demasiados pedidos seguidos. Esperá un minuto y volvé a intentar.');
+        }
+        if(session&&options.requireVerifiedEmail!==false&&!session.emailVerified){
+          track({blocked:'EMAIL_NOT_VERIFIED'});return fail(403,'EMAIL_NOT_VERIFIED','Verificá tu email para usar la IA: revisá el correo de confirmación y volvé a iniciar sesión.');
+        }
         try{
         if(session){
           const input=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES),providerId:z.string().max(40)}).parse(body),credits=input.mode==='create'?2:1;

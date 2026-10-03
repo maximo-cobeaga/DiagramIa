@@ -44,7 +44,7 @@ test('OIDC validates PKCE, state, browser binding, nonce, signature and single-u
     assert.equal(tokenCalls,0,'cookie incorrecta bloquea antes de llamar al token endpoint');
     const second=await auth.begin();nonce=second.redirect.searchParams.get('nonce')!;challenge=second.redirect.searchParams.get('code_challenge')!;
     const valid=new URL(issuer+'/callback?code=good&state='+encodeURIComponent(second.redirect.searchParams.get('state')!));
-    assert.deepEqual(await auth.finish(valid,second.cookie),{issuer,subject:'user-123',email:'test@example.com'});
+    assert.deepEqual(await auth.finish(valid,second.cookie),{issuer,subject:'user-123',email:'test@example.com',emailVerified:true});
     await assert.rejects(auth.finish(valid,second.cookie),/vencido|no iniciado/);
     const third=await auth.begin();nonce=third.redirect.searchParams.get('nonce')!;challenge=third.redirect.searchParams.get('code_challenge')!;badSignature=true;
     const forged=new URL(issuer+'/callback?code=good&state='+encodeURIComponent(third.redirect.searchParams.get('state')!));

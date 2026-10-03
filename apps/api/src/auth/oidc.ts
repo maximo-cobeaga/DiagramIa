@@ -43,6 +43,7 @@ export class OidcAuthenticator{
     const tokens=await oidc.authorizationCodeGrant(config,callback,{pkceCodeVerifier:flow.verifier,expectedState:state,expectedNonce:flow.nonce});
     const claims=tokens.claims();
     if(!claims?.iss||!claims.sub)throw new Error('El proveedor no devolvió una identidad OIDC completa.');
-    return {issuer:claims.iss,subject:claims.sub,email:claims.email_verified===true&&typeof claims.email==='string'?claims.email:null};
+    const verified=claims.email_verified===true&&typeof claims.email==='string';
+    return {issuer:claims.iss,subject:claims.sub,email:verified?claims.email as string:null,emailVerified:verified};
   }
 }

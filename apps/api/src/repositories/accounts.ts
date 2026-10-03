@@ -1,8 +1,9 @@
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {Pool,type PoolClient} from 'pg';
 
-export type Identity={issuer:string;subject:string;email:string|null};
-export type Session={userId:string;email:string|null;projectId:string;role:'owner'|'editor'|'viewer';expiresAt:Date};
+/** `emailVerified` viene del claim del proveedor; si falta, un email presente cuenta como verificado (sólo se guarda verificado). */
+export type Identity={issuer:string;subject:string;email:string|null;emailVerified?:boolean};
+export type Session={userId:string;email:string|null;emailVerified:boolean;projectId:string;role:'owner'|'editor'|'viewer';expiresAt:Date};
 export class CreditError extends Error{constructor(readonly code:'CREDIT_LIMIT'|'CREDIT_IN_PROGRESS'|'IDEMPOTENCY_CONFLICT',message:string){super(message);this.name='CreditError';}}
 const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
 const days=30;
@@ -24,28 +25,29 @@ export class AccountRepository{
     const token=randomBytes(32).toString('base64url'),tokenHash=hash(token),expiresAt=new Date(Date.now()+days*86_400_000);
     const session=await tx(this.pool,async client=>{
       // xmax=0 sólo en la fila recién insertada: distingue un alta de un ON CONFLICT DO UPDATE.
+      const emailVerified=identity.emailVerified??identity.email!==null;
       const user=await client.query<{id:string;email:string|null;created:boolean}>(
-        'INSERT INTO users (id,issuer,subject,email) VALUES ($1,$2,$3,$4) ON CONFLICT (issuer,subject) DO UPDATE SET email=EXCLUDED.email RETURNING id,email,(xmax=0) AS created',
-        [`user-${randomUUID()}`,identity.issuer,identity.subject,identity.email]);
+        'INSERT INTO users (id,issuer,subject,email,email_verified) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (issuer,subject) DO UPDATE SET email=EXCLUDED.email,email_verified=EXCLUDED.email_verified RETURNING id,email,(xmax=0) AS created',
+        [`user-${randomUUID()}`,identity.issuer,identity.subject,identity.email,emailVerified]);
       const userId=user.rows[0]!.id;
       await client.query('INSERT INTO projects (id,name,owner_id) VALUES ($1,$2,$3) ON CONFLICT (owner_id) DO NOTHING',[`project-${randomUUID()}`,'Mi espacio',userId]);
       const project=await client.query<{id:string}>('SELECT id FROM projects WHERE owner_id=$1',[userId]);
       await client.query('INSERT INTO project_memberships (project_id,user_id,role) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',[project.rows[0]!.id,userId,'owner']);
       await client.query('INSERT INTO auth_sessions (token_hash,user_id,expires_at) VALUES ($1,$2,$3)',[tokenHash,userId,expiresAt]);
-      return {session:{userId,email:user.rows[0]!.email,projectId:project.rows[0]!.id,role:'owner' as const,expiresAt},created:user.rows[0]!.created};
+      return {session:{userId,email:user.rows[0]!.email,emailVerified,projectId:project.rows[0]!.id,role:'owner' as const,expiresAt},created:user.rows[0]!.created};
     });
     return {token,session:session.session,created:session.created};
   }
 
   async readSession(token:string|undefined):Promise<Session|null>{
     if(!token||token.length>256)return null;
-    const found=await this.pool.query<{user_id:string;email:string|null;project_id:string;role:Session['role'];expires_at:Date}>(
-      `SELECT s.user_id,u.email,m.project_id,m.role,s.expires_at FROM auth_sessions s
+    const found=await this.pool.query<{user_id:string;email:string|null;email_verified:boolean;project_id:string;role:Session['role'];expires_at:Date}>(
+      `SELECT s.user_id,u.email,u.email_verified,m.project_id,m.role,s.expires_at FROM auth_sessions s
        JOIN users u ON u.id=s.user_id JOIN project_memberships m ON m.user_id=s.user_id
        JOIN projects p ON p.id=m.project_id AND p.owner_id=s.user_id
        WHERE s.token_hash=$1 AND s.expires_at>now() ORDER BY p.created_at LIMIT 1`,[hash(token)]);
     const row=found.rows[0];
-    return row?{userId:row.user_id,email:row.email,projectId:row.project_id,role:row.role,expiresAt:row.expires_at}:null;
+    return row?{userId:row.user_id,email:row.email,emailVerified:row.email_verified,projectId:row.project_id,role:row.role,expiresAt:row.expires_at}:null;
   }
 
   /** Vincula un access token OAuth verificado a una cuenta ya creada; no crea usuarios desde MCP. */

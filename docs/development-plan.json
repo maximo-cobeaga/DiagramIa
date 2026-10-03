@@ -289,7 +289,7 @@
           ],
           "acceptance": "Cuota agotada bloquea antes del proveedor; cuenta sin email verificado no usa IA; superar el tope global corta la IA Free y alerta; IP compartida no bloquea por sí sola; costo por pedido registrado en USD.",
           "status": "partial",
-          "evidence": "Free por cuenta: máximo 3 documentos, 10 MB por documento incluidas versiones y 30 MB por proyecto; 20 créditos IA mensuales, 6 diarios, Crear cuesta 2 y otros modos 1. Reserva/settlement antes del proveedor, recibos durables y reintentos idempotentes comprobados en PostgreSQL real. Pro, cobros y BYOK se movieron a P4.6 (02/10/2026). Falta: medición económica con GPT-6 Luna, email verificado, rate limit por IP, tope global de gasto en USD con alerta/corte y CAPTCHA adaptativo."
+          "evidence": "Free por cuenta: máximo 3 documentos, 10 MB por documento incluidas versiones y 30 MB por proyecto; 20 créditos IA mensuales, 6 diarios, Crear cuesta 2 y otros modos 1, con reserva antes del proveedor, recibos durables e idempotencia en PostgreSQL real. 02/10/2026 (ADR 049/052): proveedores por plan, email verificado obligatorio (migración 004), límites por IP y por cuenta antes de reservar créditos, reserva en USD de pedidos en curso, tope diario y mensual con alerta al 80 %; probado en gateway y en `smoke:repository`. Falta: medición económica real con GPT-6 Luna (bloqueada por OPENAI_API_KEY), conectar la alerta a un canal externo al desplegar, y CAPTCHA adaptativo/señales de riesgo cuando haya datos de abuso."
         },
         {
           "id": "P4.5",
