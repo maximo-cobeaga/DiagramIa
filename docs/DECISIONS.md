@@ -1,5 +1,7 @@
 # Registro de decisiones
 
+Sesión recuperada el 03/10/2026: cámara narrativa y excepción de uso de IA para el administrador (ADR 067–068).
+
 | ADR | Decisión | Motivo y límites |
 |---|---|---|
 | 001 | Diagramia; nombre uniforme ES/EN | Marca descriptiva; verificación legal/comercial pendiente |
@@ -13,6 +15,8 @@
 | 009 | Backend TS/Fastify + PostgreSQL + S3 en fases SaaS | Reutilizar core, CAS y control de assets; todavía no implementado |
 | 010 | ~~Higgsfield como adapter opcional~~ — reemplazada por ADR 044 | Retirado del producto el 02/10/2026 |
 | 011 | Historial y timeline separados | Deshacer cambios no altera el tiempo de una presentación |
+| 067 | Schema 1.7.0: intención de cámara por paso, compartida por editor, presentación y PDF | `focus` (auto, close, medium, wide, overview, stay) y `transition` (smooth, slow, cut) son contenido editable; la cámara calculada y el seguimiento siguen siendo estado de interfaz. Migración desde 1.6.0 con defaults auto/smooth, sin regenerar IDs ni cambiar revisión. Frames y pistas conservan prioridad. La cámara se mueve al reproducir o navegar; pausa, gestos manuales y pestañas cancelan viajes pendientes. Reduced-motion aplica el destino sin transición. No se reutiliza la versión 1.6.0: ya existen documentos compartidos con ese contrato. |
+| 068 | Admin verificado usa IA sin cuotas Free ni frecuencia, conservando presupuesto e idempotencia | Sólo una sesión con email verificado en `DIAGRAMIA_ADMIN_EMAILS` recibe la excepción y acceso a los proveedores configurados. Se omiten límites por IP, cuenta y frecuencia global; se conserva reserva previa, gasto global, validación y permisos. Migración SQL 006 admite recibos de cero créditos: reintentos, concurrencia, retención y recuperación durable siguen por el repositorio de cuentas. El cliente no puede concederse la excepción. El chat muestra la condición Admin. |
 | 012 | No colaboración CRDT en primer corte | Primero estabilidad de documentos y transporte; colaboración después |
 
 Nuevos ADR: contexto → alternativas → decisión → consecuencias → pruebas/migración necesarias. No reabrir decisiones sin evidencia o nueva instrucción del usuario.

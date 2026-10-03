@@ -2,6 +2,14 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Recuperación de la última sesión de Claude (03/10/2026)
+
+- **P2.3, extensión implementada (ADR 067):** cámara por paso con enfoque y transición, seguimiento opcional en el editor, presentación y PDF con encuadre compartido; pausa, gestos y pestañas cancelan viajes pendientes; reduced-motion. Schema 1.7.0, migración, contratos y ejemplos actualizados. Falta revisión manual del usuario.
+- **P4.4, excepción admin implementada (ADR 068):** cuenta con email verificado en `DIAGRAMIA_ADMIN_EMAILS` sin cuota Free ni límite por minuto; sigue el presupuesto global. Recibos de cero créditos durables mediante SQL 006, probados con PostgreSQL real. P4.4 conserva sus pendientes económicos/de producción.
+- **Viaje solicitado:** `examples/san-pancho.diagramia.json`, disponible en el selector del editor; 29 elementos, 6 zonas, 18 pasos y escenarios de noviembre 2026, febrero y mayo 2027. Fuentes, supuestos, itinerario y presupuestos en `docs/VIAJE_SAN_PANCHO.md`. Falta cotizar disponibilidad real; no hay reservas.
+
+Próximo paso de este alcance: revisar a mano los puntos 17–19 de `VALIDATION.md`. El resto de P1.7 sigue esperando la decisión de mapas reales.
+
 Para una lectura rápida del proyecto y las decisiones abiertas: `docs/Estado_Diagramia_MVP.docx`.
 
 El código está publicado en `maximo-cobeaga/DiagramIa` (GitHub, público). El CI remoto de `check` y `database` pasó el 02/10/2026; esto no equivale a desplegar el producto ni cambia los estados de las microfases pendientes.
@@ -70,7 +78,7 @@ Tercera vuelta, el mismo día: menos cruces entre zonas (zonas alrededor de la m
 - Editor y MCP comparten documentos por PostgreSQL al activar el espacio local; los cambios aparecen mediante polling y CAS con conflicto visible. También hay documentos de cuenta privados. MCP remoto expone Streamable HTTP con token OAuth por usuario, scopes y aislamiento de proyecto; se probó con issuer/JWKS local firmado, falta comprobar Auth0, proxy y dos hosts externos. El MCP stdio conserva el token de servidor.
 - Las imágenes viajan dentro del documento (tope 400 KB cada una, 40 por documento): no hay almacenamiento de archivos hasta P4.3. `custom` se dibuja como caja genérica.
 - Las ramas de animación son escenarios con nombre; no hay variables ni triggers con expresiones. Las pistas se sincronizan por ID de paso y admiten resaltado, texto y cámara; falta revisión manual de la UX.
-- Schema 1.6.0 (ADR 059 amplía los iconos a 49 y agrega iconos grandes): formas básicas, de flujo y UML, estilos, enganches y pistas editables. El layout separa nodos y reserva espacio para etiquetas, pero rutas manuales/curvas y cruces entre conexiones aún pueden superponerse; no existe garantía universal de ausencia de cruces.
+- Schema 1.7.0 (ADR 067 agrega enfoque y transición por paso): formas básicas, de flujo y UML, iconos grandes, estilos, enganches y pistas editables. El layout separa nodos y reserva espacio para etiquetas, pero rutas manuales/curvas y cruces entre conexiones aún pueden superponerse; no existe garantía universal de ausencia de cruces.
 - Los grupos no muestran marcador de anotación en el canvas (sí en el inspector).
 - El routing ortogonal evita nodos y reparte extremos compartidos; no elimina todos los cruces entre conexiones.
 - La IA se probó con un modelo real local (Ollama, qwen2.5-coder:7b). El modo Crear usa un inventario de elementos convertido a acciones por el gateway; dos smokes pasaron con el test básico y otro con verificación estricta de etiquetas y relaciones. Entre ellos, el test estricto detectó etiquetas superpuestas y se corrigió el layout. Ese modelo todavía puede pedir aclaraciones innecesarias o interpretar mal pedidos libres. Claude sigue sin probarse: falta ANTHROPIC_API_KEY. Con la key: `npm run api` y `npm run smoke:ai -- anthropic`.

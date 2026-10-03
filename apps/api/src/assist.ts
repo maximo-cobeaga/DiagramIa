@@ -183,7 +183,7 @@ function designed(actions:ActionInput[],doc:DiagramDocument,requestId:string):Ac
 }
 const estimateTokens=(chars:number)=>Math.ceil(chars/3);
 
-type Dependencies={providers:Provider[];ledger:UsageLedger;config:AssistConfig;system:string};
+type Dependencies={providers:Provider[];ledger:UsageLedger;config:AssistConfig;system:string;rateLimitExempt?:boolean};
 /**
  * Un pedido al asistente. El modelo sólo propone: el lote se valida con el engine sobre una copia y vuelve
  * como propuesta con su diff. Nada se aplica acá; aplicar es decisión del usuario en el editor.
@@ -210,9 +210,9 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   const callUsd=(messages:ChatMessage[])=>costOf(info.pricing,inputEstimate(messages),deps.config.maxOutputTokens)??0;
   const messages:ChatMessage[]=[...request.history,{role:'user',content:first}];
   const signature=canonical({provider:info.id,mode:request.mode,detail:request.detail,prompt:request.prompt,revision:doc.revision,documentId:doc.id,selectedIds,history:request.history});
-  // El presupuesto limita gasto: sólo los proveedores remotos lo consumen. El límite de pedidos por minuto rige para todos.
+  // El presupuesto limita gasto: sólo los proveedores remotos lo consumen. La excepción de frecuencia viene del servidor autenticado.
   const billable=info.kind==='remote';
-  const begun=deps.ledger.begin(request.requestId,signature,billable?callCost(messages):0,billable?callUsd(messages):0);
+  const begun=deps.ledger.begin(request.requestId,signature,billable?callCost(messages):0,billable?callUsd(messages):0,deps.rateLimitExempt);
   if(begun)return {...(begun.replay as AssistAnswer),replayed:true};
 
   const timeout=AbortSignal.timeout(deps.config.timeoutMs),signal=AbortSignal.any([clientSignal,timeout]);

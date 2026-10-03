@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {Pool,type PoolClient} from 'pg';
 import {BatchSchema,Id,DiagramError,applyBatch,canonical,emptyDocument,openDocument,validateDocument,type ActionBatch,type DiagramDocument} from '@diagramia/core';
 
-const migrationUrls=[new URL('../../migrations/001_documents.sql',import.meta.url),new URL('../../migrations/002_accounts.sql',import.meta.url),new URL('../../migrations/003_telemetry.sql',import.meta.url),new URL('../../migrations/004_email_verified.sql',import.meta.url),new URL('../../migrations/005_telemetry_daily.sql',import.meta.url)];
+const migrationUrls=[new URL('../../migrations/001_documents.sql',import.meta.url),new URL('../../migrations/002_accounts.sql',import.meta.url),new URL('../../migrations/003_telemetry.sql',import.meta.url),new URL('../../migrations/004_email_verified.sql',import.meta.url),new URL('../../migrations/005_telemetry_daily.sql',import.meta.url),new URL('../../migrations/006_admin_ai_receipts.sql',import.meta.url)];
 const checksum=(value:string)=>createHash('sha256').update(value).digest('hex');
 const fingerprint=(value:unknown)=>checksum(canonical(value));
 /** Checksum de una migración independiente del fin de línea: el mismo archivo en Windows (CRLF) y Linux (LF) es la misma migración. */

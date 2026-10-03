@@ -1,4 +1,4 @@
-import {previewBatch,type ActionInput,type DiagramDocument} from '@diagramia/core';
+import {autoFocus,previewBatch,type ActionInput,type DiagramDocument} from '@diagramia/core';
 import {commit,documentStore,newId,notify} from '../store/documentStore';
 import {playbackStore} from '../store/playbackStore';
 import {viewStore} from '../store/viewStore';
@@ -17,7 +17,8 @@ export function tourAction(doc:DiagramDocument,steps:TourStep[],label:string):Ex
   const kept=steps.map(step=>({...step,nodeIds:step.nodeIds.filter(id=>nodes.has(id)),edgeIds:step.edgeIds.filter(id=>edges.has(id))})).filter(step=>step.nodeIds.length||step.edgeIds.length);
   if(kept.length<2)return null;
   return {type:'CREATE_ANIMATION',animation:{id:newId('tour'),label:label.slice(0,200),scenarios:[],tracks:[],
-    steps:kept.map(step=>({id:newId('step'),caption:step.caption.slice(0,500),durationMs:durationOf(step.caption),nodeIds:step.nodeIds,edgeIds:step.edgeIds,tone:'normal' as const,frameId:null,scenarioIds:[],states:[]}))}};
+    steps:kept.map((step,i)=>({id:newId('step'),caption:step.caption.slice(0,500),durationMs:durationOf(step.caption),nodeIds:step.nodeIds,edgeIds:step.edgeIds,tone:'normal' as const,frameId:null,scenarioIds:[],states:[],
+      focus:autoFocus(doc,step.nodeIds,step.edgeIds),transition:i===0?'slow' as const:'smooth' as const}))}};
 }
 
 /**

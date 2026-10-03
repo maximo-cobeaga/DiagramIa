@@ -33,10 +33,10 @@ test('schema 1.4.0 adds empty tracks without changing old steps or their IDs',()
   assert.equal(migratedFrom,'1.4.0');assert.deepEqual(document.animations[0].tracks,[]);
   assert.deepEqual(document.animations[0].steps.map(s=>s.id),initial().animations[0].steps.map(s=>s.id));
 });
-test('schema 1.5.0 opens unchanged as 1.6.0; the new icons and the large icon size are valid and need room for the name',()=>{
+test('schema 1.5.0 opens unchanged in the current schema; the new icons and the large icon size are valid and need room for the name',()=>{
   const old={...initial(),schemaVersion:'1.5.0'},{document,migratedFrom}=openDocument(old);
-  assert.equal(migratedFrom,'1.5.0');assert.equal(document.schemaVersion,'1.6.0');
-  assert.deepEqual(document,initial(),'sólo cambia la versión: el ejemplo ya es 1.6.0 y el contenido es el mismo');
+  assert.equal(migratedFrom,'1.5.0');assert.equal(document.schemaVersion,SCHEMA_VERSION);
+  assert.deepEqual(document,initial(),'la migración conserva el contenido y los valores predeterminados');
   const card=run(initial(),{type:'ADD_NODE',node:node('idea',0,600,{kind:'custom',shape:'rounded',icon:'idea',style:{fill:'#fff3b0',iconSize:'large'}})}).nodes.at(-1)!;
   assert.equal(card.icon,'idea');assert.equal(card.style.iconSize,'large');
   const small=fitSize({...card,style:{fill:'#fff3b0'}}),large=fitSize(card);

@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {animationDuration,sampleAnimation,sampleTrackEffects,type ActionInput,type DiagramAnimation,type DiagramDocument,type DiagramStep} from '@diagramia/core';
+import {autoFocus,animationDuration,sampleAnimation,sampleTrackEffects,type ActionInput,type DiagramAnimation,type DiagramDocument,type DiagramStep} from '@diagramia/core';
 import {useStore} from '../store/createStore';
 import {documentStore,newId,notify,transact} from '../store/documentStore';
 import {currentAnimation,playbackStore,rawAnimation,seek,seekStep,stepBy,togglePlay} from '../store/playbackStore';
@@ -8,9 +8,11 @@ import {viewStore} from '../store/viewStore';
 import {NumberField,SelectField,TextField} from '../ui';
 import {TracksEditor} from './TracksEditor';
 
+const FOCUS_OPTIONS=[['auto','Automático'],['close','De cerca'],['medium','Con contexto'],['wide','Amplio'],['overview','Todo el diagrama'],['stay','Mantener la vista']] as const;
+const TRANSITION_OPTIONS=[['smooth','Suave'],['slow','Lenta'],['cut','Corte']] as const;
 const clock=(ms:number)=>`${Math.floor(ms/60000)}:${(ms%60000/1000).toFixed(1).padStart(4,'0')}`;
 const fresh=()=>documentStore.get().doc;
-const blank=(extra:Partial<DiagramStep>&Pick<DiagramStep,'caption'|'nodeIds'|'edgeIds'>):DiagramStep=>({id:newId('step'),durationMs:1800,tone:'normal',frameId:null,scenarioIds:[],states:[],...extra});
+const blank=(extra:Partial<DiagramStep>&Pick<DiagramStep,'caption'|'nodeIds'|'edgeIds'>):DiagramStep=>({id:newId('step'),durationMs:1800,tone:'normal',frameId:null,scenarioIds:[],states:[],focus:'auto',transition:'smooth',...extra});
 
 /**
  * Recorrido automático: avanza por las conexiones desde los nodos sin entradas, una capa por paso.
@@ -26,7 +28,8 @@ function walkthrough(doc:DiagramDocument,ids:string[]):DiagramStep[]{
     frontier.forEach(id=>visited.add(id));
     const out=edges.filter(e=>frontier.includes(e.from)),targets=[...new Set(out.map(e=>e.to))];
     const names=(list:string[])=>list.map(id=>label.get(id)).join(', ');
-    steps.push(blank({caption:(targets.length?`${names(frontier)} → ${names(targets)}`:names(frontier)).slice(0,500),nodeIds:frontier.slice(0,100),edgeIds:out.map(e=>e.id).slice(0,100)}));
+    const nodeIds=frontier.slice(0,100),edgeIds=out.map(e=>e.id).slice(0,100);
+    steps.push(blank({caption:(targets.length?`${names(frontier)} → ${names(targets)}`:names(frontier)).slice(0,500),nodeIds,edgeIds,focus:autoFocus(doc,nodeIds,edgeIds),transition:steps.length?'smooth':'slow'}));
     frontier=targets.filter(id=>!visited.has(id));
   }
   return steps;
@@ -53,7 +56,9 @@ function StepEditor({doc,raw,animation,step,index,selection,scenarioId}:EditorPr
       <TextField label={`Texto del paso ${index+1}`} value={step.caption} multiline allowEmpty maxLength={500} onCommit={caption=>update({caption},'Texto del paso cambiado')}/>
       <NumberField label="Duración (ms)" value={step.durationMs} min={100} max={30000} step={100} onCommit={durationMs=>update({durationMs:Math.round(durationMs)},'Duración cambiada')}/>
       <SelectField label="Tono" value={step.tone} options={[['normal','Normal'],['failure','Falla']] as const} onChange={tone=>update({tone},'Tono cambiado')}/>
-      <SelectField label="Encuadre" value={step.frameId??''} options={[['','Todo el diagrama'],...doc.frames.map(f=>[f.id,f.label] as const)]} onChange={frameId=>update({frameId:frameId||null},'Encuadre cambiado')}/>
+      <SelectField label="Enfoque de la cámara" value={step.focus} options={FOCUS_OPTIONS} onChange={focus=>update({focus},'Enfoque cambiado')}/>
+      <SelectField label="Transición" value={step.transition} options={TRANSITION_OPTIONS} onChange={transition=>update({transition},'Transición cambiada')}/>
+      <SelectField label="Frame (manda sobre el enfoque)" value={step.frameId??''} options={[['','Ninguno'],...doc.frames.map(f=>[f.id,f.label] as const)]} onChange={frameId=>update({frameId:frameId||null},'Encuadre cambiado')}/>
     </div>
     {raw.scenarios.length>0&&<fieldset className="choice row"><legend>Escenarios en los que ocurre este paso (ninguno marcado = común a todos)</legend>
       {raw.scenarios.map(s=><label className="check" key={s.id}><input type="checkbox" checked={step.scenarioIds.includes(s.id)} onChange={e=>update({scenarioIds:e.target.checked?[...step.scenarioIds,s.id]:step.scenarioIds.filter(id=>id!==s.id)},'Escenarios del paso cambiados')}/>{s.label}</label>)}
@@ -95,7 +100,7 @@ function Scenarios({raw}:{raw:DiagramAnimation}){
 
 export function Timeline(){
   const [tracksOpen,setTracksOpen]=useState(false);
-  const {doc}=useStore(documentStore),{animationId,scenarioId,time,playing,loop}=useStore(playbackStore),{ids}=useStore(selectionStore),{timelineOpen}=useStore(viewStore);
+  const {doc}=useStore(documentStore),{animationId,scenarioId,time,playing,loop,follow}=useStore(playbackStore),{ids}=useStore(selectionStore),{timelineOpen}=useStore(viewStore);
   const raw=rawAnimation(doc,animationId),animation=currentAnimation(doc,animationId),sampled=animation?sampleAnimation(animation,time):null,duration=animation?animationDuration(animation):0,effects=animation?sampleTrackEffects(animation,time):null;
   const branch=(step:DiagramStep)=>step.scenarioIds.map(id=>raw.scenarios.find(s=>s.id===id)?.label??id).join(' · ');
   return <section className={'timeline'+(timelineOpen?'':' collapsed')+(tracksOpen?' tracks-expanded':'')} aria-label="Timeline de animación">
@@ -114,6 +119,7 @@ export function Timeline(){
         <button disabled={!animation} onClick={()=>seek(0)}>Reiniciar</button>
       </div>
       <label className="check"><input type="checkbox" checked={loop} onChange={e=>playbackStore.set({loop:e.target.checked})}/>Repetir</label>
+      <label className="check" title="En cada paso, la vista viaja hacia lo que el paso resalta"><input type="checkbox" checked={follow} onChange={e=>playbackStore.set({follow:e.target.checked})}/>Seguir con la cámara</label>
       <span className="mono timecode">{clock(Math.min(time,duration))} / {clock(duration)}</span>
       {raw&&<button aria-expanded={tracksOpen} onClick={()=>{setTracksOpen(!tracksOpen);if(!timelineOpen)viewStore.set({timelineOpen:true});}}>Pistas ({raw.tracks.length}) {tracksOpen?'▴':'▾'}</button>}
       <div className="timeline-new">
@@ -132,7 +138,7 @@ export function Timeline(){
       <p className="caption" aria-live="polite">{sampled.index+1}/{animation.steps.length} · {sampled.step.caption||'Sin texto'}{effects?.captions.map((caption,i)=><span key={i}> · {caption}</span>)}{sampled.step.scenarioIds.length>0&&<span className="mono"> · ↳ {branch(sampled.step)}</span>}</p>
       <button onClick={()=>{const step=blank({caption:'',nodeIds:ids.filter(id=>doc.nodes.some(n=>n.id===id)),edgeIds:ids.filter(id=>doc.edges.some(e=>e.id===id)),scenarioIds:scenarioId?[scenarioId]:[]});if(transact([{type:'ADD_STEP',animationId:raw.id,step,index:raw.steps.findIndex(s=>s.id===sampled.step.id)+1}],'Paso agregado'))seekStep(fresh(),sampled.index+1);}}>+ Agregar paso</button>
       <details className="timeline-edit">
-        <summary>Ajustes del paso: duración, encuadre, estados y ramas</summary>
+        <summary>Ajustes del paso: duración, cámara, estados y ramas</summary>
         <StepEditor key={raw.id+'/'+sampled.step.id} doc={doc} raw={raw} animation={animation} step={sampled.step} index={sampled.index} selection={ids} scenarioId={raw.scenarios.some(s=>s.id===scenarioId)?scenarioId:''}/>
         <Scenarios key={raw.id} raw={raw}/>
         <div className="step-actions">

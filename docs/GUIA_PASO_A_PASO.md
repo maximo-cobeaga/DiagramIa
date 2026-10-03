@@ -115,7 +115,7 @@ Para apagar la base cuando no la uses: `npm run db:down`. Tus datos no se borran
    DIAGRAMIA_OIDC_HOME_URL=http://127.0.0.1:5173/
    DIAGRAMIA_ADMIN_EMAILS=tu-email@ejemplo.com
    ```
-   El ISSUER lleva `https://` adelante y **una barra `/` al final**. En `DIAGRAMIA_ADMIN_EMAILS` va el mismo email con el que vas a entrar: es el que puede ver el panel del fundador.
+   El ISSUER lleva `https://` adelante y **una barra `/` al final**. En `DIAGRAMIA_ADMIN_EMAILS` va el mismo email con el que vas a entrar, verificado: habilita el panel del fundador y la IA sin cuota de créditos ni límite por minuto. El chat muestra «Admin». El presupuesto global de tokens y gasto del gateway sigue protegiendo el saldo; si lo alcanzás, ajustá `DIAGRAMIA_DAILY_TOKEN_BUDGET`, `DIAGRAMIA_DAILY_USD_BUDGET` o `DIAGRAMIA_MONTHLY_USD_BUDGET` en el servidor. Reiniciá `npm run api` al cambiar estas variables.
 7. `npm run doctor -- --online` tiene que decir «✔ Auth0 responde y el issuer coincide exactamente».
 8. Probalo:
    - Terminal 1: `npm run api`

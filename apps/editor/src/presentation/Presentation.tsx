@@ -1,21 +1,12 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {documentBounds,sampleAnimation,sampleTrackEffects,statesAt,type Rect} from '@diagramia/core';
+import {documentBounds,sampleAnimation,sampleTrackEffects,statesAt,stepCamera,TRANSITION_MS,type Rect} from '@diagramia/core';
 import {useStore} from '../store/createStore';
 import {documentStore} from '../store/documentStore';
 import {currentAnimation,playbackStore,rawAnimation,seek,seekStep,stepBy,togglePlay} from '../store/playbackStore';
-import {cameraFor,viewStore,type Camera} from '../store/viewStore';
+import {cameraAt,cameraFor,easeCamera,viewStore,type Camera} from '../store/viewStore';
 import {track} from '../telemetry';
 import {DiagramLayer} from '../canvas/DiagramLayer';
 
-const MOVE_MS=700;
-/** Encuadre centrado en `box` que no baja de la mitad del diagrama en cada eje, ni sale de él. */
-function around(box:Rect|null,all:Rect):Rect|null{
-  if(!box)return null;
-  const width=Math.min(all.width,Math.max(box.width,all.width*.5)),height=Math.min(all.height,Math.max(box.height,all.height*.5));
-  const cx=box.x+box.width/2,cy=box.y+box.height/2;
-  return {x:Math.max(all.x,Math.min(all.x+all.width-width,cx-width/2)),y:Math.max(all.y,Math.min(all.y+all.height-height,cy-height/2)),width,height};
-}
-const ease=(t:number)=>1-Math.pow(1-t,4);
 const reducedMotion=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
@@ -23,20 +14,22 @@ const reducedMotion=()=>window.matchMedia('(prefers-reduced-motion: reduce)').ma
  * acciones ni cambian la vista del editor. Sin animaciones, los frames funcionan como diapositivas.
  */
 export function Presentation(){
-  const {doc:saved}=useStore(documentStore),{tour}=useStore(viewStore),doc=tour?.doc??saved,{animationId,time,playing,scenarioId}=useStore(playbackStore),scenarios=rawAnimation(doc,animationId)?.scenarios??[];
+  const {doc:saved}=useStore(documentStore),{tour}=useStore(viewStore),doc=tour?.doc??saved,{animationId,time,playing,scenarioId,cue}=useStore(playbackStore),scenarios=rawAnimation(doc,animationId)?.scenarios??[];
   const [viewport,setViewport]=useState({width:window.innerWidth,height:window.innerHeight}),[camera,setCamera]=useState<Camera|null>(null),[frameIndex,setFrameIndex]=useState(0);
   const rootRef=useRef<HTMLDivElement>(null),stageRef=useRef<HTMLDivElement>(null),cameraRef=useRef<Camera|null>(null);
   const animation=currentAnimation(doc,animationId),sampled=animation?sampleAnimation(animation,time):null,effects=animation?sampleTrackEffects(animation,time):null;
   const slides=animation?animation.steps.length:doc.frames.length,index=animation?sampled!.index:Math.min(frameIndex,Math.max(0,doc.frames.length-1));
-  const focusId=animation?effects?.frameId??sampled!.step.frameId:doc.frames[index]?.id??null;
-  const everything=documentBounds(doc,[...doc.nodes,...doc.edges,...doc.zones].map(x=>x.id));
-  const showing=sampled&&time>0,active=showing?[...sampled.step.nodeIds,...sampled.step.edgeIds,...(effects?.nodeIds??[]),...(effects?.edgeIds??[])]:[];
-  // Sin frame, la cámara se acerca a lo que el paso resalta, con contexto alrededor: nunca menos de la mitad del diagrama.
-  const focused=useMemo(()=>active.length&&everything?around(documentBounds(doc,active),everything):null,[doc,active.join(),everything?.x,everything?.y,everything?.width,everything?.height]);
-  const target:Rect=doc.frames.find(f=>f.id===focusId)?.bounds??focused??everything??{x:0,y:0,width:800,height:500};
-  const key=`${target.x},${target.y},${target.width},${target.height},${viewport.width},${viewport.height}`;
+  const everything=documentBounds(doc,[...doc.nodes,...doc.edges,...doc.drawings,...doc.zones].map(x=>x.id));
+  const showing=sampled;
+  // Con una animación en curso, la cámara sigue el enfoque de cada paso (core: stepCamera); sin animación, los frames son diapositivas.
+  const shot=useMemo(()=>animation&&sampled?stepCamera(doc,animation,sampled.index):{bounds:doc.frames[index]?.bounds??null,transitionMs:TRANSITION_MS.smooth},[doc,animationId,scenarioId,sampled?.index,index]);
+  const target:Rect=shot.bounds??everything??{x:0,y:0,width:800,height:500};
+  const key=`${animationId}/${scenarioId}/${index}/${shot.transitionMs}/${target.x},${target.y},${target.width},${target.height},${viewport.width},${viewport.height}`;
+  const lastCamera=useRef({key:'',cue:-1});
 
   useEffect(()=>{
+    const previous=lastCamera.current;lastCamera.current={key,cue};
+    if(key===previous.key&&cue===previous.cue&&!playing)return;
     const stage=stageRef.current!,observer=new ResizeObserver(([entry])=>{const {width,height}=entry.contentRect;if(width&&height)setViewport({width,height});});
     observer.observe(stage);rootRef.current?.focus();
     track('presentation_started',{steps:slides});
@@ -46,16 +39,16 @@ export function Presentation(){
   useEffect(()=>{
     const goal=cameraFor(target,viewport,64,2.5),from=cameraRef.current;
     const apply=(next:Camera)=>{cameraRef.current=next;setCamera(next);};
-    if(!from||reducedMotion()){apply(goal);return;}
+    if(!from||reducedMotion()||!shot.transitionMs){apply(goal);return;}
     let frame=0;const started=performance.now();
     const tick=(now:number)=>{
-      const t=Math.min(1,(now-started)/MOVE_MS),k=ease(t);
-      apply({x:from.x+(goal.x-from.x)*k,y:from.y+(goal.y-from.y)*k,zoom:from.zoom+(goal.zoom-from.zoom)*k});
+      const t=Math.min(1,(now-started)/shot.transitionMs);
+      apply(t<1?cameraAt(from,goal,viewport,easeCamera(t)):goal);
       if(t<1)frame=requestAnimationFrame(tick);
     };
     frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
   // `key` resume el encuadre y el viewport: recalcular en cada render reiniciaría el viaje de cámara.
-  },[key]);
+  },[key,cue,playing]);
 
   const exit=()=>{
     playbackStore.set({playing:false});if(document.fullscreenElement)void document.exitFullscreen();

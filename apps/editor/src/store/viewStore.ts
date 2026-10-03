@@ -46,6 +46,7 @@ applyTheme();viewStore.subscribe(applyTheme);
 export const clampZoom=(zoom:number)=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,zoom));
 /** Zoom que mantiene fijo el punto de pantalla (sx, sy), medido desde la esquina del canvas. */
 export function zoomAt(sx:number,sy:number,zoom:number){
+  cancelCameraMove();
   const {camera}=viewStore.get(),next=clampZoom(zoom);
   trackThrottled('zoom',{});
   viewStore.set({camera:{zoom:next,x:camera.x+sx/camera.zoom-sx/next,y:camera.y+sy/camera.zoom-sy/next}});
@@ -60,6 +61,7 @@ export function cameraFor(bounds:Rect,viewport:{width:number;height:number},padd
  * en ese caso la vista arranca en la esquina superior izquierda del contenido.
  */
 export function fit(bounds:Rect|null):boolean{
+  cancelCameraMove();
   if(!bounds){viewStore.set({camera:{x:-40,y:-20,zoom:1}});return true;}
   const {viewport}=viewStore.get(),camera=cameraFor(bounds,viewport);
   if(camera.zoom>=LEGIBLE_ZOOM){viewStore.set({camera});return true;}
@@ -69,16 +71,34 @@ export function fit(bounds:Rect|null):boolean{
 export const snap=(value:number)=>viewStore.get().snap?Math.round(value/GRID)*GRID:Math.round(value);
 
 const reducedMotion=()=>typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** Curva que arranca y frena suave: el viaje se lee como un movimiento de cámara, no como un salto. */
+export const easeCamera=(t:number)=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+/**
+ * Cámara en el punto `k` (0..1) del viaje de `from` a `goal`. Se mueve el centro de la vista, no la esquina; si el
+ * destino queda lejos, a mitad de camino se aleja lo justo para ver origen y destino juntos y vuelve a acercarse.
+ */
+export function cameraAt(from:Camera,goal:Camera,viewport:{width:number;height:number},k:number):Camera{
+  const center=(c:Camera)=>({x:c.x+viewport.width/c.zoom/2,y:c.y+viewport.height/c.zoom/2}),a=center(from),b=center(goal);
+  const both=clampZoom(Math.min(viewport.width/(Math.abs(b.x-a.x)+viewport.width/goal.zoom),viewport.height/(Math.abs(b.y-a.y)+viewport.height/goal.zoom)));
+  const middle=Math.min(both,(from.zoom+goal.zoom)/2);
+  // Curva en el logaritmo del zoom: pasa por `middle` a mitad de camino y siempre conserva un zoom positivo.
+  const start=Math.log(from.zoom),end=Math.log(goal.zoom),control=2*Math.log(middle)-(start+end)/2;
+  const zoom=clampZoom(Math.exp((1-k)*(1-k)*start+2*k*(1-k)*control+k*k*end));
+  const cx=a.x+(b.x-a.x)*k,cy=a.y+(b.y-a.y)*k;
+  return {zoom,x:cx-viewport.width/zoom/2,y:cy-viewport.height/zoom/2};
+}
 let cameraTween=0;
-/** Lleva la cámara a `goal` con un viaje corto; con reduced-motion salta directo. */
+/** Cancela el movimiento en curso antes de pausar, cambiar de documento o mover la vista manualmente. */
+export function cancelCameraMove(){cancelAnimationFrame(cameraTween);cameraTween=0;}
+/** Lleva la cámara a `goal` con un viaje suave; con reduced-motion o `ms` 0 (corte) salta directo. */
 export function moveCamera(goal:Camera,ms=450){
-  cancelAnimationFrame(cameraTween);
-  const from=viewStore.get().camera;
-  if(reducedMotion()){viewStore.set({camera:goal});return;}
-  const started=performance.now(),ease=(t:number)=>1-Math.pow(1-t,3);
+  cancelCameraMove();
+  const {camera:from,viewport}=viewStore.get();
+  if(reducedMotion()||ms<=0){viewStore.set({camera:goal});return;}
+  const started=performance.now();
   const tick=(now:number)=>{
-    const t=Math.min(1,(now-started)/ms),k=ease(t);
-    viewStore.set({camera:{x:from.x+(goal.x-from.x)*k,y:from.y+(goal.y-from.y)*k,zoom:from.zoom+(goal.zoom-from.zoom)*k}});
+    const t=Math.min(1,(now-started)/ms);
+    viewStore.set({camera:t<1?cameraAt(from,goal,viewport,easeCamera(t)):goal});
     if(t<1)cameraTween=requestAnimationFrame(tick);
   };
   cameraTween=requestAnimationFrame(tick);

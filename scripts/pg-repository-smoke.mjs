@@ -73,7 +73,7 @@ try{
   assert.notEqual(alice.session.projectId,bob.session.projectId);
   const server=createApp({providers:[mockProvider(1)],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:100,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:['http://127.0.0.1:5173'],documents:reopened,documentToken:'private-test-token',localWorkspace:true,accounts,telemetry:new TelemetryRepository(sourcePool),
     // Este recorrido prueba créditos e idempotencia con pedidos seguidos; los límites por minuto tienen su propia prueba en gateway.test.ts.
-    aiPerUserPerMinute:100,aiPerIpPerMinute:100,config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
+    adminEmails:['admin@example.test'],aiPerUserPerMinute:100,aiPerIpPerMinute:100,config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   try{
     const url=`http://127.0.0.1:${server.address().port}/v1/documents`,headers={'x-diagramia-client':'editor',authorization:'Bearer private-test-token','content-type':'application/json'};
@@ -130,6 +130,16 @@ try{
     assert.equal((await(await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(alice.token),body:JSON.stringify(aiBody(0))})).json()).replayed,true,'reintento no descuenta ni repite');
     assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(alice.token),body:JSON.stringify({...aiBody(0),prompt:'Otro pedido'})})).status,409,'ID reutilizado con contenido distinto');
     assert.equal((await(await fetch(`${origin}/v1/auth/me`,{headers:as(alice.token)})).json()).credits.daily,6);
+    const admin=await accounts.signIn({issuer:'https://oidc.example',subject:'admin',email:'admin@example.test',emailVerified:true});
+    for(let i=0;i<8;i++)assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(admin.token),body:JSON.stringify(aiBody(i))})).status,200,'un admin supera la cuota Free');
+    assert.equal((await accounts.creditUsage(admin.session.userId)).daily,0,'los recibos admin no consumen créditos');
+    const adminReceipts=await sourcePool.query('SELECT request_id,fingerprint,credits FROM ai_credit_receipts WHERE user_id=$1',[admin.session.userId]);
+    assert.equal(adminReceipts.rowCount,8);assert.ok(adminReceipts.rows.every(r=>r.credits===0));
+    const reopenedAccounts=new AccountRepository(sourcePool);
+    const firstAdmin=adminReceipts.rows.find(r=>r.request_id===aiBody(0).requestId);
+    assert.ok((await reopenedAccounts.reserveCredits(admin.session.userId,firstAdmin.request_id,firstAdmin.fingerprint,0)).replayed,'el recibo admin sobrevive a la instancia del repositorio');
+    assert.equal((await(await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(admin.token),body:JSON.stringify(aiBody(0))})).json()).replayed,true);
+    assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(admin.token),body:JSON.stringify({...aiBody(0),prompt:'Otro pedido admin'})})).status,409);
     const bobAi=await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(bob.token),body:JSON.stringify(aiBody(0))});
     assert.equal(bobAi.status,200,'la cuota de Bob es independiente');
     assert.equal((await bobAi.json()).replayed,false,'Bob no recibe el resultado cacheado de Alice por usar el mismo requestId');

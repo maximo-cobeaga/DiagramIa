@@ -4,7 +4,7 @@ import {useStore} from '../store/createStore';
 import {documentStore,newId,notify,transact} from '../store/documentStore';
 import {kindOf,select,selectionStore} from '../store/selectionStore';
 import {currentAnimation,playbackStore} from '../store/playbackStore';
-import {snap,viewStore,zoomAt,type Camera,type NodeTemplate} from '../store/viewStore';
+import {cancelCameraMove,snap,viewStore,zoomAt,type Camera,type NodeTemplate} from '../store/viewStore';
 import {fitAll,moveActions,selectionUnit} from '../commands';
 import {trackThrottled} from '../telemetry';
 import {DiagramLayer} from './DiagramLayer';
@@ -122,6 +122,7 @@ export function Canvas(){
     const svg=svgRef.current!;
     const wheel=(e:WheelEvent)=>{
       e.preventDefault();
+      cancelCameraMove();
       const current=viewStore.get().camera,box=svg.getBoundingClientRect();
       if(e.ctrlKey||e.metaKey)zoomAt(e.clientX-box.left,e.clientY-box.top,current.zoom*Math.exp(-e.deltaY*.002));
       else viewStore.set({camera:{...current,x:current.x+(e.shiftKey?e.deltaY:e.deltaX)/current.zoom,y:current.y+(e.shiftKey?0:e.deltaY)/current.zoom}});
@@ -145,13 +146,14 @@ export function Canvas(){
   const visible=useMemo(()=>withGesture(doc,gesture),[doc,gesture]);
   // scenarioId no se usa directo: forma parte del estado suscripto para que cambiar de rama vuelva a dibujar.
   void scenarioId;
-  const animation=currentAnimation(doc,animationId),sampled=animation?sampleAnimation(animation,time):null,effects=animation?sampleTrackEffects(animation,time):null,showing=sampled&&time>0;
+  const animation=currentAnimation(doc,animationId),sampled=animation?sampleAnimation(animation,time):null,effects=animation?sampleTrackEffects(animation,time):null,showing=sampled&&(time>0||playbackStore.get().cue>0||playbackStore.get().playing);
   const single=ids.length===1&&!staging?kindOf(doc,ids[0]):null,resizable=single&&single!=='edge'?{kind:single as BoxKind,id:ids[0]}:null;
   const handleBox=resizable&&boxOf(visible,resizable.kind,resizable.id);
   const px=1/camera.zoom,routes=routeAll(visible);
   const edgeHandles=single==='edge'&&tool==='select'?(()=>{const edge=visible.edges.find(e=>e.id===ids[0]),points=routes.get(ids[0])?.points;return edge&&points&&points.length>1?{edge,points}:null;})():null;
 
   function down(e:React.PointerEvent<SVGSVGElement>){
+    cancelCameraMove();
     pointers.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pointers.current.size===2){
       const [a,b]=[...pointers.current.values()];

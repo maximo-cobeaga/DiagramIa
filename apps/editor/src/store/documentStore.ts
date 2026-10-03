@@ -2,7 +2,7 @@ import {BatchSchema,applyBatch,documentBounds,emptyDocument,openDocument,validat
 import architecture from '../../../../examples/architecture.diagramia.json';
 import {createStore} from './createStore';
 import {pruneSelection,selectionStore} from './selectionStore';
-import {fit,viewStore,type Camera} from './viewStore';
+import {cancelCameraMove,fit,viewStore,type Camera} from './viewStore';
 import {track,trackBatch,trackThrottled,trackUndo} from '../telemetry';
 
 // Cada pestaña es un documento independiente, guardado con su propia clave. El índice dice cuáles hay y cuál está abierta.
@@ -183,10 +183,12 @@ export function releaseRecovery(){documentStore.set({recovery:null});retrySave()
 
 // ---- Pestañas ----
 function stash(){
+  cancelCameraMove();
   const {doc,past,future,dropped,recovery,activeId}=documentStore.get();
   states.set(activeId,{doc,past,future,dropped,recovery,camera:viewStore.get().camera});
 }
 function show(id:string,tabs:Tab[],notice:Notice){
+  cancelCameraMove();
   const state=states.get(id)!;
   selectionStore.set({ids:[]});viewStore.set({staging:null,editingId:null,tool:'select'});
   persisted=state.doc;

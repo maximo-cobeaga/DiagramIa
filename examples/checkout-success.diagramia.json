@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.6.0",
+  "schemaVersion": "1.7.0",
   "id": "checkout-success",
   "title": "Compra confirmada",
   "revision": 0,
@@ -21,6 +21,7 @@
       "subtitle": "CHECKOUT",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -42,6 +43,7 @@
       "subtitle": "POST /orders",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -63,6 +65,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -84,6 +87,7 @@
       "subtitle": "INVENTORY",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -105,6 +109,7 @@
       "subtitle": "POSTGRESQL",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -126,6 +131,7 @@
       "subtitle": "PAYMENT",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -147,6 +153,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -168,6 +175,7 @@
       "subtitle": "CONFIRMED",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -189,6 +197,7 @@
       "subtitle": "ORDER.CREATED",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -210,6 +219,7 @@
       "subtitle": "NOTIFICATION",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -231,6 +241,7 @@
       "subtitle": "FULFILMENT",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -252,6 +263,7 @@
       "subtitle": "AUDIT LOG",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -674,7 +686,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-1",
@@ -689,7 +703,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-2",
@@ -704,7 +720,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-3",
@@ -719,7 +737,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-4",
@@ -740,7 +760,9 @@
               "label": "RESERVADO",
               "tone": "normal"
             }
-          ]
+          ],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-5",
@@ -755,7 +777,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-6",
@@ -770,7 +794,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-7",
@@ -792,7 +818,9 @@
               "label": "CONFIRMADO",
               "tone": "normal"
             }
-          ]
+          ],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-8",
@@ -809,7 +837,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-9",
@@ -824,7 +854,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         }
       ],
       "tracks": []

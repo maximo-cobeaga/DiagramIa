@@ -2,6 +2,12 @@
 
 ## Último checkpoint
 
+03/10/2026 (Argentina, recuperación de la última sesión de Claude). Se completaron sus cambios pendientes y se atendió la aclaración del destino del viaje:
+- **P2.3, extensión de cámara (ADR 067):** schema 1.7.0, migración aditiva con IDs y revisión conservados, enfoques por paso y transiciones suave/lenta/corte. Motor compartido por editor, presentación y PDF; prioridad de las pistas de cámara. Pausa, movimiento manual, reduced-motion y cámaras por pestaña comprobados.
+- **P4.4, excepción de admin (ADR 068):** email verificado y configurado en el servidor; sin créditos Free ni límites por minuto de cuenta, IP o ledger. Recibos durables de cero créditos, migración SQL 006 registrada y reintentos idempotentes. Se conservan los topes globales de tokens y gasto. La cuenta admin local está configurada y verificada; no se hizo una llamada de IA paga en esta recuperación.
+- **Viaje de 10 días:** ejemplo editable «San Pancho · viaje de 10 días», desde Mar del Plata hacia San Francisco/San Pancho, Nayarit. 29 elementos, seis zonas, tres fechas, itinerario, presupuesto separado en ARS/MXN y recorrido de cámara. Fuentes y supuestos en `docs/VIAJE_SAN_PANCHO.md`; no son cotizaciones confirmadas ni reservas.
+- **Cierre local:** gateway habitual reiniciado con código actualizado y migración aplicada; editor habitual conservado. Sin push ni despliegue. Próxima comprobación manual: puntos 17–19 de `VALIDATION.md`.
+
 03/10/2026 (Argentina, tercera vuelta). Se retomó la sesión anterior y se avanzó con lo que no depende de accesos externos:
 - **Commit pendiente resuelto:** `.env.example` volvió al estado de `HEAD` (tenía el secreto de Auth0) y el trabajo de la noche quedó en el commit local `710841e`, sin `.env` ni secretos (verificado en el diff).
 - **Menos cruces entre zonas (P1.7, ADR 065):**
@@ -86,6 +92,8 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 ## Evidencia
 
+- **03/10/2026 (recuperación Claude).** `npm run check` **123/123**, `npm run schemas` y `npm run smoke:repository` aprobados. PostgreSQL real: cero créditos para admin, más de seis solicitudes, reintentos tras recrear el repositorio y backup/restore. `npm run smoke` **39/39** en Chromium contra editor/gateway de demostración aislados (5174/8788), sin errores de consola. Capturas 21–24 de `state/smoke/` revisadas; foco, pausa, cámara manual, reduced-motion, presentación, pestañas y ejemplo San Pancho. La corrida final se ejecutó después del build para evitar interferencia de HMR. Logs locales: `state/resume-check.log`, `state/resume-repository.log`, `state/resume-browser.log`.
+
 - **03/10/2026 (tercera vuelta).** `npm run check` **117/117**. `npm run smoke` **37/37** en Chromium contra editor y gateway de demostración aislados (5174/8788), con un paso nuevo que comprueba desde la UI el rechazo de un enlace a `127.0.0.1`. Vista previa real contra example.com, wikipedia.org y github.com. Capturas del editor con el viaje reacomodado y con la tarjeta de vista previa revisadas. `perf:core` sin cambios; peor caso nuevo, 16 zonas y 120 conexiones curvas entre zonas: 0,35 s para ordenar.
 
 - **03/10/2026 (noche, segunda vuelta).** `npm run check` **110/110**: el test nuevo de diseño de un viaje cubre tonos, formas por rol, iconos, respeto de lo elegido por el modelo, recorrido y ausencia de superposiciones. `npm run schemas` regenerado. `npm run smoke` **36/36** en Chromium, contra un editor y un gateway de demostración aislados; ahora también comprueba la vista previa al ubicar y «Darle diseño». Se corrigieron selectores que contaban las miniaturas de la paleta como nodos y un desborde de 2 px en el celular. Prueba real con DeepSeek, cuatro corridas del pedido «Planificame un viaje a Mar del Plata de 10 días»: 18–26 s y unos 19.000–20.000 tokens por pedido. Se revisaron capturas en cada corrida.
@@ -127,13 +135,13 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 ## Qué está listo
 
-- **Core 1.6.0** (`packages/core`, en módulos): migraciones 1.0.0→1.1.0→1.2.0→1.3.0→1.4.0→1.5.0→1.6.0, 49 iconos con tamaño grande, dibujos libres editables, pistas de resaltado/texto/cámara sincronizadas por paso, acciones canónicas, formas y estilos editables, enganches libres en bordes y puntas/líneas, escenarios y estados, assets verificados, routing, layout con espacio para etiquetas, placement con colisiones, pertenencia a zonas, contexto por selección y biblioteca.
+- **Core 1.7.0** (`packages/core`, en módulos): migraciones desde 1.0.0 hasta 1.7.0, iconos con tamaño grande, dibujos libres editables, pistas de resaltado/texto/cámara sincronizadas por paso, foco y transición por paso, acciones canónicas, formas y estilos editables, enganches libres en bordes y puntas/líneas, escenarios y estados, assets verificados, routing, layout con espacio para etiquetas, placement con colisiones, pertenencia a zonas, contexto por selección y biblioteca.
 - **Editor** (`apps/editor/src`): stores separados, guardado recuperable, canvas editable, paleta de arquitectura/flujo/UML, texto en el lugar, inspector, timeline con grilla de pistas, presentación, biblioteca, chat de IA con staging, pestañas independientes, modo oscuro, panel plegable, tutorial y catálogo móvil plegable; import/export (JSON, Mermaid, SVG, PNG, Markdown, timeline).
 - **Interop** (`packages/interop`): Mermaid, draw.io, DOT, PlantUML (clases/secuencia/estados simples), BPMN (proceso básico) y Markdown, con reportes de pérdidas.
 - **IA** (`packages/providers`, `apps/api`): gateway, adapters GPT-6 Luna (structured outputs estrictos, costo con caché) / Claude / compatible OpenAI / demostración, proveedores por plan, modo Crear por inventario convertido a acciones del core, reparación acotada, presupuesto, rate limit, idempotencia y cancelación.
 - **MCP**: lee versiones anteriores, anuncia capabilities, errores estructurados, contexto por selección.
 - **Documentos backend (P4.2)**: repositorio PostgreSQL con migración versionada, CAS, versiones inmutables, restore, auditoría y recibos durables; rutas HTTP protegidas por token del servidor, activables con variables de entorno. `smoke:repository` prueba la recuperación en otra instancia.
-- **Cuenta y proyecto (P4.1)**: login OIDC Authorization Code con PKCE, sesiones en PostgreSQL, proyectos privados, aislamiento A/B y cookies HttpOnly. El proveedor elegido es Auth0 Universal Login, pero sólo se probó contra un issuer local firmado; falta configurar y probar un tenant real.
+- **Cuenta y proyecto (P4.1)**: login OIDC Authorization Code con PKCE, sesiones en PostgreSQL, proyectos privados, aislamiento A/B y cookies HttpOnly. Auth0 Universal Login configurado y probado por el usuario en local con email/contraseña y verificación; falta completar la revisión de proveedores de acceso y el entorno público de producción.
 - **Documento compartido (P5.1)**: el editor se conecta por el gateway a documentos locales o de cuenta; MCP stdio usa la API con token sólo del servidor. Cola de cambios, recibos, revisiones, polling, restore/undo y recuperación de conflictos, probados en Chromium y PostgreSQL.
 - **MCP remoto (P5.2)**: `/mcp` usa Streamable HTTP y OAuth bearer con JWT RS256/JWKS, audience exacta, scopes y autorización por proyecto. Los metadatos del recurso se publican para discovery. Probado localmente con cliente MCP oficial; la conexión externa requiere configurar issuer, audience, proxy y hosts.
 - **Free y antiabuso (P4.4)**: 3 documentos, 10 MB por documento y 30 MB por proyecto, 20 créditos IA mensuales y 6 diarios por usuario. Además, email verificado, 20 pedidos/min por IP y 6 por cuenta, reserva USD de pedidos en curso, tope diario y mensual (20 USD) con alerta al 80 %. Pro, billing y BYOK pasan a P4.6.
@@ -147,7 +155,7 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 ## Qué está pendiente
 
-- **Bloqueado por accesos externos:** smoke real de Luna y medición de costo, Auth0 real, despliegue (P8.4) y hosts MCP (P5.3).
+- **Bloqueado por accesos externos:** smoke real de Luna y medición de costo, despliegue (P8.4) y hosts MCP (P5.3).
 - **Antes de lanzar:**
   - completar y hacer revisar el borrador del aviso de privacidad, y decidir sobre el consentimiento en la UE;
   - licencia del código;
@@ -160,19 +168,19 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 - **GPT-6 Luna (IA Free, P3.1):** falta `OPENAI_API_KEY` para el smoke real y la medición de costo. El adapter y sus pruebas de contrato no dependen de la clave.
 - **Claude (alternativo, no bloquea):** falta `ANTHROPIC_API_KEY`. Con la key: crear `.env` en la raíz con `ANTHROPIC_API_KEY=...`, `npm run api`, y `npm run smoke:ai -- anthropic`. Si pasa, P3.1 queda verificada. El proveedor local ya se probó de verdad: `ollama serve` con `OLLAMA_CONTEXT_LENGTH=16384`, y en `.env` `DIAGRAMIA_LOCAL_BASE_URL=http://127.0.0.1:11434/v1`, `DIAGRAMIA_LOCAL_MODEL=qwen2.5-coder:7b`, `DIAGRAMIA_REQUEST_TIMEOUT_MS=420000`.
-- Auth0 real: faltan tenant, client ID/secret y callback registrado. El adapter OIDC, identidad y scoping están implementados y probados con issuer local; no afirmar producción multiusuario sin una prueba real del proveedor y revisión de seguridad/release.
+- Auth0: tenant, credenciales y callback local configurados; email/contraseña y verificación probados por el usuario. Falta revisar Google y callbacks de producción, junto con seguridad/release del entorno público.
 - MCP remoto real: además de Auth0, faltan API/audience/scopes configurados, proxy HTTPS público y dos hosts OAuth compatibles. El flujo local firmado pasó; el interop externo y la reconexión corresponden a P5.3.
 - Despliegue: los artefactos están listos y probados en local (`infra/DEPLOY.md`), pero faltan autorización, acceso al VPS, dominio y `.env.production` con secretos. No hay despliegue de la aplicación. El repositorio de código sí se publicó en GitHub por instrucción del usuario. No se activaron cobros ni servicios pagos.
 
 ## Próxima acción inequívoca
 
-El usuario prueba a mano lo del 03/10 (chat, explicación animada, paleta, estilos, elementos propios y, de la tercera vuelta, menos cruces y vista previa de enlaces: puntos 15 y 16 de `VALIDATION.md`) y sigue `docs/GUIA_PASO_A_PASO.md`: los pasos 2 (base local) y 3 (Auth0) ya están hechos. Para el agente:
+El próximo paso es la revisión manual de cámara, cuenta admin y viaje San Pancho: puntos 17–19 de `VALIDATION.md`. Abrir el editor habitual, recargar y elegir «San Pancho · viaje de 10 días» en los ejemplos; comparar sus tres escenarios y presentar el recorrido. Las revisiones anteriores siguen registradas. Los pasos 2 (base local) y 3 (Auth0) de `docs/GUIA_PASO_A_PASO.md` ya están hechos. Para el agente:
 
 0. **Antes de cada commit:** comprobar que `.env.example` no tenga valores reales (el usuario los cargó ahí una vez). El trabajo de esta sesión se commitea local, sin push.
 0b. **Sin bloqueos, si el usuario lo decide:** mapas reales (P1.7). Requiere elegir proveedor de teselas (OpenStreetMap tiene política de uso que no admite tráfico intenso; MapTiler o Stadia son pagos por volumen), ajustar la CSP `img-src` y decidir si el navegador del usuario pide las teselas directo (el proveedor ve su IP) o pasan por el servidor.
 
 1. **Con `OPENAI_API_KEY`:** `npm run api` y `npm run smoke:ai -- openai`. Repetirlo con `DIAGRAMIA_OPENAI_REASONING_EFFORT` en none, low y medium, y registrar costo por pedido, latencia y calidad. Con eso P3.1 queda verificada y se ajustan los créditos Free.
-2. **Con el tenant de Auth0:** configurar Google y email con verificación obligatoria, y probar el login real (P4.1). Agregar el email del fundador a `DIAGRAMIA_ADMIN_EMAILS`.
+2. **Auth0 ya conectado:** completar la revisión de Google y callbacks de producción (P4.1); el admin local ya tiene email verificado y está en `DIAGRAMIA_ADMIN_EMAILS`.
 3. **Con autorización, VPS y dominio:** seguir `infra/DEPLOY.md` (P8.4), con respaldo diario por cron y la alerta de gasto conectada.
 4. **Sin bloqueos:** revisión manual del usuario (`VALIDATION.md`, `docs/CUENTA_Y_COMPARTIDO.md`, `/#fundador`), y el texto del aviso de privacidad y la licencia.
 

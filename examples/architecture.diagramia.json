@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.6.0",
+  "schemaVersion": "1.7.0",
   "id": "architecture",
   "title": "Arquitectura SaaS",
   "revision": 0,
@@ -21,6 +21,7 @@
       "subtitle": "WEB",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -42,6 +43,7 @@
       "subtitle": "FRONTEND",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -63,6 +65,7 @@
       "subtitle": "BACKEND",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -84,6 +87,7 @@
       "subtitle": "PERSISTENCIA",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -171,7 +175,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "s-front",
@@ -186,7 +192,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "s-api",
@@ -201,7 +209,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "s-db",
@@ -214,7 +224,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         }
       ],
       "tracks": []

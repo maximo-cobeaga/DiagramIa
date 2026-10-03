@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.6.0",
+  "schemaVersion": "1.7.0",
   "id": "checkout-failure",
   "title": "Rechazo y recuperación",
   "revision": 0,
@@ -21,6 +21,7 @@
       "subtitle": "CHECKOUT",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -42,6 +43,7 @@
       "subtitle": "POST /orders",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -63,6 +65,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -84,6 +87,7 @@
       "subtitle": "INVENTORY",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -105,6 +109,7 @@
       "subtitle": "POSTGRESQL",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -126,6 +131,7 @@
       "subtitle": "PAYMENT",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -147,6 +153,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -168,6 +175,7 @@
       "subtitle": "PAYMENT_FAILED",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -189,6 +197,7 @@
       "subtitle": "ACTION REQUIRED",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -210,6 +219,7 @@
       "subtitle": "PAYMENT METHOD",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -231,6 +241,7 @@
       "subtitle": "ATTEMPT 02",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -252,6 +263,7 @@
       "subtitle": "RECOVERED",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -273,6 +285,7 @@
       "subtitle": "15 MIN",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -294,6 +307,7 @@
       "subtitle": "ORDER.CANCELLED",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -315,6 +329,7 @@
       "subtitle": "INVENTORY",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -779,7 +794,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-1",
@@ -794,7 +811,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-2",
@@ -809,7 +828,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-3",
@@ -824,7 +845,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-4",
@@ -845,7 +868,9 @@
               "label": "RESERVADO",
               "tone": "normal"
             }
-          ]
+          ],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-5",
@@ -860,7 +885,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-6",
@@ -875,7 +902,9 @@
           "tone": "failure",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-7",
@@ -896,7 +925,9 @@
               "label": "PENDIENTE",
               "tone": "failure"
             }
-          ]
+          ],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-8",
@@ -909,7 +940,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-choose",
@@ -926,7 +959,9 @@
           "scenarioIds": [
             "recovered"
           ],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-9",
@@ -943,7 +978,9 @@
           "scenarioIds": [
             "recovered"
           ],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-10",
@@ -960,7 +997,9 @@
           "scenarioIds": [
             "recovered"
           ],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-11",
@@ -983,7 +1022,9 @@
               "label": "INTENTO 02",
               "tone": "normal"
             }
-          ]
+          ],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-12",
@@ -1000,7 +1041,9 @@
           "scenarioIds": [
             "recovered"
           ],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-13",
@@ -1026,7 +1069,9 @@
               "label": "RESUELTO",
               "tone": "normal"
             }
-          ]
+          ],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-timeout",
@@ -1043,7 +1088,9 @@
           "scenarioIds": [
             "expired"
           ],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-expire",
@@ -1066,7 +1113,9 @@
               "label": "CANCELADO",
               "tone": "failure"
             }
-          ]
+          ],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-release",
@@ -1083,7 +1132,9 @@
           "scenarioIds": [
             "expired"
           ],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "step-freed",
@@ -1104,7 +1155,9 @@
               "label": "LIBERADO",
               "tone": "normal"
             }
-          ]
+          ],
+          "focus": "auto",
+          "transition": "smooth"
         }
       ],
       "tracks": []

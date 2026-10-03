@@ -66,7 +66,7 @@ const replyOf=(result:Result)=>(result.kind==='proposal'?`Propuse ${result.batch
 /** Chat con el asistente: mensajes en burbujas, propuestas como tarjetas que se ven en el canvas, y el cuadro de texto abajo. */
 export function Chat(){
   const {doc}=useStore(documentStore),{ids}=useStore(selectionStore),{staging}=useStore(viewStore),{auth}=useStore(accountStore);
-  const [providers,setProviders]=useState<ProviderInfo[]|null>(null),[budget,setBudget]=useState<Budget|null>(null),[credits,setCredits]=useState<Credits|null>(null),[offline,setOffline]=useState(false),[authRequired,setAuthRequired]=useState(false),[providerId,setProviderId]=useState(''),[prompt,setPrompt]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[stageNote,setStageNote]=useState('');
+  const [providers,setProviders]=useState<ProviderInfo[]|null>(null),[budget,setBudget]=useState<Budget|null>(null),[credits,setCredits]=useState<Credits|null>(null),[admin,setAdmin]=useState(false),[offline,setOffline]=useState(false),[authRequired,setAuthRequired]=useState(false),[providerId,setProviderId]=useState(''),[prompt,setPrompt]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[stageNote,setStageNote]=useState('');
   const controller=useRef<AbortController|null>(null),threadRef=useRef<HTMLDivElement>(null),opened=useRef(false);
   const last=turns[turns.length-1],sending=last?.status==='sending';
   const patch=(id:string,changes:Partial<Turn>)=>setTurns(list=>list.map(turn=>turn.id===id?{...turn,...changes}:turn));
@@ -74,10 +74,10 @@ export function Chat(){
   async function loadProviders(){
     try{
       const response=await fetch(API+'/v1/providers',{headers:HEADERS});
-      if(response.status===401){setAuthRequired(true);setOffline(false);setProviders(null);return;}
+      if(response.status===401){setAuthRequired(true);setOffline(false);setProviders(null);setAdmin(false);return;}
       if(!response.ok)throw new Error(String(response.status));
       const body=await response.json(),list=body.providers as ProviderInfo[];
-      setProviders(list);setBudget(body.usage);setCredits(body.credits??null);setOffline(false);setAuthRequired(false);
+      setProviders(list);setBudget(body.usage);setCredits(body.credits??null);setAdmin(body.admin===true);setOffline(false);setAuthRequired(false);
       setProviderId(current=>list.some(p=>p.id===current&&p.configured)?current:list.find(p=>p.configured&&p.kind!=='mock')?.id??list.find(p=>p.configured)?.id??'');
     }catch{setProviders(null);setOffline(true);}
   }
@@ -267,7 +267,7 @@ export function Chat(){
         {configured.length>1&&<select id="chat-provider" aria-label="Proveedor" value={providerId} onChange={e=>setProviderId(e.target.value)}>
           {providers?.map(p=><option key={p.id} value={p.id} disabled={!p.configured}>{p.label}{p.configured?'':' — sin configurar'}</option>)}
         </select>}
-        <p className="composer-hint">{ids.length?`Sobre lo seleccionado (${ids.length})`:'Sobre todo el diagrama'}{credits?` · te quedan ${Math.max(0,credits.dailyLimit-credits.daily)} créditos hoy`:budget?` · hoy ${budget.tokens.toLocaleString('es')} de ${budget.dailyTokenBudget.toLocaleString('es')} tokens`:''}</p>
+        <p className="composer-hint">{ids.length?`Sobre lo seleccionado (${ids.length})`:'Sobre todo el diagrama'}{admin?' · Admin: sin cuota de créditos ni límite por minuto':credits?` · te quedan ${Math.max(0,credits.dailyLimit-credits.daily)} créditos hoy`:budget?` · hoy ${budget.tokens.toLocaleString('es')} de ${budget.dailyTokenBudget.toLocaleString('es')} tokens`:''}</p>
       </div>
     </div>
   </div>;

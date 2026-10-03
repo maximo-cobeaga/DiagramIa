@@ -382,6 +382,8 @@ try{
   });
   await check('las anotaciones se guardan en el documento, se marcan en el canvas y no salen en el export',async()=>{
     await key('Escape');
+    // El recorrido anterior puede haber enfocado otro extremo: volver a encuadrar antes de seleccionar.
+    await key('1');await sleep(150);
     const api=await center('[data-id="api"]');await click(api);await sleep(100);
     expect(await clickText('Propiedades','.tabs'),'falta la pestaña');await sleep(100);
     await setValue('#new-annotation','Sin límite de reintentos');await sleep(60);
@@ -534,6 +536,70 @@ try{
     await send('Page.reload');await sleep(1500);
     expect(await js(`document.querySelectorAll('.doc-tab').length`)===tabs&&(await saved()).id===before.id,'las pestañas no se conservaron al recargar');
     return `${tabs} pestañas conservadas`;
+  });
+  await check('la cámara guía la vista, pausa y cede al usuario sin cambiar el documento',async()=>{
+    // Elementos lejanos: un paneo o zoom equivocado queda visible y no pasa por coincidencia.
+    const fixture=join(profile,'camera.diagramia.json'),doc={...(await saved()),id:'camera-smoke',title:'Recorrido de cámara',revision:0,appliedBatches:[],
+      nodes:['Salida','Escala','Destino'].map((label,i)=>({id:'n'+i,kind:'note',label,position:{x:i*2000,y:100},size:{width:180,height:100},shape:'card',icon:'plane'})),
+      edges:[],zones:[],drawings:[],frames:[],groups:[],assets:[],annotations:[],animations:[{id:'journey',label:'Guía visual',steps:[
+        {id:'first',caption:'Salida',nodeIds:['n0'],edgeIds:[],durationMs:5000,focus:'close',transition:'slow'},
+        {id:'last',caption:'Destino',nodeIds:['n2'],edgeIds:[],durationMs:5000,focus:'close',transition:'smooth'},
+        {id:'stay',caption:'Mantener',nodeIds:['n1'],edgeIds:[],durationMs:5000,focus:'stay',transition:'smooth'},
+        {id:'all',caption:'Todo',nodeIds:[],edgeIds:[],durationMs:5000,focus:'overview',transition:'cut'},
+        {id:'context',caption:'Escala con contexto',nodeIds:['n1'],edgeIds:[],durationMs:5000,focus:'medium',transition:'slow'},
+        {id:'cut',caption:'Volver sin movimiento',nodeIds:['n0'],edgeIds:[],durationMs:5000,focus:'close',transition:'cut'}]}]};
+    writeFileSync(fixture,JSON.stringify(doc));
+    const {root}=await send('DOM.getDocument'),{nodeId}=await send('DOM.querySelector',{nodeId:root.nodeId,selector:'header input[type=file]'});
+    await send('DOM.setFileInputFiles',{nodeId,files:[fixture]});await sleep(650);
+    const before=JSON.stringify(await saved()),box=selector=>js(`document.querySelector(${JSON.stringify(selector)}).getAttribute('viewBox').split(/\\s+/).map(Number)`);
+    const goto=async i=>{await js(`document.querySelectorAll('.timeline .steps button')[${i}].click()`);};
+    await goto(0);await sleep(2000);
+    const first=await box('.canvas');expect(first[2]<1000,'no se acercó a la salida');
+    await goto(1);await sleep(300);const moving=await box('.canvas');
+    expect(moving[0]!==first[0]&&moving[0]<4000,'falta la transición gradual');
+    await sleep(800);const last=await box('.canvas');expect(last[0]+last[2]/2>3900,'no enfocó el destino');
+    await goto(2);await sleep(1000);expect(JSON.stringify(await box('.canvas'))===JSON.stringify(last),'Mantener movió el encuadre');
+    await goto(3);await sleep(60);expect((await box('.canvas'))[2]>=4180,'overview no mostró todos los elementos');
+    await goto(4);await sleep(120);await clickText('Reproducir','.timeline');await sleep(120);await clickText('Pausar','.timeline');await sleep(60);
+    const paused=await box('.canvas');await sleep(400);expect(JSON.stringify(await box('.canvas'))===JSON.stringify(paused),'la cámara siguió después de pausar');
+    await js(`(()=>{const el=[...document.querySelectorAll('.timeline label')].find(l=>l.textContent.includes('Seguir con la cámara')).querySelector('input');el.click();})()`);
+    await goto(5);await sleep(120);expect(JSON.stringify(await box('.canvas'))===JSON.stringify(paused),'seguir apagado movió la cámara');
+    await js(`(()=>{const el=[...document.querySelectorAll('.timeline label')].find(l=>l.textContent.includes('Seguir con la cámara')).querySelector('input');el.click();})()`);
+    await goto(3);await goto(0);await sleep(120);
+    const host=await center('.canvas-host');await send('Input.dispatchMouseEvent',{type:'mouseWheel',x:host.x,y:host.y,deltaX:0,deltaY:60});await sleep(60);
+    const manual=await box('.canvas');await sleep(400);expect(JSON.stringify(await box('.canvas'))===JSON.stringify(manual),'el movimiento automático pisó el pan manual');
+    await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+    await goto(5);await sleep(60);const reduced=await box('.canvas');expect(reduced[2]<1000,'reduced-motion no aplicó el encuadre');
+    await goto(1);await sleep(60);expect((await box('.canvas'))[0]+(await box('.canvas'))[2]/2>3900,'reduced-motion dejó una transición pendiente');
+    await goto(0);await key('p');await sleep(200);
+    const presentation=await box('.presentation svg');expect(presentation[2]<1000,'el primer paso de la presentación no respetó el enfoque');
+    await key('ArrowRight');await sleep(60);await shot('21-camera-presentation');
+    expect((await box('.presentation svg'))[0]+(await box('.presentation svg'))[2]/2>3900,'la presentación no siguió el siguiente paso');
+    await key('Escape');await sleep(120);expect(JSON.stringify(await box('.canvas'))===JSON.stringify(reduced),'salir cambió la cámara del editor');
+    await send('Emulation.setEmulatedMedia',{features:[]});
+    await goto(4);await sleep(120);await tap('.doc-tab-add');await sleep(150);
+    const empty=await box('.canvas');await sleep(450);expect(JSON.stringify(await box('.canvas'))===JSON.stringify(empty),'el viaje siguió en otra pestaña');
+    await js(`document.querySelector('.doc-tab.active .doc-tab-close').click()`);await sleep(200);
+    const returned=await box('.canvas');await sleep(450);expect(JSON.stringify(await box('.canvas'))===JSON.stringify(returned),'volver reinició el movimiento');
+    expect(JSON.stringify(await saved())===before,'reproducir, mover cámara o presentar cambió el contenido');
+    await shot('22-camera-editor');return 'enfoque, transición, mantener, corte, pausa, pan manual, reduced-motion, presentación y pestañas';
+  });
+  await check('el viaje a San Pancho compara tres fechas y presenta el presupuesto editable',async()=>{
+    await setValue('select[aria-label="Cargar ejemplo"]','4');await sleep(700);
+    const doc=await saved();expect(doc.id==='san-pancho'&&doc.nodes.length===29&&doc.zones.length===6,'falta el viaje completo');
+    expect(doc.animations[0].scenarios.length===3,'faltan las tres fechas');
+    await setValue('select[aria-label="Recorrido"]','date-feb');await sleep(100);
+    await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+    await js(`document.querySelectorAll('.timeline .steps button')[1].click()`);await sleep(80);
+    await key('p');await sleep(150);
+    expect((await js(`document.querySelector('.presentation-caption').textContent`)).includes('9–18 feb 2027'),'la rama no muestra la fecha elegida');
+    await shot('23-san-pancho-fechas');await key('ArrowRight');await key('ArrowRight');await sleep(100);
+    const caption=await js(`document.querySelector('.presentation-caption').textContent`);
+    expect(caption.includes('Presupuesto separado por moneda'),'la cámara no llegó al presupuesto');
+    await shot('24-san-pancho-presupuesto');await key('Escape');await sleep(100);
+    await send('Emulation.setEmulatedMedia',{features:[]});
+    expect((await saved()).revision===doc.revision,'presentar el viaje cambió el contenido');
+    return '29 elementos, 6 zonas, 3 fechas y presupuesto ARS/MXN con recorrido de cámara';
   });
   await check('el ejemplo de login muestra pistas sincronizadas y permite editar una pista',async()=>{
     await setValue('select[aria-label="Cargar ejemplo"]','3');await sleep(700);

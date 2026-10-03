@@ -17,7 +17,7 @@ function synthetic(count){
   }
   for(let n=1;n<count;n++)edges.push({id:`e-${n}`,from:`n-${n-1}`,to:`n-${n}`,label:'llama'});
   for(let n=3;n<count;n+=3)edges.push({id:`x-${n}`,from:`n-${n}`,to:`n-${(n*7)%count}`,label:''});
-  return validateDocument({schemaVersion:'1.6.0',id:`perf-${count}`,title:`Perf ${count}`,revision:0,nodes,edges,zones,groups:[],frames:[],drawings:[],animations:[],assets:[],annotations:[],appliedBatches:[]});
+  return validateDocument({schemaVersion:'1.7.0',id:`perf-${count}`,title:`Perf ${count}`,revision:0,nodes,edges,zones,groups:[],frames:[],drawings:[],animations:[],assets:[],annotations:[],appliedBatches:[]});
 }
 function time(fn,runs=3){
   const samples=[];let result;

@@ -2246,6 +2246,27 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "focus": {
+                          "default": "auto",
+                          "type": "string",
+                          "enum": [
+                            "auto",
+                            "close",
+                            "medium",
+                            "wide",
+                            "overview",
+                            "stay"
+                          ]
+                        },
+                        "transition": {
+                          "default": "smooth",
+                          "type": "string",
+                          "enum": [
+                            "smooth",
+                            "slow",
+                            "cut"
+                          ]
                         }
                       },
                       "required": [
@@ -2257,7 +2278,9 @@
                         "tone",
                         "frameId",
                         "scenarioIds",
-                        "states"
+                        "states",
+                        "focus",
+                        "transition"
                       ],
                       "additionalProperties": false
                     }
@@ -2527,6 +2550,27 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "focus": {
+                    "default": "auto",
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "close",
+                      "medium",
+                      "wide",
+                      "overview",
+                      "stay"
+                    ]
+                  },
+                  "transition": {
+                    "default": "smooth",
+                    "type": "string",
+                    "enum": [
+                      "smooth",
+                      "slow",
+                      "cut"
+                    ]
                   }
                 },
                 "required": [
@@ -2538,7 +2582,9 @@
                   "tone",
                   "frameId",
                   "scenarioIds",
-                  "states"
+                  "states",
+                  "focus",
+                  "transition"
                 ],
                 "additionalProperties": false
               },
@@ -2655,6 +2701,25 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "focus": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "close",
+                      "medium",
+                      "wide",
+                      "overview",
+                      "stay"
+                    ]
+                  },
+                  "transition": {
+                    "type": "string",
+                    "enum": [
+                      "smooth",
+                      "slow",
+                      "cut"
+                    ]
                   }
                 },
                 "additionalProperties": false

@@ -565,6 +565,28 @@ test('the spending cap counts in-flight requests, adds a monthly cap and alerts 
     assert.equal(ledger(3).begin('next-month','s',100,0.1),null,'el mes nuevo empieza en cero');
   }finally{rmSync(dir,{recursive:true,force:true});}
 });
+test('an admin uses the AI without per-minute limits or credits, but only with a verified admin email, and the global budget still applies',async()=>{
+  const reserved:{id:string;credits:number}[]=[],receipts=new Map<string,{fingerprint:string;answer?:unknown}>();
+  const accounts:any={readSession:async(token?:string)=>token==='admin'?{userId:'boss',email:'Fundador@Example.com',emailVerified:true}:token==='unverified-admin'?{userId:'u9',email:'fundador@example.com',emailVerified:false}:token==='user'?{userId:'u1',email:'otra@example.com',emailVerified:true}:null,
+    creditUsage:async()=>({monthly:0,daily:0,dailyLimit:6,monthlyLimit:20}),reserveCredits:async(_user:string,requestId:string,fingerprint:string,credits:number)=>{const prior=receipts.get(requestId);if(prior?.answer)return {replayed:prior.answer};reserved.push({id:requestId,credits});receipts.set(requestId,{fingerprint});return {replayed:null};},settleCredits:async(_user:string,id:string,answer:unknown)=>{receipts.get(id)!.answer=answer;},releaseCredits:async()=>{}};
+  const replies=Array.from({length:12},()=>redis()),{provider,calls}=scripted(replies),cheap=scripted([redis()]).provider;
+  const ledger=new UsageLedger({dailyTokenBudget:100_000,dailyUsdBudget:5,requestsPerMinute:1,ledgerPath:null});
+  const server=createApp({providers:[provider,{...cheap,info:()=>({...cheap.info(),id:'free'})}],ledger,productPrompt:'p',allowedOrigins:[],token:null,accounts,accountProviders:['free'],adminEmails:['fundador@example.com'],aiPerUserPerMinute:1,aiPerIpPerMinute:1,config:{maxOutputTokens:2000,maxContextChars:60000,maxRepairs:1,timeoutMs:5000}});
+  const url=await listen(server),headers=(session:string)=>({'content-type':'application/json','x-diagramia-client':'editor',cookie:`diagramia_session=${session}`});
+  const ask=(session:string,requestId:string)=>fetch(url+'/v1/assist',{method:'POST',headers:headers(session),body:JSON.stringify({requestId,providerId:'fake',mode:'explain',prompt:'Explicá',document:architecture(),selectedIds:[]})});
+  try{
+    const listed=await(await fetch(url+'/v1/providers',{headers:headers('admin')})).json();
+    assert.equal(listed.admin,true);assert.equal(listed.credits,null);assert.deepEqual(listed.providers.map((p:{id:string})=>p.id),['fake','free'],'un admin ve todos los proveedores');
+    for(let i=1;i<=5;i++)assert.equal((await ask('admin','a-'+i)).status,200,`pedido ${i} del admin`);
+    assert.equal(reserved.length,5);assert.ok(reserved.every(r=>r.credits===0),'un admin conserva recibos sin gastar créditos');
+    assert.equal((await(await ask('admin','a-1')).json()).replayed,true);assert.equal(calls.length,5,'el reintento no repite la llamada');
+    assert.equal((await ask('unverified-admin','x-1')).status,403,'sin email verificado no se obtiene la excepción');
+    const user=await ask('user','u-1');assert.equal(user.status,429,'la IP ya usó su pedido: el resto de las cuentas sigue limitado');
+    // Agotar el presupuesto global sigue deteniendo al admin antes de llamar al proveedor.
+    ledger.settle({requestId:'other-spend',provider:'fake',model:'fake-1',status:'completed',billable:true,inputTokens:100_000,outputTokens:0,costUsd:0,calls:1});
+    const blocked=await ask('admin','a-6');assert.equal(blocked.status,402);assert.equal((await blocked.json()).error.code,'BUDGET_EXCEEDED');assert.equal(calls.length,5);
+  }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
 test('the included AI needs a verified email and per-account and per-IP limits stop floods before credits are reserved',async()=>{
   const reserved:string[]=[];
   const accounts:any={readSession:async(token?:string)=>token==='verified'?{userId:'u1',emailVerified:true}:token==='unverified'?{userId:'u2',emailVerified:false}:token==='other'?{userId:'u3',emailVerified:true}:null,

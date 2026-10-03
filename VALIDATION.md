@@ -254,3 +254,9 @@ Pasó `npm run check` 109/109, `npm run smoke` 36/36 y `npm run smoke:ai -- comp
 
 15. **Menos cruces:** abrí `evidencias/evi-2-viaje-con-diseno.json` y, sin nada seleccionado, tocá «Ordenar todo sin superposiciones» en Propiedades: el itinerario queda al centro y las demás zonas alrededor, cerca de los días con los que se conectan; las curvas rodean los nodos en lugar de pasarles por encima.
 16. **Vista previa de un enlace:** con sesión iniciada, poné un enlace en un elemento y tocá «Traer título y descripción de la página». Revisá la tarjeta y «Usar como nombre y detalle» (Ctrl+Z lo deshace). Un enlace a `http://localhost` o a una IP privada tiene que rechazarse con un mensaje claro.
+
+### Recuperación de Claude (cámara, admin y viaje)
+
+17. **Cámara narrativa (P2.3):** en «Ajustes del paso», cambiar Enfoque y Transición. Reproducir o tocar un paso guía la vista; «Seguir con la cámara» apagado deja el canvas quieto. Pausar, mover la vista manualmente y cambiar de pestaña detienen el viaje pendiente. Presentar usa una cámara independiente; Esc vuelve al editor. Con reduced-motion, el destino se aplica directamente. Cambiar el enfoque se deshace; reproducir y mover cámara no cambian la revisión.
+18. **Admin (P4.4):** con el email verificado incluido en `DIAGRAMIA_ADMIN_EMAILS`, el chat muestra «Admin: sin cuota de créditos ni límite por minuto». Varios pedidos seguidos no devuelven el límite Free ni consumen créditos. Reintentar el mismo ID recupera el recibo; el presupuesto global sigue cortando antes del proveedor. Otra cuenta conserva sus límites.
+19. **Viaje a San Pancho:** elegir «Abrir un ejemplo… → San Pancho · viaje de 10 días». Comparar las tres fechas desde Recorrido, presentar y revisar el presupuesto ARS/MXN. Hay 29 elementos editables y 18 pasos. `docs/VIAJE_SAN_PANCHO.md` distingue precios observados y reservas estimadas. Cotizar vuelos, conexiones y hotel antes de usarlo como itinerario definitivo.

@@ -57,7 +57,7 @@ export class UsageLedger{
     if(monthly!==undefined&&(this.monthUsd>=monthly||this.monthUsd+this.reservedUsd+extraUsd>monthly))throw new UsageError('BUDGET_EXCEEDED',`Se alcanzó el presupuesto mensual de IA de USD ${monthly.toFixed(2)} (estimado). La IA incluida queda pausada hasta el mes próximo. No se llamó al proveedor.`);
   }
   /** Devuelve la respuesta guardada si este requestId ya terminó con el mismo contenido; si no, reserva presupuesto. */
-  begin(requestId:string,signature:string,estimatedTokens:number,estimatedUsd=0):{replay:unknown}|null{
+  begin(requestId:string,signature:string,estimatedTokens:number,estimatedUsd=0,rateLimitExempt=false):{replay:unknown}|null{
     this.roll();
     const prior=this.entries.get(requestId);
     if(prior){
@@ -66,9 +66,10 @@ export class UsageLedger{
       return {replay:prior.response};
     }
     const now=this.now();this.hits=this.hits.filter(at=>now-at<60_000);
-    if(this.hits.length>=this.config.requestsPerMinute)throw new UsageError('RATE_LIMITED',`Demasiados pedidos: el máximo es ${this.config.requestsPerMinute} por minuto.`);
+    if(!rateLimitExempt&&this.hits.length>=this.config.requestsPerMinute)throw new UsageError('RATE_LIMITED',`Demasiados pedidos: el máximo es ${this.config.requestsPerMinute} por minuto.`);
     this.ensureBudget(estimatedTokens,estimatedUsd);
-    this.hits.push(now);this.reserved+=estimatedTokens;this.reservedUsd+=estimatedUsd;
+    if(!rateLimitExempt)this.hits.push(now);
+    this.reserved+=estimatedTokens;this.reservedUsd+=estimatedUsd;
     this.entries.set(requestId,{signature,status:'running',reserved:estimatedTokens,reservedUsd:estimatedUsd});
     return null;
   }

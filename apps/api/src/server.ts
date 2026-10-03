@@ -22,7 +22,7 @@ export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistCon
   /** Detrás de un reverse proxy propio: la IP del cliente es la última de X-Forwarded-For. */
   trustProxy?:boolean;
   /** Antiabuso de la IA incluida (P4.4). Por defecto exige email verificado y limita 20 pedidos/min por IP y 6 por cuenta. */
-  /** Dashboard del fundador (P7.3): sólo para cuentas con email verificado incluido en adminEmails. */
+  /** Dashboard y excepción de cuotas de IA: sólo para cuentas con email verificado incluido en adminEmails. */
   dashboard?:FounderDashboard;adminEmails?:string[];
   requireVerifiedEmail?:boolean;aiPerIpPerMinute?:number;
   /** Vista previa de enlaces (P1.7). Reemplazable en pruebas; por defecto visita la página con protección SSRF. */
@@ -209,11 +209,12 @@ export function createApp(options:AppOptions):Server{
         return fail(404,'NOT_FOUND','Ruta inexistente.');
       }
       const session=options.accounts?await options.accounts.readSession(cookie(req,'diagramia_session')):null;
+      // Administradores: email verificado incluido en adminEmails. Ven el dashboard y usan la IA sin límites por cuenta.
+      const admin=Boolean(session?.emailVerified&&session.email&&(options.adminEmails??[]).some(email=>email.toLowerCase()===session.email!.toLowerCase()));
       if(options.token&&!session&&!sameToken(String(req.headers.authorization??''),`Bearer ${options.token}`))return fail(401,'UNAUTHORIZED','Token del gateway inválido o ausente.');
       if(path==='/v1/admin/dashboard'&&req.method==='GET'){
         if(!options.dashboard)return fail(503,'DASHBOARD_UNAVAILABLE','El dashboard necesita PostgreSQL con telemetría.');
-        const admins=(options.adminEmails??[]).map(email=>email.toLowerCase());
-        if(!session?.emailVerified||!session.email||!admins.includes(session.email.toLowerCase()))return fail(403,'ADMIN_ONLY','El dashboard es sólo para administradores.');
+        if(!admin)return fail(403,'ADMIN_ONLY','El dashboard es sólo para administradores.');
         const to=new URL(req.url??'/','http://gateway').searchParams.get('to');
         if(to!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(to))return fail(400,'INVALID_REQUEST','to debe ser una fecha AAAA-MM-DD.');
         return send(200,await options.dashboard.report(to??undefined));
@@ -233,10 +234,10 @@ export function createApp(options:AppOptions):Server{
         }catch(error){if(error instanceof LinkPreviewError)return fail(error.status,error.code,error.message);throw error;}
       }
       if(options.accounts&&!session&&['/v1/providers','/v1/usage','/v1/assist'].includes(path))return fail(401,'SESSION_REQUIRED','Iniciá sesión para usar IA.');
-      // Una cuenta sólo ve y usa los proveedores de su plan: los créditos Free no pagan un modelo más caro.
-      const providers=session&&options.accountProviders?options.providers.filter(p=>options.accountProviders!.includes(p.info().id)):options.providers;
-      if(path==='/v1/providers'&&req.method==='GET')return send(200,{modes:MODES,providers:providers.map(p=>p.info()),usage:options.ledger.summary(),credits:session?await options.accounts!.creditUsage(session.userId):null});
-      if(path==='/v1/usage'&&req.method==='GET')return send(200,{...options.ledger.summary(),credits:session?await options.accounts!.creditUsage(session.userId):null});
+      // Una cuenta sólo ve y usa los proveedores de su plan: los créditos Free no pagan un modelo más caro. Un admin, todos.
+      const providers=session&&!admin&&options.accountProviders?options.providers.filter(p=>options.accountProviders!.includes(p.info().id)):options.providers;
+      if(path==='/v1/providers'&&req.method==='GET')return send(200,{modes:MODES,providers:providers.map(p=>p.info()),usage:options.ledger.summary(),credits:session&&!admin?await options.accounts!.creditUsage(session.userId):null,admin});
+      if(path==='/v1/usage'&&req.method==='GET')return send(200,{...options.ledger.summary(),credits:session&&!admin?await options.accounts!.creditUsage(session.userId):null,admin});
       if(path==='/v1/assist'&&req.method==='POST'){
         // «auto» se resuelve antes que nada: los créditos, la medición y la idempotencia usan el modo deducido.
         const body=resolveAutoMode(await readJson(req)),abort=new AbortController(),started=Date.now();
@@ -257,8 +258,9 @@ export function createApp(options:AppOptions):Server{
             inputTokens:usage?.inputTokens??0,cachedInputTokens:usage?.cachedInputTokens??0,outputTokens:usage?.outputTokens??0,costUsd:usage?.estimatedCostUsd??null,
             latencyMs:Math.min(3_600_000,Date.now()-started),calls:usage?.calls??0,repairs:Math.max(0,outcome.answer?.repairs??0),replayed:Boolean(outcome.answer?.replayed)}},session?.userId??null);
         };
-        // Límites antes de cualquier reserva: por IP siempre, por cuenta si hay sesión. Un pedido rechazado no gasta créditos.
-        if(!aiPerIp.allow(clientIp(req,options.trustProxy))||(session&&!aiPerUser.allow(session.userId))){
+        // Límites antes de cualquier reserva: por IP y por cuenta, salvo administradores verificados. Un rechazo no gasta créditos.
+        // Un admin no tiene límites por minuto ni créditos; el tope global de gasto del gateway (ledger) sigue valiendo.
+        if(!admin&&(!aiPerIp.allow(clientIp(req,options.trustProxy))||(session&&!aiPerUser.allow(session.userId)))){
           track({blocked:'RATE_LIMITED'});return fail(429,'RATE_LIMITED','Demasiados pedidos seguidos. Esperá un minuto y volvé a intentar.');
         }
         if(session&&options.requireVerifiedEmail!==false&&!session.emailVerified){
@@ -266,7 +268,7 @@ export function createApp(options:AppOptions):Server{
         }
         try{
         if(session){
-          const input=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES),providerId:z.string().max(40)}).parse(body),credits=input.mode==='create'?2:1;
+          const input=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES),providerId:z.string().max(40)}).parse(body),credits=admin?0:input.mode==='create'?2:1;
           if(!providers.some(p=>p.info().id===input.providerId)){track({refused:true});return fail(403,'PROVIDER_NOT_IN_PLAN',`El proveedor «${input.providerId}» no está incluido en tu plan.`);}
           const fingerprint=createHash('sha256').update(JSON.stringify(body)).digest('hex');
           const reservation=await options.accounts!.reserveCredits(session.userId,input.requestId,fingerprint,credits);
@@ -275,7 +277,7 @@ export function createApp(options:AppOptions):Server{
             // El ledger del proceso es global: su ID interno incluye la cuenta para que dos usuarios
             // que elijan el mismo requestId nunca compartan una respuesta ni un recibo.
             const privateId='acct-'+createHash('sha256').update(session.userId+'\0'+input.requestId).digest('hex').slice(0,32);
-            const answer=await assist({...body as object,requestId:privateId},{providers,ledger:options.ledger,config:options.config,system},abort.signal);
+            const answer=await assist({...body as object,requestId:privateId},{providers,ledger:options.ledger,config:options.config,system,rateLimitExempt:admin},abort.signal);
             const publicAnswer={...answer,requestId:input.requestId};
             await options.accounts!.settleCredits(session.userId,input.requestId,publicAnswer);
             track({answer:publicAnswer});return send(200,publicAnswer);

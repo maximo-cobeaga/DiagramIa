@@ -1,4 +1,5 @@
 import type {ActionInput,DiagramDocument,DiagramNode,ICONS,SHAPES} from './schema.js';
+import {autoFocus} from './camera.js';
 
 type Icon=typeof ICONS[number];
 type Shape=typeof SHAPES[number];
@@ -150,5 +151,7 @@ export function tourOf(doc:DiagramDocument,id:string,label='Recorrido'):Extract<
   }
   if(steps.length<2)return null;
   return {type:'CREATE_ANIMATION',animation:{id,label,scenarios:[],tracks:[],
-    steps:steps.slice(0,40).map((s,i)=>({id:`${id}-${i+1}`,caption:s.caption.slice(0,500),durationMs:Math.max(2400,Math.min(6000,1400+s.caption.length*45)),nodeIds:s.nodeIds,edgeIds:s.edgeIds,tone:'normal' as const,frameId:null,scenarioIds:[],states:[]}))}};
+    steps:steps.slice(0,40).map((s,i)=>({id:`${id}-${i+1}`,caption:s.caption.slice(0,500),durationMs:Math.max(2400,Math.min(6000,1400+s.caption.length*45)),nodeIds:s.nodeIds,edgeIds:s.edgeIds,tone:'normal' as const,frameId:null,scenarioIds:[],states:[],
+      // La cámara guía la vista: entra despacio al primer paso y en cada uno va hacia lo que resalta.
+      focus:autoFocus(doc,s.nodeIds,s.edgeIds),transition:i===0?'slow' as const:'smooth' as const}))}};
 }

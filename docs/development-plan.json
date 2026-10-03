@@ -175,13 +175,13 @@
         {
           "id": "P2.3",
           "title": "Cámara y presentación",
-          "scope": "Frames, focus, pan/zoom de cámara, secuencias y modo presentación con controles accesibles.",
+          "scope": "Frames, focus, pan/zoom de cámara, secuencias y modo presentación con controles accesibles. Enfoque y transición editables por paso, seguimiento opcional en canvas y encuadres compartidos con PDF.",
           "paths": [
             "apps/editor/src/presentation"
           ],
           "acceptance": "Presentación funciona con teclado, pausa y reduced-motion; salir vuelve al canvas sin modificar contenido.",
           "status": "implemented",
-          "evidence": "Frames, encuadre por paso, modo presentación con teclado, reduced-motion y pantalla completa; smoke de entrar/navegar/salir sin cambios."
+          "evidence": "Frames, encuadre por paso, modo presentación con teclado, reduced-motion y pantalla completa; smoke de entrar/navegar/salir sin cambios. 03/10/2026 (recuperación de Claude, ADR 067): schema 1.7.0 y migración 1.6.0, encuadre compartido, controles de enfoque/transición, pausa y cancelación ante gestos/pestañas. Check 123/123 y cámara comprobada en Chromium; ejemplo San Pancho con tres escenarios de fechas y 18 pasos. Falta revisión manual del usuario."
         },
         {
           "id": "P2.4",
@@ -343,7 +343,7 @@
           ],
           "acceptance": "Cuota agotada bloquea antes del proveedor; cuenta sin email verificado no usa IA; superar el tope global corta la IA Free y alerta; IP compartida no bloquea por sí sola; costo por pedido registrado en USD.",
           "status": "partial",
-          "evidence": "Free por cuenta: máximo 3 documentos, 10 MB por documento incluidas versiones y 30 MB por proyecto; 20 créditos IA mensuales, 6 diarios, Crear cuesta 2 y otros modos 1, con reserva antes del proveedor, recibos durables e idempotencia en PostgreSQL real. 02/10/2026 (ADR 049/052): proveedores por plan, email verificado obligatorio (migración 004), límites por IP y por cuenta antes de reservar créditos, reserva en USD de pedidos en curso, tope diario y mensual con alerta al 80 %; probado en gateway y en `smoke:repository`. Falta: medición económica real con GPT-6 Luna (bloqueada por OPENAI_API_KEY), conectar la alerta a un canal externo al desplegar, y CAPTCHA adaptativo/señales de riesgo cuando haya datos de abuso."
+          "evidence": "Free por cuenta: máximo 3 documentos, 10 MB por documento incluidas versiones y 30 MB por proyecto; 20 créditos IA mensuales, 6 diarios, Crear cuesta 2 y otros modos 1, con reserva antes del proveedor, recibos durables e idempotencia en PostgreSQL real. 02/10/2026 (ADR 049/052): proveedores por plan, email verificado obligatorio (migración 004), límites por IP y por cuenta antes de reservar créditos, reserva en USD de pedidos en curso, tope diario y mensual con alerta al 80 %; probado en gateway y en `smoke:repository`. Falta: medición económica real con GPT-6 Luna (bloqueada por OPENAI_API_KEY), conectar la alerta a un canal externo al desplegar, y CAPTCHA adaptativo/señales de riesgo cuando haya datos de abuso. 03/10/2026 (ADR 068): administrador verificado sin cuotas Free ni límites por minuto, conserva presupuesto global y recibos durables de cero créditos (SQL 006). Pruebas gateway y smoke:repository con PostgreSQL real."
         },
         {
           "id": "P4.5",

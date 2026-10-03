@@ -2,14 +2,14 @@
 
 Fuente de verdad ejecutable: `packages/core/src` (`schema.ts`, `engine.ts`, `geometry.ts`, `layout.ts`, `library.ts`). Contratos generados: `schemas/document.schema.json` y `schemas/action-batch.schema.json` (`npm run schemas`). Referencias completas: `examples/*.json`. El JSON Schema sirve para generación/validación estructural; el engine además valida referencias, pertenencia a zonas, grupos, revisiones, límites y otros invariantes que JSON Schema no expresa.
 
-## Documento, schema 1.3.0
+## Documento, schema 1.7.0
 
-`schemaVersion`, `id`, `title`, `revision`, `nodes`, `edges`, `zones`, `groups`, `frames`, `animations`, `assets`, `annotations`, `appliedBatches`.
+`schemaVersion`, `id`, `title`, `revision`, `nodes`, `edges`, `drawings`, `zones`, `groups`, `frames`, `animations`, `assets`, `annotations`, `appliedBatches`.
 
 - **Node:** id, kind, label, position, size, `zoneId`, `groupId`, subtitle, `assetId`, `icon`, `shape`, `style` y `details`. Tipos semánticos: service, database, cache, queue, external, actor, decision, note, text, image, custom. `shape` elige una forma básica, de flujo o UML; `style` conserva relleno, trazo y texto editables. Un nodo con `assetId` dibuja esa imagen; `icon` es uno de los glifos de `ICONS`.
 - **Edge:** extremos por ID, label, `alternative`, `fromPort`/`toPort` (auto, top, right, bottom, left), `fromAnchor`/`toAnchor` sobre cualquier punto del borde, puntas, estilo, línea ortogonal/recta/curva y `points` opcionales (ruta manual).
 - **Zone:** id, label, bounds. **Frame:** id, label, bounds (encuadre de cámara para presentar). **Group:** id, label, `parentId` (anidamiento; los miembros se indican con `groupId` en cada nodo).
-- **Animation:** id, label, `scenarios` (id, label, description), steps. **Step:** id, caption, durationMs, nodeIds, edgeIds, tone, `frameId`, `scenarioIds` (vacío = ocurre en todos los escenarios) y `states` (nodeId, label, tone: el estado que el nodo muestra desde ese paso).
+- **Animation:** id, label, `scenarios` (id, label, description), steps y tracks. **Step:** id, caption, durationMs, nodeIds, edgeIds, tone, `frameId`, `scenarioIds` (vacío = ocurre en todos los escenarios), `states` (nodeId, label, tone), `focus` y `transition`. **Track:** highlight, caption o camera; sus clips se vinculan por `stepId`.
 - **Asset:** id, label, mediaType (PNG, JPEG, WebP, SVG), `data` en base64, width, height. Máximo 400 KB y 40 por documento.
 - **Annotation:** id, `targetId` (elemento o null = documento), severity (info, warning, risk), text, suggestion, source (user, ai), resolved.
 
@@ -17,7 +17,7 @@ Invariantes: IDs únicos entre nodos, conexiones, zonas, grupos, frames, animaci
 
 ## Versiones y migración
 
-`openDocument(input)` abre cualquier versión legible (`READABLE_VERSIONS`: 1.0.0, 1.1.0, 1.2.0 y 1.3.0), la migra en memoria sin tocar IDs ni geometría y devuelve `{document, migratedFrom}`. `validateDocument` acepta sólo la versión vigente. Una versión desconocida falla con `UNSUPPORTED_VERSION`; el editor conserva el contenido original, pausa el guardado y ofrece exportarlo. Cada migración nueva se agrega a `MIGRATIONS` en `engine.ts` con su fixture en `packages/core/test/fixtures/`.
+`openDocument(input)` abre las versiones de 1.0.0 a 1.7.0 (`READABLE_VERSIONS`), las migra en memoria sin tocar IDs ni geometría y devuelve `{document, migratedFrom}`. `validateDocument` acepta sólo la versión vigente. Una versión desconocida falla con `UNSUPPORTED_VERSION`; el editor conserva el contenido original, pausa el guardado y ofrece exportarlo. Cada migración nueva se agrega a `MIGRATIONS` en `engine.ts` con pruebas de conservación de contenido. De 1.6.0 a 1.7.0, los pasos sin cámara reciben `focus: auto` y `transition: smooth`; la revisión y el historial permanecen iguales.
 
 `CAPABILITIES` enumera versión, acciones, tipos, puertos y límites reales. El MCP lo devuelve en `get_schema` y el gateway lo incluye en el prompt de sistema. No anunciar operaciones fuera de esa lista.
 
@@ -54,13 +54,19 @@ Sólo es válido si esos IDs existen y el resultado cabe dentro de la zona. Ejem
 
 **Placement:** sin `inside`, un nodo ubicado junto a otro hereda la zona de ese vecino si cabe en ella. `inside` (ID de zona) o `insideLabel` (label; con zonas homónimas falla con `AMBIGUOUS_ZONE` y lista los IDs), más a lo sumo una referencia entre `below`, `above`, `rightOf`, `leftOf`, y `gap`. Si el lugar está ocupado se avanza en la misma dirección hasta quedar libre; si no hay lugar dentro de la zona, `NO_SPACE` con explicación.
 
-Pendientes: variables y triggers con expresiones, tracks de animación, constraints persistentes de layout, storage externo de assets. No anunciarlos como soportados.
+Pendientes: variables y triggers con expresiones, constraints persistentes de layout, storage externo de assets. No anunciarlos como soportados.
 
 ## Animación: escenarios y estados
 
 `resolveScenario(animation, scenarioId)` devuelve la rama: pasos comunes más los del escenario, en orden. `statesAt(animation, index)` devuelve el estado de cada nodo al llegar a ese paso (gana la última asignación del recorrido). Varios `edgeIds` en un paso se recorren en paralelo. Todo es determinista y descriptivo: no se evalúan expresiones ni se ejecuta ningún sistema.
 
-## Assets
+## Cámara por paso (1.7.0, ADR 067)
+
+`stepCamera(document, animation, index)` calcula el encuadre de forma determinista. `focus` admite auto (mitad del diagrama como contexto mínimo), close (lo resaltado con margen), medium (30 % de contexto mínimo), wide (50 %), overview (todo el contenido, incluidos trazos) y stay (encuadre del paso anterior de la rama visible). Una pista camera con frame tiene prioridad sobre el frame del paso; un frame manda sobre focus. Los resaltados de pistas highlight se incluyen. Sin elementos resaltados se muestra todo.
+
+`transition` admite smooth (900 ms), slow (1800 ms) y cut (0 ms). Editor y presentación usan el mismo encuadre; el PDF de presentación conserva el destino de cada paso. El seguimiento del editor es opcional. Pausar detiene el viaje en curso; pan, zoom y cambio de pestaña cancelan el movimiento pendiente. Reduced-motion aplica el destino directamente. El encuadre, el tiempo y la preferencia de seguimiento son estado de interfaz: sólo editar la intención de cámara del paso genera una acción y una revisión.
+
+## Assets: contenido y seguridad
 
 `inspectAsset` verifica tamaño, firma del formato y, para SVG, que sea estático (sin `script`, manejadores `on*`, `foreignObject`, `use`, `image`, enlaces ni `url()` externos). Se ejecuta al agregar y al abrir un documento. El editor dibuja todo asset con `<image>`, donde el navegador no ejecuta scripts ni hace pedidos. El ledger de idempotencia guarda la huella de la imagen, no su contenido. `getContext` describe los assets (tipo, tamaño) sin incluir `data`.
 

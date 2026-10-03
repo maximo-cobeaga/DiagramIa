@@ -1,5 +1,5 @@
 import {renderToStaticMarkup} from 'react-dom/server';
-import {ASSET_TYPES,MAX_ASSET_BYTES,describeError,documentBounds,openDocument,resolveMembership,resolveScenario,sampleAnimation,sampleTrackEffects,statesAt,stepStarts,type DiagramAsset,type DiagramDocument,type Rect} from '@diagramia/core';
+import {ASSET_TYPES,MAX_ASSET_BYTES,describeError,documentBounds,openDocument,resolveMembership,resolveScenario,sampleAnimation,sampleTrackEffects,statesAt,stepCamera,stepStarts,type DiagramAsset,type DiagramDocument,type Rect} from '@diagramia/core';
 import {exportMarkdown,exportMermaid,importMermaid,exportDrawio,importDrawio,exportDot,importDot,exportPlantUml,importPlantUml,exportBpmn,importBpmn,type InteropReport} from '@diagramia/interop';
 import {DIAGRAM_CSS,DiagramLayer,type LayerProps} from './canvas/DiagramLayer';
 import {documentStore,newId,notify,replaceDocument,transact} from './store/documentStore';
@@ -59,8 +59,7 @@ async function exportPdf(doc:DiagramDocument,presentation=false){
   const animation=presentation&&raw?resolveScenario(raw,playback.scenarioId):null;
   const slides:{title:string;bounds?:Rect;layer?:Partial<LayerProps>}[]=animation?animation.steps.map((step,index)=>{
     const time=stepStarts(animation)[index]+Math.min(1,step.durationMs-1),sample=sampleAnimation(animation,time),effects=sampleTrackEffects(animation,time);
-    const frameId=effects.frameId??step.frameId;
-    return {title:[step.caption,...effects.captions].filter(Boolean).join(' · '),bounds:doc.frames.find(f=>f.id===frameId)?.bounds,
+    return {title:[step.caption,...effects.captions].filter(Boolean).join(' · '),bounds:stepCamera(doc,animation,index).bounds??undefined,
       layer:{states:statesAt(animation,index),activeNodes:new Set([...sample.step.nodeIds,...effects.nodeIds]),activeEdges:new Set([...sample.step.edgeIds,...effects.edgeIds]),failed:step.tone==='failure',progress:.65}};
   }):presentation&&doc.frames.length?doc.frames.map(frame=>({title:frame.label,bounds:frame.bounds})): [{title:doc.title}];
   if(slides.length>100)throw new Error('La presentación supera 100 páginas. Dividila antes de exportarla.');

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.6.0",
+  "schemaVersion": "1.7.0",
   "id": "login-flow",
   "title": "Inicio de sesión",
   "revision": 0,
@@ -21,6 +21,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": "actor",
       "style": {},
       "details": ""
@@ -42,6 +43,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -63,6 +65,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -84,6 +87,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -105,6 +109,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": "diamond",
       "style": {},
       "details": ""
@@ -126,6 +131,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -147,6 +153,7 @@
       "subtitle": "",
       "assetId": null,
       "icon": null,
+      "link": null,
       "shape": null,
       "style": {},
       "details": ""
@@ -343,7 +350,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "send",
@@ -359,7 +368,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "lookup",
@@ -375,7 +386,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "decide",
@@ -390,7 +403,9 @@
           "tone": "normal",
           "frameId": null,
           "scenarioIds": [],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "allow",
@@ -409,7 +424,9 @@
           "scenarioIds": [
             "accepted"
           ],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         },
         {
           "id": "reject",
@@ -428,7 +445,9 @@
           "scenarioIds": [
             "rejected"
           ],
-          "states": []
+          "states": [],
+          "focus": "auto",
+          "transition": "smooth"
         }
       ],
       "tracks": [

@@ -5,9 +5,10 @@ import architecture from '../../../examples/architecture.diagramia.json';
 import success from '../../../examples/checkout-success.diagramia.json';
 import failure from '../../../examples/checkout-failure.diagramia.json';
 import login from '../../../examples/login.diagramia.json';
+import sanPancho from '../../../examples/san-pancho.diagramia.json';
 import {useStore} from './store/createStore';
 import {HISTORY_LIMIT,MAX_TABS,addTab,closeTab,dismissExternalChange,documentStore,loadExternalChange,redo,releaseRecovery,retrySave,switchTab,undo} from './store/documentStore';
-import {playbackStore,usePlaybackClock} from './store/playbackStore';
+import {playbackStore,useCameraFollow,usePlaybackClock} from './store/playbackStore';
 import {select,selectionStore} from './store/selectionStore';
 import {setTheme,viewStore,zoomAt,zoomBy,type Panel,type Tool} from './store/viewStore';
 import {deleteSelection,designAll,fitAll} from './commands';
@@ -30,7 +31,7 @@ import {accountStore,refreshAccount,signIn} from './store/accountStore';
 import {browserOptOut,setTelemetryEnabled,startTelemetry,telemetryEnabled,track,trackReopened} from './telemetry';
 import './styles.css';
 
-const TEMPLATES:[string,unknown,string][]=[['Arquitectura SaaS',architecture,'saas-architecture'],['Compra confirmada',success,'checkout-success'],['Rechazo y recuperación',failure,'checkout-failure'],['Inicio de sesión',login,'login']];
+const TEMPLATES:[string,unknown,string][]=[['Arquitectura SaaS',architecture,'saas-architecture'],['Compra confirmada',success,'checkout-success'],['Rechazo y recuperación',failure,'checkout-failure'],['Inicio de sesión',login,'login'],['San Pancho · viaje de 10 días',sanPancho,'san-pancho']];
 // Iconos de 16 × 16 dibujados con trazo.
 const TOOLS:[Tool,string,string,string][]=[
   ['select','Mover','V','M3 2l9 5-4 1.5L6.5 13z'],
@@ -188,7 +189,7 @@ function SidePanel(){
 
 function App(){
   const {presenting,tutorial,sideOpen}=useStore(viewStore);
-  useShortcuts();usePlaybackClock();
+  useShortcuts();usePlaybackClock();useCameraFollow();
   // La primera vez se ofrece el recorrido; después queda en el botón «?».
   useEffect(()=>{if(!tutorialSeen())viewStore.set({tutorial:true});void refreshAccount();},[]);
   return <>

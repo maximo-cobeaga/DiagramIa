@@ -22,6 +22,8 @@ Tinta #141619, papel #F4F6F8, azul #245CF6, lima #D4F246. Manrope para texto; IB
 - reduced-motion elimina movimiento automático decorativo; la reproducción explícitamente solicitada sigue accesible.
 - Scroll nativo. No secuestrar rueda, no impedir retroceder, no esconder contenido por falta de JS.
 
+La cámara narrativa se edita en «Ajustes del paso»: enfoque y transición. «Seguir con la cámara» controla el canvas del editor; Presentar usa su cámara independiente. El viaje interpola el centro de la vista y se aleja entre elementos lejanos antes de acercarse al destino. Pausa y movimiento manual cancelan el viaje pendiente; una pestaña nueva no hereda ese movimiento. Con reduced-motion se conserva el encuadre y se elimina la transición.
+
 ## Escenarios de referencia
 
 Compra confirmada: inventario → pasarela → autorización → pedido → fan-out de email/envío/auditoría. Rechazo: pendiente → aviso → otro medio → retry a pasarela → recuperación. Rama alternativa de expiración/cancelación/liberación de stock.

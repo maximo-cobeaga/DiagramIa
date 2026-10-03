@@ -80,7 +80,7 @@ export class AccountRepository{
   }
 
   /** Reserva de créditos bajo lock de usuario; una segunda petición con el mismo ID recupera el recibo durable. */
-  async reserveCredits(userId:string,requestId:string,fingerprint:string,credits:1|2,at=new Date()):Promise<{replayed:unknown|null}>{
+  async reserveCredits(userId:string,requestId:string,fingerprint:string,credits:0|1|2,at=new Date()):Promise<{replayed:unknown|null}>{
     return tx(this.pool,async client=>{
       const {day,month}=period(at),expiresAt=new Date(at.getTime()+900_000);
       await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[userId]);
@@ -98,7 +98,7 @@ export class AccountRepository{
                 coalesce(sum(credits) FILTER (WHERE created_at >= $3 AND created_at <= $4),0)::text AS monthly
          FROM ai_credit_receipts WHERE user_id=$1 AND status<>'released'`,[userId,day,month,at]);
       const {daily,monthly}=usage.rows[0]!;
-      if(Number(daily)+credits>6||Number(monthly)+credits>20)throw new CreditError('CREDIT_LIMIT','Se agotaron los créditos de IA: máximo 6 por día y 20 por mes.');
+      if(credits>0&&(Number(daily)+credits>6||Number(monthly)+credits>20))throw new CreditError('CREDIT_LIMIT','Se agotaron los créditos de IA: máximo 6 por día y 20 por mes.');
       if(old)await client.query("UPDATE ai_credit_receipts SET status='reserved',response=NULL,created_at=$3,expires_at=$4 WHERE user_id=$1 AND request_id=$2",[userId,requestId,at,expiresAt]);
       else await client.query("INSERT INTO ai_credit_receipts (user_id,request_id,fingerprint,credits,status,created_at,expires_at) VALUES ($1,$2,$3,$4,'reserved',$5,$6)",[userId,requestId,fingerprint,credits,at,expiresAt]);
       return {replayed:null};

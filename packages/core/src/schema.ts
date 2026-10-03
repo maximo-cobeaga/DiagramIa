@@ -1,7 +1,7 @@
 import {z} from 'zod';
 
-export const SCHEMA_VERSION='1.6.0';
-export const READABLE_VERSIONS=['1.0.0','1.1.0','1.2.0','1.3.0','1.4.0','1.5.0','1.6.0'] as const;
+export const SCHEMA_VERSION='1.7.0';
+export const READABLE_VERSIONS=['1.0.0','1.1.0','1.2.0','1.3.0','1.4.0','1.5.0','1.6.0','1.7.0'] as const;
 
 export const Id=z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/);
 const Label=z.string().min(1).max(200);
@@ -58,9 +58,13 @@ export const AnnotationSchema=z.strictObject({id:Id,...annotationFields,targetId
 // Un escenario es una rama con nombre de la misma animación; un estado es la etiqueta que un nodo muestra desde ese paso en adelante.
 const scenarioFields={label:Label,description:z.string().max(300)};
 export const ScenarioSchema=z.strictObject({id:Id,...scenarioFields,description:scenarioFields.description.default('')});
+// Cámara de un paso (1.7.0): a qué distancia mira lo que el paso resalta y cómo llega hasta ahí.
+// auto: con frame, el frame; si no, lo resaltado con buena parte del diagrama alrededor. stay: no mueve la vista.
+export const STEP_FOCUS=['auto','close','medium','wide','overview','stay'] as const;
+export const STEP_TRANSITIONS=['smooth','slow','cut'] as const;
 export const StepStateSchema=z.strictObject({nodeId:Id,label:z.string().min(1).max(40),tone:z.enum(['normal','failure']).default('normal')});
-const stepFields={caption:z.string().max(500),durationMs:z.number().int().min(100).max(30000),nodeIds:z.array(Id).max(100),edgeIds:z.array(Id).max(100),tone:z.enum(['normal','failure']),frameId:Id.nullable(),scenarioIds:z.array(Id).max(20),states:z.array(StepStateSchema).max(20)};
-export const StepSchema=z.strictObject({id:Id,...stepFields,tone:stepFields.tone.default('normal'),frameId:stepFields.frameId.default(null),scenarioIds:stepFields.scenarioIds.default([]),states:stepFields.states.default([])});
+const stepFields={caption:z.string().max(500),durationMs:z.number().int().min(100).max(30000),nodeIds:z.array(Id).max(100),edgeIds:z.array(Id).max(100),tone:z.enum(['normal','failure']),frameId:Id.nullable(),scenarioIds:z.array(Id).max(20),states:z.array(StepStateSchema).max(20),focus:z.enum(STEP_FOCUS),transition:z.enum(STEP_TRANSITIONS)};
+export const StepSchema=z.strictObject({id:Id,...stepFields,tone:stepFields.tone.default('normal'),frameId:stepFields.frameId.default(null),scenarioIds:stepFields.scenarioIds.default([]),states:stepFields.states.default([]),focus:stepFields.focus.default('auto'),transition:stepFields.transition.default('smooth')});
 const trackClipFields={stepId:Id,nodeIds:z.array(Id).max(100),edgeIds:z.array(Id).max(100),caption:z.string().max(500),frameId:Id.nullable()};
 export const TrackClipSchema=z.strictObject({id:Id,stepId:Id,nodeIds:trackClipFields.nodeIds.default([]),edgeIds:trackClipFields.edgeIds.default([]),caption:trackClipFields.caption.default(''),frameId:trackClipFields.frameId.default(null)});
 export const AnimationTrackSchema=z.strictObject({id:Id,label:Label,kind:z.enum(['highlight','caption','camera']),clips:z.array(TrackClipSchema).max(200).default([])});
@@ -156,7 +160,7 @@ export type ActionBatchInput=z.input<typeof BatchSchema>;
 export const ACTION_TYPES=ActionSchema.options.map(option=>option.shape.type.value);
 // Sólo se anuncian operaciones que el engine ejecuta hoy. `custom` se valida pero se dibuja como caja genérica.
 export const CAPABILITIES={
-  schemaVersion:SCHEMA_VERSION,readableVersions:READABLE_VERSIONS,actions:ACTION_TYPES,nodeKinds:NODE_KINDS,shapes:SHAPES,arrows:ARROWS,lines:LINES,trackKinds:['highlight','caption','camera'],ports:PORTS,icons:ICONS,assetTypes:ASSET_TYPES,
+  schemaVersion:SCHEMA_VERSION,readableVersions:READABLE_VERSIONS,actions:ACTION_TYPES,nodeKinds:NODE_KINDS,shapes:SHAPES,arrows:ARROWS,lines:LINES,trackKinds:['highlight','caption','camera'],stepFocus:STEP_FOCUS,stepTransitions:STEP_TRANSITIONS,ports:PORTS,icons:ICONS,assetTypes:ASSET_TYPES,
   reservedNodeKinds:['custom'],
   limits:{assets:40,assetBytes:MAX_ASSET_BYTES,annotations:500,scenariosPerAnimation:20,nodes:2000,edges:4000,drawings:2000,zones:200,groups:500,frames:200,animations:100,stepsPerAnimation:200,tracksPerAnimation:12,clipsPerTrack:200,actionsPerBatch:200,idempotencyLedger:100,animationMs:600000}
 } as const;
