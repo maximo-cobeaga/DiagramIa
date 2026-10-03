@@ -15,3 +15,4 @@ integrations/*.generated.toml
 state/smoke/
 state/usage-ledger.json
 state/backups/
+state/perf/
