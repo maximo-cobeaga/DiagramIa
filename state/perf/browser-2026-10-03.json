@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-03T02:38:32.459Z",
+  "browser": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "results": [
+    {
+      "nodes": 100,
+      "edges": 132,
+      "shown": 100,
+      "loadMs": 146,
+      "dragFrameMedianMs": 50,
+      "dragFrameP95Ms": 52,
+      "dragLongTasks": 0,
+      "dragLongestMs": 0,
+      "zoomFrameMedianMs": 67,
+      "zoomLongTasks": 0
+    },
+    {
+      "nodes": 500,
+      "edges": 665,
+      "shown": 500,
+      "loadMs": 208,
+      "dragFrameMedianMs": 51,
+      "dragFrameP95Ms": 71,
+      "dragLongTasks": 0,
+      "dragLongestMs": 0,
+      "zoomFrameMedianMs": 66,
+      "zoomLongTasks": 0
+    },
+    {
+      "nodes": 1999,
+      "edges": 2664,
+      "shown": 1999,
+      "loadMs": 399,
+      "dragFrameMedianMs": 100,
+      "dragFrameP95Ms": 245,
+      "dragLongTasks": 23,
+      "dragLongestMs": 162,
+      "zoomFrameMedianMs": 132,
+      "zoomLongTasks": 10
+    }
+  ]
+}

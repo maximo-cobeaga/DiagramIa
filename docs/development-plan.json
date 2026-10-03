@@ -503,7 +503,8 @@
             "apps/api"
           ],
           "acceptance": "Presupuesto de performance registrado con equipo/browser; no bloqueos críticos; validación no depende de renderer.",
-          "status": "pending"
+          "status": "implemented",
+          "evidence": "02/10/2026 (ADR 054): `npm run perf:core` y `npm run perf:browser` con 100/500/1999 nodos; presupuesto registrado con equipo y navegador en docs/PERFORMANCE.md. El ruteo pasó de 222 a 72 ms con 1999 nodos (de 51 a 12 ms con 100) con rutas idénticas; en producción, arrastre y zoom sin tareas largas hasta 500 nodos. Smoke 33/33 contra el build de producción. Falta: medir en un equipo modesto y en un teléfono real."
         },
         {
           "id": "P8.3",

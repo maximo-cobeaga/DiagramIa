@@ -75,6 +75,40 @@ function bezier(S:Point,dirS:Point,E:Point,dirE:Point):Point[]{
 
 type End={side:Side;point:Point};
 /**
+ * Índice espacial en grilla. `query` devuelve, en orden creciente, un superconjunto de los elementos cuyo rectángulo
+ * toca la zona pedida (bordes incluidos); quien consulta aplica después su propio criterio exacto. Así el resultado es
+ * idéntico al de recorrer todo, pero cada consulta mira sólo los vecinos.
+ */
+class Grid{
+  private cells=new Map<number,number[]>();private stamp=new Uint32Array(64);private epoch=0;
+  constructor(private readonly size=256){}
+  private span(r:Rect){return [Math.floor(r.x/this.size),Math.floor((r.x+r.width)/this.size),Math.floor(r.y/this.size),Math.floor((r.y+r.height)/this.size)] as const;}
+  // Clave numérica por celda: las coordenadas del documento están acotadas muy por debajo de 2^20 celdas por eje.
+  private key(x:number,y:number){return (x+1_048_576)*2_097_152+(y+1_048_576);}
+  add(index:number,r:Rect){
+    if(index>=this.stamp.length){const grown=new Uint32Array(Math.max(index+1,this.stamp.length*2));grown.set(this.stamp);this.stamp=grown;}
+    const [x0,x1,y0,y1]=this.span(r);
+    for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){const key=this.key(x,y),cell=this.cells.get(key);if(cell)cell.push(index);else this.cells.set(key,[index]);}
+  }
+  query(r:Rect):number[]{
+    const [x0,x1,y0,y1]=this.span(r),found:number[]=[],epoch=++this.epoch;
+    for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){
+      const cell=this.cells.get(this.key(x,y));if(!cell)continue;
+      for(const index of cell)if(this.stamp[index]!==epoch){this.stamp[index]=epoch;found.push(index);}
+    }
+    return found.length>1?found.sort((a,b)=>a-b):found;
+  }
+}
+const segmentBox=(s:Segment):Rect=>({x:Math.min(s.a.x,s.b.x),y:Math.min(s.a.y,s.b.y),width:Math.abs(s.a.x-s.b.x),height:Math.abs(s.a.y-s.b.y)});
+type Obstacles={grid:Grid;rects:Rect[]};
+/** Tramos ya trazados, indexados para contar rápido los que irían encimados. */
+class Lanes{
+  readonly list:Segment[]=[];private grid=new Grid();
+  add(segment:Segment){this.grid.add(this.list.length,segmentBox(segment));this.list.push(segment);}
+  /** Superconjunto de los tramos que sharedLength puede contar: paralelos a 5 px o menos, por eso la consulta se infla 5 px. */
+  near(segment:Segment){const box=segmentBox(segment);return this.grid.query({x:box.x-5,y:box.y-5,width:box.width+10,height:box.height+10}).map(i=>this.list[i]!);}
+}
+/**
  * Rutas de todas las conexiones, calculadas juntas y de forma determinista. Las conexiones que comparten un lado de un nodo
  * se reparten a lo largo de ese lado; cada ruta evita cruzar nodos y, si puede, no va encimada sobre otra ya trazada.
  * También ubica cada etiqueta donde no tape nodos ni otras etiquetas.
@@ -87,6 +121,7 @@ export function routeAll(d:DiagramDocument):Map<string,Routed>{
 }
 function computeRoutes(d:DiagramDocument):Map<string,Routed>{
   const rects=new Map(d.nodes.map(n=>[n.id,nodeRect(n)])),nodes=new Map(d.nodes.map(n=>[n.id,n])),out=new Map<string,Routed>();
+  const obstacles:Obstacles={grid:new Grid(),rects:d.nodes.map(nodeRect)};obstacles.rects.forEach((r,i)=>obstacles.grid.add(i,r));
   const center=(r:Rect):Point=>({x:r.x+r.width/2,y:r.y+r.height/2});
   // 1. Lado de salida y llegada de cada conexión, y reparto a lo largo de cada lado.
   const ends=new Map<string,{from:End;to:End}>(),slots=new Map<string,{edge:DiagramEdge;end:'from'|'to';order:number}[]>();
@@ -108,7 +143,7 @@ function computeRoutes(d:DiagramDocument):Map<string,Routed>{
     list.forEach((slot,i)=>{ends.get(slot.edge.id)![slot.end].point=sidePoint(r,side,(i+1)/(list.length+1));});
   }
   // 2. Ruta de cada conexión, en el orden del documento.
-  const used:Segment[]=[],careful=d.edges.length<=250;
+  const used=new Lanes(),careful=d.edges.length<=250;
   for(const e of d.edges){
     const a=rects.get(e.from),b=rects.get(e.to);if(!a||!b)continue;
     let points:Point[];
@@ -122,13 +157,13 @@ function computeRoutes(d:DiagramDocument):Map<string,Routed>{
         const S=e.fromAnchor||e.fromPort!=='auto'?from.point:borderToward(a,e.toAnchor||e.toPort!=='auto'?to.point:center(b)),E=e.toAnchor||e.toPort!=='auto'?to.point:borderToward(b,S);
         points=[S,E];
       }else if(e.line==='curved')points=bezier(from.point,DIR[from.side],to.point,DIR[to.side]);
-      else points=orthogonal(d,e,a,b,from,to,careful?used:[]);
+      else points=orthogonal(d,e,a,b,from,to,careful?used:null,obstacles);
     }
-    if(careful&&e.line==='orthogonal')for(let i=1;i<points.length;i++)used.push({a:points[i-1],b:points[i]});
+    if(careful&&e.line==='orthogonal')for(let i=1;i<points.length;i++)used.add({a:points[i-1],b:points[i]});
     out.set(e.id,{points,label:null});
   }
   // 3. Etiquetas: sobre la ruta, en el primer lugar que no tape un nodo ni otra etiqueta.
-  const placed:Rect[]=[],boxes=[...rects.values()];
+  const placed:Rect[]=[],placedGrid=new Grid();
   for(const e of d.edges){
     const routed=out.get(e.id);if(!routed||!e.label)continue;
     const width=textWidth(e.label,e.style.fontSize??11,true)+10,height=(e.style.fontSize??11)+7;
@@ -136,22 +171,23 @@ function computeRoutes(d:DiagramDocument):Map<string,Routed>{
     for(const t of [.5,.38,.62,.26,.74,.16,.84]){
       const p=pointOnPolyline(routed.points,t),at={x:p.x,y:p.y-8},box={x:at.x-width/2,y:at.y-height+3,width,height};
       fallback??=at;
-      if(boxes.some(r=>overlaps(r,box))||placed.some(r=>overlaps(r,box)))continue;
-      chosen=at;placed.push(box);break;
+      if(obstacles.grid.query(box).some(i=>overlaps(obstacles.rects[i],box))||placedGrid.query(box).some(i=>overlaps(placed[i],box)))continue;
+      chosen=at;placedGrid.add(placed.length,box);placed.push(box);break;
     }
     routed.label=chosen??fallback;
   }
   return out;
 }
 
-function orthogonal(d:DiagramDocument,e:DiagramEdge,a:Rect,b:Rect,from:End,to:End,used:Segment[]):Point[]{
+function orthogonal(d:DiagramDocument,e:DiagramEdge,a:Rect,b:Rect,from:End,to:End,used:Lanes|null,index:Obstacles):Point[]{
   const S=from.point,E=to.point,P={x:S.x+DIR[from.side].x*STUB,y:S.y+DIR[from.side].y*STUB},Q={x:E.x+DIR[to.side].x*STUB,y:E.y+DIR[to.side].y*STUB};
   const area:Rect={x:Math.min(S.x,E.x)-80,y:Math.min(S.y,E.y)-80,width:Math.abs(S.x-E.x)+160,height:Math.abs(S.y-E.y)+160};
-  const near=d.nodes.filter(n=>n.id!==e.from&&n.id!==e.to&&shapeOf(n)!=='text'&&overlaps(area,nodeRect(n))).slice(0,24).map(nodeRect);
+  // Los primeros 24 en orden de documento, igual que al recorrer todos los nodos.
+  const near=index.grid.query(area).filter(i=>{const n=d.nodes[i]!;return n.id!==e.from&&n.id!==e.to&&shapeOf(n)!=='text'&&overlaps(area,index.rects[i]!);}).slice(0,24).map(i=>index.rects[i]!);
   const obstacles=[...near.map(r=>inset(r,1)),inset(a,2),inset(b,2)];
   const crossings=(points:Point[])=>points.slice(1).reduce((sum,p,i)=>sum+obstacles.filter(r=>segmentHits(points[i],p,r)).length,0);
   // Los tramos que tocan los nodos de los extremos pueden compartirse; se penaliza ir encimado en el resto del recorrido.
-  const stacked=(points:Point[])=>used.length?points.slice(1).reduce((sum,p,i)=>sum+used.filter(u=>sharedLength({a:points[i],b:p},u)>10).length,0):0;
+  const stacked=(points:Point[])=>used?.list.length?points.slice(1).reduce((sum,p,i)=>{const segment={a:points[i]!,b:p};return sum+used.near(segment).filter(u=>sharedLength(segment,u)>10).length;},0):0;
   const build=(middle:Point[])=>simplify([S,P,...middle,Q,E]);
   const viaX=(x:number)=>[{x,y:P.y},{x,y:Q.y}],viaY=(y:number)=>[{x:P.x,y},{x:Q.x,y}];
   const horizontal=DIR[from.side].x!==0,midX=(P.x+Q.x)/2,midY=(P.y+Q.y)/2;
@@ -161,9 +197,16 @@ function orthogonal(d:DiagramDocument,e:DiagramEdge,a:Rect,b:Rect,from:End,to:En
   const candidates=[first,build(preferred[1]),build([{x:Q.x,y:P.y}]),build([{x:P.x,y:Q.y}])];
   for(const shift of [LANE,-LANE,LANE*2,-LANE*2,LANE*3,-LANE*3])candidates.push(build(horizontal?viaX(midX+shift):viaY(midY+shift)));
   for(const r of [...near,a,b])candidates.push(build(viaX(r.x-CLEARANCE)),build(viaX(r.x+r.width+CLEARANCE)),build(viaY(r.y-CLEARANCE)),build(viaY(r.y+r.height+CLEARANCE)));
+  // Todos los términos del puntaje son no negativos: una candidata se descarta en cuanto lo ya sumado no puede ganarle a la mejor.
+  // Mismo resultado que puntuar todo, sin contar cruces ni tramos encimados que no pueden cambiar la elección.
+  const crossingsUpTo=(points:Point[],limit:number)=>{let count=0;for(let i=1;i<points.length;i++)for(const r of obstacles)if(segmentHits(points[i-1]!,points[i]!,r)&&++count>limit)return count;return count;};
   let best=first,bestScore=Infinity;
   for(const c of candidates){
-    const score=crossings(c)*100000+stacked(c)*4000+(c.length-2)*30+pathLength(c);
+    let score=(c.length-2)*30+pathLength(c);
+    if(score>=bestScore)continue;
+    score+=crossingsUpTo(c,Math.floor((bestScore-score)/100000))*100000;
+    if(score>=bestScore)continue;
+    score+=stacked(c)*4000;
     if(score<bestScore){best=c;bestScore=score;}
   }
   return best;
