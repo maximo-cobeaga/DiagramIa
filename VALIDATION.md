@@ -211,3 +211,14 @@ Se generó `docs/Estado_Diagramia_MVP.docx` a partir de `scripts/create-status-d
 # Publicación del repositorio Git (02/10/2026)
 
 Se inicializó Git y se publicó `main` en `https://github.com/maximo-cobeaga/DiagramIa`, repositorio público existente y vacío. `git check-ignore` confirmó que `.env`, `node_modules`, el ledger, respaldos y capturas no entraron al commit; el escaneo de los archivos preparados no encontró claves privadas con los patrones revisados. El informe `.docx` sí está incluido. El primer CI pasó `check` pero falló `database` por compilar API antes de MCP en `smoke:repository`; se corrigió también el orden de `smoke:shared`. `npm run smoke:repository` pasó localmente y el CI del commit `65baaf9` terminó con **`check` y `database` aprobados**. No se probó ningún despliegue.
+
+## Revisión manual pendiente de lo agregado el 02/10/2026 (noche)
+
+Lo siguiente pasó pruebas automáticas y smokes, pero falta tu mirada:
+
+1. **Landing → editor:** `npm run dev:landing` y `npm run dev`. «Crear diagrama» (barra, portada y cierre) abre el editor y la URL queda limpia, sin `aid` ni `sid`.
+2. **Feedback de IA:** después de una respuesta aparece «¿Te sirvió? 👍 👎». Con 👎 se ofrecen motivos y después «Gracias por tu opinión». No debe molestar ni tapar la propuesta.
+3. **Privacidad:** en «Sesión → Privacidad», el interruptor apaga el envío. Con Do Not Track activo en el navegador aparece deshabilitado y explicado.
+4. **Panel del fundador:** con PostgreSQL, cuentas y tu email en `DIAGRAMIA_ADMIN_EMAILS`, `/#fundador` muestra los 10 indicadores. Con datos reales, revisar que las definiciones (ADR 053) respondan tus preguntas.
+5. **Email no verificado:** una cuenta sin verificar recibe «Verificá tu email para usar la IA» y no gasta créditos.
+6. **Rendimiento en tu equipo y tu teléfono:** abrir un diagrama grande y arrastrar o hacer zoom (`docs/PERFORMANCE.md`).

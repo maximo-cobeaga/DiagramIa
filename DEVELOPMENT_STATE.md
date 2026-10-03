@@ -2,6 +2,16 @@
 
 ## Último checkpoint
 
+02/10/2026 (Argentina, noche). Se ejecutó el bloque «antes del lanzamiento» del plan Lean salvo lo bloqueado por credenciales:
+- **P3.1:** adapter GPT-6 Luna, más proveedores por plan.
+- **P7.1–P7.3:** telemetría propia, métricas de IA con 👍/👎 y dashboard del fundador.
+- **P4.4:** antiabuso (email verificado, límites por IP y por cuenta, tope mensual y alerta).
+- **P8.2:** el ruteo bajó a un tercio del tiempo con rutas idénticas.
+- **P8.3:** revisión de seguridad; se corrigió el checksum de migraciones, que dependía del fin de línea.
+- **P8.4:** imágenes, compose de producción y runbook, probados en Docker local con vuelta atrás.
+
+Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se desplegó** ni se usó ningún proveedor pago: faltan `OPENAI_API_KEY`, el tenant de Auth0, la autorización y acceso al VPS, y el dominio. Commits locales en `main`, sin push.
+
 02/10/2026 (Argentina, planificación). El usuario retiró Higgsfield del producto, eligió **GPT-6 Luna** (`gpt-6-luna`, OpenAI) como IA del plan Free, confirmó Auth0 en lugar de Firebase, telemetría propia en PostgreSQL y un orden Lean de ejecución a partir de `DIAGRAMIA_SESION_PRODUCTO_NEGOCIO.md` (ADR 044–048). La fase P7 pasó a ser **Medición y aprendizaje**; P4.4 se redefinió como Free/cuotas/antiabuso y se agregó P4.6 (billing). Sin cambios de código: `npm run check` 88/88 al inicio de la sesión.
 
 02/10/2026 (Argentina). El proyecto se publicó por instrucción del usuario en el repositorio GitHub público `maximo-cobeaga/DiagramIa`, rama `main`. El primer CI reveló un orden de build incorrecto en `smoke:repository`; se corrigió también `smoke:shared`. La ejecución del commit `65baaf9` pasó ambos jobs (`check` y `database`) en GitHub Actions; P4.5 quedó verificada. Esto publica el código, **no despliega la aplicación** ni completa el MVP. El siguiente bloque de producto continúa siendo P4.3.
@@ -9,6 +19,16 @@
 01/10/2026 (Argentina, continuación). Se implementó P5.2: MCP remoto Streamable HTTP con OAuth, autorización por cuenta/proyecto y scopes, conservando stdio. También está implementada P6.3 con import/export PlantUML y BPMN; P4.1, P5.1 y partes de P4.4/P6.4 venían de la sesión anterior. El primer MVP **no está completo**: faltan prueba con Auth0 y hosts MCP reales, P4.3, resto de P4.4/P6.4, P5.3 y cierre de P8. Ver estados por microfase en `BACKLOG.md` y `docs/development-plan.json`.
 
 ## Evidencia
+
+- **Sesión del 02/10 (noche).** Commits `099da82`…`74afa38`. `npm run check` 102/102.
+  - Smokes con PostgreSQL Docker real:
+    - `smoke:repository`: telemetría idempotente, vínculo anónimo→cuenta, email no verificado bloqueado y respaldo.
+    - `smoke:shared`: Chromium + PostgreSQL, 11 eventos reales guardados sin título ni email.
+    - `smoke:dashboard`: 10 indicadores iguales al cálculo manual, 403 a otras cuentas, vista sin desborde.
+  - `npm run smoke` 33/33 tres veces: con el editor de desarrollo, con el build de producción y gateway de demostración (IA incluida), y contra el contenedor de producción con CSP estricta.
+  - Pila de producción probada en Docker local: IP real a través de dos proxies, respaldo restaurado y vuelta atrás. Detalle en `infra/DEPLOY.md`.
+  - Rendimiento medido en `docs/PERFORMANCE.md`.
+  - La landing se verificó en Chrome headless: «Crear diagrama» lleva `aid`, `sid` y UTM.
 
 - GitHub Actions en `65baaf9`: jobs `check` y `database` aprobados después de corregir el orden de compilación MCP→API en dos scripts de smoke. `npm run smoke:repository` también pasó localmente tras la corrección. El repositorio remoto y `main` apuntan al mismo commit antes de este registro documental.
 
@@ -36,20 +56,29 @@
 - **Core 1.5.0** (`packages/core`, en módulos): migraciones 1.0.0→1.1.0→1.2.0→1.3.0→1.4.0→1.5.0, dibujos libres editables, pistas de resaltado/texto/cámara sincronizadas por paso, acciones canónicas, formas y estilos editables, enganches libres en bordes y puntas/líneas, escenarios y estados, assets verificados, routing, layout con espacio para etiquetas, placement con colisiones, pertenencia a zonas, contexto por selección y biblioteca.
 - **Editor** (`apps/editor/src`): stores separados, guardado recuperable, canvas editable, paleta de arquitectura/flujo/UML, texto en el lugar, inspector, timeline con grilla de pistas, presentación, biblioteca, chat de IA con staging, pestañas independientes, modo oscuro, panel plegable, tutorial y catálogo móvil plegable; import/export (JSON, Mermaid, SVG, PNG, Markdown, timeline).
 - **Interop** (`packages/interop`): Mermaid, draw.io, DOT, PlantUML (clases/secuencia/estados simples), BPMN (proceso básico) y Markdown, con reportes de pérdidas.
-- **IA** (`packages/providers`, `apps/api`): gateway local en loopback, adapters Claude / compatible OpenAI / demostración, modo Crear por inventario convertido a acciones del core, reparación acotada, presupuesto, rate limit, idempotencia y cancelación.
+- **IA** (`packages/providers`, `apps/api`): gateway, adapters GPT-6 Luna (structured outputs estrictos, costo con caché) / Claude / compatible OpenAI / demostración, proveedores por plan, modo Crear por inventario convertido a acciones del core, reparación acotada, presupuesto, rate limit, idempotencia y cancelación.
 - **MCP**: lee versiones anteriores, anuncia capabilities, errores estructurados, contexto por selección.
 - **Documentos backend (P4.2)**: repositorio PostgreSQL con migración versionada, CAS, versiones inmutables, restore, auditoría y recibos durables; rutas HTTP protegidas por token del servidor, activables con variables de entorno. `smoke:repository` prueba la recuperación en otra instancia.
 - **Cuenta y proyecto (P4.1)**: login OIDC Authorization Code con PKCE, sesiones en PostgreSQL, proyectos privados, aislamiento A/B y cookies HttpOnly. El proveedor elegido es Auth0 Universal Login, pero sólo se probó contra un issuer local firmado; falta configurar y probar un tenant real.
 - **Documento compartido (P5.1)**: el editor se conecta por el gateway a documentos locales o de cuenta; MCP stdio usa la API con token sólo del servidor. Cola de cambios, recibos, revisiones, polling, restore/undo y recuperación de conflictos, probados en Chromium y PostgreSQL.
 - **MCP remoto (P5.2)**: `/mcp` usa Streamable HTTP y OAuth bearer con JWT RS256/JWKS, audience exacta, scopes y autorización por proyecto. Los metadatos del recurso se publican para discovery. Probado localmente con cliente MCP oficial; la conexión externa requiere configurar issuer, audience, proxy y hosts.
-- **Free parcial (P4.4)**: 3 documentos, 10 MB por documento y 30 MB por proyecto, 20 créditos IA mensuales y 6 diarios por usuario. Reserva antes del proveedor e idempotencia durable. No hay Pro, billing ni BYOK.
+- **Free y antiabuso (P4.4)**: 3 documentos, 10 MB por documento y 30 MB por proyecto, 20 créditos IA mensuales y 6 diarios por usuario. Además, email verificado, 20 pedidos/min por IP y 6 por cuenta, reserva USD de pedidos en curso, tope diario y mensual (20 USD) con alerta al 80 %. Pro, billing y BYOK pasan a P4.6.
+- **Medición (P7.1–P7.3)**: contrato de eventos sin texto libre, ingesta `/v1/events`, cliente del editor con DNT/GPC y opt-out, landing con «Crear diagrama», `ai_request` del servidor, 👍/👎 con motivo, agregados diarios y `/#fundador` con los 10 indicadores. Ver `docs/TELEMETRIA.md`.
+- **Despliegue preparado (P8.4)**: `infra/Dockerfile`, `compose.prod.yml`, `nginx.conf`, `backup.sh` y `DEPLOY.md`, probados en local. Sin desplegar.
 - **Export P6.4 parcial**: SVG, PNG y PDF estático; PDF multipágina de pasos de presentación. No exporta movimiento temporal ni video.
 - **Interop P6.2**: import/export draw.io XML plano o comprimido y Graphviz DOT en subconjuntos editables, con límites, errores recuperables y reportes de pérdidas; también avisan que omiten trazos libres. Controles de import/export en editor. Mapping en `docs/INTEROP.md`.
 - **Interop P6.3**: import/export PlantUML de clases, secuencia y estados simples, y BPMN de proceso básico no ejecutable; referencias válidas, geometría DI conservada cuando está completa y errores atómicos. Cuatro fixtures de importación en `examples/`.
 
 ## Qué está pendiente
 
-Antes del lanzamiento: adapter GPT-6 Luna (P3.1), medición (P7.1–P7.3), cuenta real y antiabuso (P4.1/P4.4), P8.2–P8.4. Después: billing (P4.6), agente Data/Product (P7.4), assets en almacenamiento (P4.3), P5.3 y export temporal de P6.4. P8.1 sigue parcial. P5.2 requiere prueba externa con Auth0/proxy/hosts; P6.3 requiere revisión manual con archivos externos variados. P4.1/P5.1 requieren revisión manual con Auth0 y dos dispositivos; P2.4 requiere revisión de usabilidad. El motor detecta las superposiciones modeladas, pero aún no garantiza que todas las curvas/rutas manuales o cruces entre conexiones queden libres.
+- **Bloqueado por accesos externos:** smoke real de Luna y medición de costo, Auth0 real, despliegue (P8.4) y hosts MCP (P5.3).
+- **Antes de lanzar:**
+  - aviso de privacidad y decisión sobre consentimiento en la UE;
+  - licencia del código;
+  - canal para la alerta de gasto;
+  - revisión manual del usuario de P1, P2, P4.1, P5.1, P6.3, P7 y P8.1.
+- **Después de lanzar, según datos:** billing con Paddle (P4.6), agente Data/Product (P7.4), assets en almacenamiento (P4.3), export temporal (P6.4), recorte por viewport para más de 500 nodos, y CAPTCHA o señales de riesgo si aparece abuso.
+- **Límite conocido:** el motor detecta las superposiciones modeladas, pero no garantiza que todas las curvas, rutas manuales o cruces entre conexiones queden libres.
 
 ## Bloqueos externos concretos
 
@@ -57,13 +86,14 @@ Antes del lanzamiento: adapter GPT-6 Luna (P3.1), medición (P7.1–P7.3), cuent
 - **Claude (alternativo, no bloquea):** falta `ANTHROPIC_API_KEY`. Con la key: crear `.env` en la raíz con `ANTHROPIC_API_KEY=...`, `npm run api`, y `npm run smoke:ai -- anthropic`. Si pasa, P3.1 queda verificada. El proveedor local ya se probó de verdad: `ollama serve` con `OLLAMA_CONTEXT_LENGTH=16384`, y en `.env` `DIAGRAMIA_LOCAL_BASE_URL=http://127.0.0.1:11434/v1`, `DIAGRAMIA_LOCAL_MODEL=qwen2.5-coder:7b`, `DIAGRAMIA_REQUEST_TIMEOUT_MS=420000`.
 - Auth0 real: faltan tenant, client ID/secret y callback registrado. El adapter OIDC, identidad y scoping están implementados y probados con issuer local; no afirmar producción multiusuario sin una prueba real del proveedor y revisión de seguridad/release.
 - MCP remoto real: además de Auth0, faltan API/audience/scopes configurados, proxy HTTPS público y dos hosts OAuth compatibles. El flujo local firmado pasó; el interop externo y la reconexión corresponden a P5.3.
-- Despliegue: sin autorización ni acceso al VPS todavía; no hay despliegue de la aplicación. El repositorio de código sí se publicó en GitHub por instrucción del usuario. No se activaron cobros ni servicios pagos.
+- Despliegue: los artefactos están listos y probados en local (`infra/DEPLOY.md`), pero faltan autorización, acceso al VPS, dominio y `.env.production` con secretos. No hay despliegue de la aplicación. El repositorio de código sí se publicó en GitHub por instrucción del usuario. No se activaron cobros ni servicios pagos.
 
 ## Próxima acción inequívoca
 
-1. **P3.1 — GPT-6 Luna:** extender el adapter compatible con `/chat/completions` para enviar `response_format` `json_schema` estricto y `reasoning_effort` configurable, registrar tokens y costo USD por pedido con la tabla de precios en servidor, agregar `openai` como destino de `npm run smoke:ai` y pruebas de contrato sin red. Con `OPENAI_API_KEY`, correr el smoke real y medir costo/latencia/calidad con varios niveles de razonamiento.
-2. **P7.1:** contrato de eventos en core, emisor por lotes en el editor e ingesta validada en PostgreSQL (ADR 046).
-3. **Revisión manual** (`docs/CUENTA_Y_COMPARTIDO.md` y `VALIDATION.md`) en paralelo; registrar fallas concretas.
+1. **Con `OPENAI_API_KEY`:** `npm run api` y `npm run smoke:ai -- openai`. Repetirlo con `DIAGRAMIA_OPENAI_REASONING_EFFORT` en none, low y medium, y registrar costo por pedido, latencia y calidad. Con eso P3.1 queda verificada y se ajustan los créditos Free.
+2. **Con el tenant de Auth0:** configurar Google y email con verificación obligatoria, y probar el login real (P4.1). Agregar el email del fundador a `DIAGRAMIA_ADMIN_EMAILS`.
+3. **Con autorización, VPS y dominio:** seguir `infra/DEPLOY.md` (P8.4), con respaldo diario por cron y la alerta de gasto conectada.
+4. **Sin bloqueos:** revisión manual del usuario (`VALIDATION.md`, `docs/CUENTA_Y_COMPARTIDO.md`, `/#fundador`), y el texto del aviso de privacidad y la licencia.
 
 ## Servicios externos
 
@@ -88,6 +118,7 @@ Ninguno es necesario para levantar el editor. El gateway de IA sólo llama a un 
 | 01/10/2026 (continuación) | P6.3 implementada | PlantUML clases/secuencia/estados y BPMN proceso básico con import/export, informes de pérdidas, IDs/referencias y geometría BPMN DI. Cuatro ejemplos y ADR 041. | `npm run check`: 88/88; `npm run smoke`: 33/33 Chromium, incluido import/export desde UI. | P5.2 o P4.3; revisar archivos UML/BPMN externos variados |
 | 01/10/2026 (continuación) | P5.2 implementada | MCP remoto Streamable HTTP y OAuth resource server, JWT RS256/JWKS, scopes read/write, audiencia exacta y autorización por proyecto; ADR 042 y guía `docs/MCP_REMOTO.md`. | `npm run check`: 88/88; `npm run smoke:mcp-remote` y `npm run smoke:repository` aprobados. Issuer/JWKS local firmado, sin Auth0 ni host externo. | P4.3; prueba real de Auth0/proxy/hosts y P5.3 |
 | 02/10/2026 (planificación) | Plan reordenado; P4.4, P4.6 y P7 redefinidas | Higgsfield retirado del producto, GPT-6 Luna para Free, Auth0 confirmado, telemetría propia y orden Lean. ADR 044–048; `development-plan.json`, plan, backlog y criterio A16 actualizados; `07_IA_MCP_HIGGSFIELD.md` renombrado a `07_IA_Y_MCP.md`. | `npm run check` 88/88 (sin cambios de código) | P3.1 adapter Luna; P7.1 eventos |
+| 02/10/2026 (noche) | P3.1 (adapter), P4.4, P7.1–P7.3 implementadas; P8.2 implementada; P8.3/P8.4 parciales | Luna con structured outputs, proveedores por plan, telemetría propia y dashboard, antiabuso, ruteo con grilla espacial y poda exacta, checksum de migraciones por LF, artefactos de despliegue. ADR 049–055 | check 102/102; smoke 33/33 ×3 (dev, build prod, contenedor prod); smoke:repository, smoke:shared, smoke:dashboard; prueba de pila prod con respaldo y vuelta atrás | Credenciales (OpenAI, Auth0), autorización de despliegue, revisión manual |
 
 Instalación limpia comprobada previamente con `npm ci` y `npm run check` 73/73. El primer `npm ci` encontró un binario Rolldown abierto por la instancia Vite del smoke; se cerró ese proceso identificado y la segunda instalación aprobó. En esta sesión se verificó el árbol actualizado con 82/82 pruebas; no se repitió `npm ci`.
 
