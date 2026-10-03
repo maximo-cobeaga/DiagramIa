@@ -443,3 +443,9 @@ button.account-chip{display:flex;align-items:center;gap:8px;padding:4px 10px 4px
 .danger-zone input{width:100%;margin:4px 0 8px}
 button.danger{background:#b42318;color:#fff;border-color:#b42318}
 button.danger:disabled{opacity:.5}
+.link-preview{display:grid;gap:8px}
+.link-preview-card{display:grid;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.link-preview-card small{font-family:Plex,monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.link-preview-card strong{font-size:14px;line-height:1.35}
+.link-preview-card p{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
+.link-preview-card .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}

@@ -7,6 +7,7 @@ import {arrange,deleteSelection,duplicate,group,ungroup} from '../commands';
 import {CREATABLE_KINDS,KIND_LABELS,NumberField,SelectField,TextField} from '../ui';
 import {Annotations} from './Annotations';
 import {IconPicker,SaveAsElement,StylePresets} from './Appearance';
+import {LinkPreview} from './LinkPreview';
 import {ARROW_LABELS,EdgeStyleFields,LINE_LABELS,NodeStyleFields,ZoneStyleFields} from './StyleFields';
 
 const SHAPE_LABELS:Record<typeof SHAPES[number],string>={rectangle:'Rectángulo',rounded:'Redondeado',ellipse:'Elipse',circle:'Círculo',diamond:'Rombo',triangle:'Triángulo',hexagon:'Hexágono',parallelogram:'Paralelogramo',trapezoid:'Trapecio',star:'Estrella',cloud:'Nube',cylinder:'Cilindro',note:'Nota',text:'Sólo texto',terminator:'Inicio / fin',document:'Documento',predefined:'Subproceso','manual-input':'Entrada manual',delay:'Espera',actor:'Actor (figura)',class:'Clase UML',package:'Paquete',component:'Componente',start:'Inicio (punto)',end:'Fin (diana)',sticky:'Nota adhesiva',card:'Tarjeta con encabezado',bubble:'Globo de diálogo',pill:'Píldora',avatar:'Avatar',badge:'Insignia',ribbon:'Cinta',folder:'Carpeta',browser:'Ventana',chevron:'Paso (chevron)',map:'Mapa'};
@@ -39,6 +40,7 @@ function NodeInspector({doc,node,focusToken}:{doc:DiagramDocument;node:DiagramNo
       <SelectField label="Forma" value={node.shape??''} options={SHAPE_OPTIONS} onChange={shape=>update({shape:shape||null},'Forma cambiada')}/>
       <IconPicker node={node}/>
       <TextField label="Enlace (https://…)" value={node.link??''} allowEmpty maxLength={2000} onCommit={link=>update({link:link.trim()||null},link.trim()?'Enlace cambiado':'Enlace quitado')}/>
+      <LinkPreview node={node}/>
       <TextField label="Detalle (un renglón por línea; «--» separa secciones)" value={node.details} multiline allowEmpty maxLength={2000} onCommit={details=>update({details},'Detalle cambiado')}/></>}
     <SelectField label="Zona" value={node.zoneId??''} options={[['','Sin zona'],...doc.zones.map(z=>[z.id,`${z.label} · ${z.id}`] as const)]}
       onChange={zoneId=>zoneId?transact([{type:'MOVE_NODE',id:node.id,placement:{inside:zoneId}}],'Nodo movido a la zona'):update({zoneId:null},'Nodo liberado de la zona')}/>

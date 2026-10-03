@@ -61,7 +61,9 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 
 `revision-3-10.md` trajo diez puntos. Implementados el mismo día: login visible y pestaña Cuenta, botón del panel con ícono, enfoque y color al tocar una observación (P8.5); chat sin selector de modos, respuestas breves y «Explicar más» (P8.5, ADR 057); explicación animada (P2.5, ADR 058); elementos para todo público, estilos rápidos y elementos propios (P1.6, ADR 059–060). Quedan para después del lanzamiento la voz Premium (P2.6) y la biblioteca de la comunidad (P4.7).
 
-Segunda vuelta, el mismo día. El usuario marcó que los elementos nuevos eran todos iguales, que no se veía lo que iba a ubicar y que el viaje armado por la IA (`evidencias/evi-1.json`) era «triste». Se sumaron formas con diseño propio, vista previa real, diseñador automático con recorrido, «✦ Darle diseño», una distribución que se lee de un vistazo, enlaces y una forma mapa (P1.6, P1.7, ADR 062–064). Pendiente: vista previa remota de enlaces, mapas reales y menos cruces entre zonas.
+Segunda vuelta, el mismo día. El usuario marcó que los elementos nuevos eran todos iguales, que no se veía lo que iba a ubicar y que el viaje armado por la IA (`evidencias/evi-1.json`) era «triste». Se sumaron formas con diseño propio, vista previa real, diseñador automático con recorrido, «✦ Darle diseño», una distribución que se lee de un vistazo, enlaces y una forma mapa (P1.6, P1.7, ADR 062–064).
+
+Tercera vuelta, el mismo día: menos cruces entre zonas (zonas alrededor de la más conectada, capas desenredadas y curvas que rodean nodos, ADR 065) y vista previa de enlaces a pedido con protección SSRF (ADR 066). Pendiente de P1.7: mapas reales (falta elegir proveedor de teselas) y la revisión manual.
 
 ## Límites técnicos conocidos (continuación del 01/10/2026)
 

@@ -12,6 +12,7 @@ import {OidcAuthenticator} from './auth/oidc.js';
 import {RemoteMcpService} from './mcp.js';
 import {RateLimiter,TelemetryRepository} from './repositories/telemetry.js';
 import {FounderDashboard} from './repositories/dashboard.js';
+import {LinkPreviewCache,LinkPreviewError,checkUrl,fetchLinkPreview,type LinkPreview} from './linkPreview.js';
 
 export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistConfig;productPrompt:string;allowedOrigins:string[];token:string|null;documents?:PostgresDocumentRepository;documentToken?:string;localWorkspace?:boolean;accounts?:AccountRepository;oidc?:OidcAuthenticator;remoteMcp?:RemoteMcpService;
   /** IDs de proveedor que puede usar una cuenta (plan Free). Sin lista, todos los configurados. */
@@ -23,7 +24,9 @@ export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistCon
   /** Antiabuso de la IA incluida (P4.4). Por defecto exige email verificado y limita 20 pedidos/min por IP y 6 por cuenta. */
   /** Dashboard del fundador (P7.3): sólo para cuentas con email verificado incluido en adminEmails. */
   dashboard?:FounderDashboard;adminEmails?:string[];
-  requireVerifiedEmail?:boolean;aiPerIpPerMinute?:number;aiPerUserPerMinute?:number;ready?:()=>Promise<boolean>;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void};
+  requireVerifiedEmail?:boolean;aiPerIpPerMinute?:number;
+  /** Vista previa de enlaces (P1.7). Reemplazable en pruebas; por defecto visita la página con protección SSRF. */
+  linkPreview?:(url:string)=>Promise<LinkPreview>;aiPerUserPerMinute?:number;ready?:()=>Promise<boolean>;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void};
 const MAX_BODY=4_000_000;
 const MAX_DOCUMENT_BODY=10_500_000;
 const MAX_EVENTS_BODY=64_000;
@@ -61,6 +64,7 @@ const flowCookie=(token:string,secure:boolean,maxAge:number)=>`diagramia_oidc_fl
 export function createApp(options:AppOptions):Server{
   const system=systemPrompt(options.productPrompt),eventLimiter=new RateLimiter(options.eventsPerMinute??60,60_000);
   const aiPerIp=new RateLimiter(options.aiPerIpPerMinute??20,60_000),aiPerUser=new RateLimiter(options.aiPerUserPerMinute??6,60_000);
+  const previewPerIp=new RateLimiter(20,60_000),previewPerUser=new RateLimiter(10,60_000),previews=new LinkPreviewCache();
   // La telemetría nunca rompe el producto: un fallo al registrar queda en el log sin datos del pedido.
   const record=(event:ServerEvent,userId:string|null)=>{void options.telemetry?.record(event,userId).catch(error=>console.error('[telemetry] no se registró',event.name+':',error instanceof Error?error.name:'error'));};
   return createServer(async(req:IncomingMessage,res:ServerResponse)=>{
@@ -213,6 +217,20 @@ export function createApp(options:AppOptions):Server{
         const to=new URL(req.url??'/','http://gateway').searchParams.get('to');
         if(to!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(to))return fail(400,'INVALID_REQUEST','to debe ser una fecha AAAA-MM-DD.');
         return send(200,await options.dashboard.report(to??undefined));
+      }
+      if(path==='/v1/link-preview'&&req.method==='POST'){
+        // Con cuentas configuradas, como la IA y la nube, pide sesión: el servidor visita una página por el usuario.
+        if(options.accounts&&!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para traer la vista previa de un enlace.');
+        if(!previewPerIp.allow(clientIp(req,options.trustProxy))||(session&&!previewPerUser.allow(session.userId)))return fail(429,'RATE_LIMITED','Demasiadas vistas previas seguidas. Probá en un minuto.');
+        // La URL viaja en el cuerpo y no en la ruta: el log HTTP no la registra.
+        const input=z.strictObject({url:z.string().min(1).max(2000)}).safeParse(await readJson(req,8_000));
+        if(!input.success)return fail(400,'INVALID_REQUEST','Falta el enlace.');
+        try{
+          const key=checkUrl(input.data.url).href,cached=previews.get(key);
+          if(cached)return send(200,cached);
+          const preview=await(options.linkPreview??fetchLinkPreview)(key);
+          previews.set(key,preview);return send(200,preview);
+        }catch(error){if(error instanceof LinkPreviewError)return fail(error.status,error.code,error.message);throw error;}
       }
       if(options.accounts&&!session&&['/v1/providers','/v1/usage','/v1/assist'].includes(path))return fail(401,'SESSION_REQUIRED','Iniciá sesión para usar IA.');
       // Una cuenta sólo ve y usa los proveedores de su plan: los créditos Free no pagan un modelo más caro.

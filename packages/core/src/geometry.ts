@@ -67,8 +67,8 @@ function borderToward(r:Rect,toward:Point):Point{
   const scale=Math.min(dx?r.width/2/Math.abs(dx):Infinity,dy?r.height/2/Math.abs(dy):Infinity);
   return {x:cx+dx*scale,y:cy+dy*scale};
 }
-function bezier(S:Point,dirS:Point,E:Point,dirE:Point):Point[]{
-  const reach=Math.max(40,Math.hypot(E.x-S.x,E.y-S.y)/2.5),c1={x:S.x+dirS.x*reach,y:S.y+dirS.y*reach},c2={x:E.x+dirE.x*reach,y:E.y+dirE.y*reach},out:Point[]=[];
+function bezier(S:Point,dirS:Point,E:Point,dirE:Point,tension=1):Point[]{
+  const reach=Math.max(40,Math.hypot(E.x-S.x,E.y-S.y)/2.5*tension),c1={x:S.x+dirS.x*reach,y:S.y+dirS.y*reach},c2={x:E.x+dirE.x*reach,y:E.y+dirE.y*reach},out:Point[]=[];
   for(let i=0;i<=20;i++){const t=i/20,u=1-t;out.push({x:u*u*u*S.x+3*u*u*t*c1.x+3*u*t*t*c2.x+t*t*t*E.x,y:u*u*u*S.y+3*u*u*t*c1.y+3*u*t*t*c2.y+t*t*t*E.y});}
   return out;
 }
@@ -143,7 +143,8 @@ function computeRoutes(d:DiagramDocument):Map<string,Routed>{
     list.forEach((slot,i)=>{ends.get(slot.edge.id)![slot.end].point=sidePoint(r,side,(i+1)/(list.length+1));});
   }
   // 2. Ruta de cada conexión, en el orden del documento.
-  const used=new Lanes(),careful=d.edges.length<=250;
+  // `used`: tramos ortogonales, para no ir encimados; `drawn`: todos los tramos, para que una curva no cruce otras sin necesidad.
+  const used=new Lanes(),drawn=new Lanes(),careful=d.edges.length<=250;
   for(const e of d.edges){
     const a=rects.get(e.from),b=rects.get(e.to);if(!a||!b)continue;
     let points:Point[];
@@ -156,10 +157,10 @@ function computeRoutes(d:DiagramDocument):Map<string,Routed>{
       if(e.line==='straight'){
         const S=e.fromAnchor||e.fromPort!=='auto'?from.point:borderToward(a,e.toAnchor||e.toPort!=='auto'?to.point:center(b)),E=e.toAnchor||e.toPort!=='auto'?to.point:borderToward(b,S);
         points=[S,E];
-      }else if(e.line==='curved')points=bezier(from.point,DIR[from.side],to.point,DIR[to.side]);
+      }else if(e.line==='curved')points=e.fromAnchor||e.toAnchor||e.fromPort!=='auto'||e.toPort!=='auto'||!careful?bezier(from.point,DIR[from.side],to.point,DIR[to.side]):curve(d,e,a,b,from,to,obstacles,drawn);
       else points=orthogonal(d,e,a,b,from,to,careful?used:null,obstacles);
     }
-    if(careful&&e.line==='orthogonal')for(let i=1;i<points.length;i++)used.add({a:points[i-1],b:points[i]});
+    if(careful)for(let i=1;i<points.length;i++){const segment={a:points[i-1]!,b:points[i]!};drawn.add(segment);if(e.line==='orthogonal')used.add(segment);}
     out.set(e.id,{points,label:null});
   }
   // 3. Etiquetas: sobre la ruta, en el primer lugar que no tape un nodo ni otra etiqueta.
@@ -177,6 +178,38 @@ function computeRoutes(d:DiagramDocument):Map<string,Routed>{
     routed.label=chosen??fallback;
   }
   return out;
+}
+
+const SIDES:Side[]=['right','left','bottom','top'];
+/** Si dos segmentos se cruzan en un punto interior de ambos; tocarse en un extremo no cuenta. */
+export function segmentsCross(p1:Point,p2:Point,p3:Point,p4:Point):boolean{
+  const side=(a:Point,b:Point,c:Point)=>Math.sign((b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x));
+  return side(p3,p4,p1)*side(p3,p4,p2)<0&&side(p1,p2,p3)*side(p1,p2,p4)<0;
+}
+/**
+ * Curva de una conexión con lados automáticos: prueba cada combinación de lado de salida y de llegada y se queda con la
+ * que no pasa por encima de otros nodos; entre iguales, la que menos cruza conexiones ya trazadas, después la más corta,
+ * y ante empate, los lados de siempre.
+ */
+function curve(d:DiagramDocument,e:DiagramEdge,a:Rect,b:Rect,from:End,to:End,index:Obstacles,drawn:Lanes):Point[]{
+  const options=[{points:bezier(from.point,DIR[from.side],to.point,DIR[to.side]),extra:0}];
+  // Cada par de lados, con la curva más cerrada o más abierta: una rodea lo que la otra atraviesa.
+  for(const tension of [1,.5,1.6])for(const s of SIDES)for(const t of SIDES)if(tension!==1||s!==from.side||t!==to.side)options.push({points:bezier(sidePoint(a,s),DIR[s],sidePoint(b,t),DIR[t],tension),extra:tension===1?60:90});
+  const all=options.flatMap(o=>o.points),xs=all.map(p=>p.x),ys=all.map(p=>p.y);
+  const area={x:Math.min(...xs),y:Math.min(...ys),width:Math.max(...xs)-Math.min(...xs),height:Math.max(...ys)-Math.min(...ys)};
+  const obstacles=[...index.grid.query(area).filter(i=>{const n=d.nodes[i]!;return n.id!==e.from&&n.id!==e.to&&shapeOf(n)!=='text';}).map(i=>inset(index.rects[i]!,1)),inset(a,2),inset(b,2)];
+  const hits=(points:Point[])=>points.slice(1).reduce((sum,p,i)=>sum+obstacles.filter(r=>segmentHits(points[i]!,p,r)).length,0);
+  if(!hits(options[0]!.points))return options[0]!.points;
+  const length=(points:Point[])=>points.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p.x-points[i]!.x,p.y-points[i]!.y),0);
+  let best=options[0]!.points,bestScore=Infinity;
+  const crossings=(points:Point[])=>points.slice(1).reduce((sum,p,i)=>{const segment={a:points[i]!,b:p};return sum+drawn.near(segment).filter(u=>segmentsCross(segment.a,segment.b,u.a,u.b)).length;},0);
+  for(const {points,extra} of options){
+    let score=hits(points)*100000+length(points)+extra;
+    if(score>=bestScore)continue;
+    score+=crossings(points)*1500;
+    if(score<bestScore){best=points;bestScore=score;}
+  }
+  return best;
 }
 
 function orthogonal(d:DiagramDocument,e:DiagramEdge,a:Rect,b:Rect,from:End,to:End,used:Lanes|null,index:Obstacles):Point[]{

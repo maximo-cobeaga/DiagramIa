@@ -506,6 +506,20 @@ try{
     expect(doc.revision===plain.revision+1&&doc.zones.every(z=>z.style.stroke),'el diseño no se aplicó en un paso a las zonas');
     return `tarjeta «${idea.label}», estilo Menta, elemento «${group.label}» agrupado, diseño aplicado`;
   });
+  await check('un enlace ofrece traer los datos de la página y el servidor se niega a visitar la red interna',async()=>{
+    await send('Page.reload');await sleep(1500);
+    await setValue('select[aria-label="Cargar ejemplo"]','0');await sleep(600);
+    await click(await center('[data-id="api"]'));await clickText('Propiedades','.tabs');await sleep(150);
+    const field=`#${await js(`[...document.querySelectorAll('.panel-body label')].find(l=>l.textContent.startsWith('Enlace')).htmlFor`)}`.replace(/:/g,'\\:');
+    expect(await js(`!document.querySelector('.link-preview')`),'la vista previa aparece sin enlace');
+    await js(`document.querySelector(${JSON.stringify(field)}).focus()`);await setValue(field,'http://127.0.0.1/admin');await js(`document.querySelector(${JSON.stringify(field)}).blur()`);await sleep(300);
+    const doc=await saved();expect(doc.nodes.find(n=>n.id==='api').link==='http://127.0.0.1/admin','el enlace no se guardó');
+    expect(await clickText('Traer título y descripción','.link-preview'),'falta el botón de la vista previa');await sleep(800);
+    const message=await js(`document.querySelector('.link-preview [role="alert"]')?.textContent??''`);
+    expect(/red privada|Iniciá sesión/.test(message),`respuesta inesperada: «${message}»`);
+    expect((await saved()).revision===doc.revision,'pedir la vista previa cambió el documento');
+    return message;
+  });
   await check('pestañas: canvas nuevo, volver sin perder nada y cerrar',async()=>{
     const before=await saved(),tabs=await js(`document.querySelectorAll('.doc-tab').length`);
     await js(`document.querySelector('.doc-tab-add').click()`);await sleep(500);

@@ -2,6 +2,19 @@
 
 ## Último checkpoint
 
+03/10/2026 (Argentina, tercera vuelta). Se retomó la sesión anterior y se avanzó con lo que no depende de accesos externos:
+- **Commit pendiente resuelto:** `.env.example` volvió al estado de `HEAD` (tenía el secreto de Auth0) y el trabajo de la noche quedó en el commit local `710841e`, sin `.env` ni secretos (verificado en el diff).
+- **Menos cruces entre zonas (P1.7, ADR 065):**
+  - `ARRANGE_DOCUMENT` prueba también una disposición alrededor de la zona más conectada y se queda con la de menor costo.
+  - Las capas se desenredan con barridos de baricentro.
+  - Una curva que pisaría nodos elige otros lados y otra tensión.
+  - Viaje `evi-2`: de 7 a 2 cruces y de 6 a 1 conexión sobre nodos. Checkout: de 6 a 2 y de 4 a 1.
+- **Vista previa de enlaces (P1.7, ADR 066):**
+  - `POST /v1/link-preview` con protección SSRF: sólo direcciones públicas, conexión a la IP validada, redirecciones revalidadas, 6 s, 256 KB y sólo HTML.
+  - En Propiedades, «Traer título y descripción de la página» y «Usar como nombre y detalle», en un paso deshacible. Sin cambio de schema.
+  - El aviso de privacidad lo menciona.
+- **Pendiente (P1.7):** mapas reales (hay que elegir proveedor de teselas: costo, licencia, CSP y privacidad) y la revisión manual del usuario.
+
 03/10/2026 (Argentina, noche, segunda vuelta). El usuario pidió **más estética, más variedad y una vista previa real**, y mostró un viaje que la IA armó sin diseño (`evidencias/evi-1.json`). Se hizo lo siguiente:
 - **Formas y vista previa (ADR 062):**
   - 11 formas con diseño propio: nota adhesiva, tarjeta con encabezado, globo, píldora, avatar, insignia, cinta, carpeta, ventana, chevron y mapa.
@@ -73,6 +86,8 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 ## Evidencia
 
+- **03/10/2026 (tercera vuelta).** `npm run check` **117/117**. `npm run smoke` **37/37** en Chromium contra editor y gateway de demostración aislados (5174/8788), con un paso nuevo que comprueba desde la UI el rechazo de un enlace a `127.0.0.1`. Vista previa real contra example.com, wikipedia.org y github.com. Capturas del editor con el viaje reacomodado y con la tarjeta de vista previa revisadas. `perf:core` sin cambios; peor caso nuevo, 16 zonas y 120 conexiones curvas entre zonas: 0,35 s para ordenar.
+
 - **03/10/2026 (noche, segunda vuelta).** `npm run check` **110/110**: el test nuevo de diseño de un viaje cubre tonos, formas por rol, iconos, respeto de lo elegido por el modelo, recorrido y ausencia de superposiciones. `npm run schemas` regenerado. `npm run smoke` **36/36** en Chromium, contra un editor y un gateway de demostración aislados; ahora también comprueba la vista previa al ubicar y «Darle diseño». Se corrigieron selectores que contaban las miniaturas de la paleta como nodos y un desborde de 2 px en el celular. Prueba real con DeepSeek, cuatro corridas del pedido «Planificame un viaje a Mar del Plata de 10 días»: 18–26 s y unos 19.000–20.000 tokens por pedido. Se revisaron capturas en cada corrida.
 
 - **03/10/2026 (noche).** `npm run check` **109/109** (16 frases nuevas del clasificador de intención, recorrido de la explicación con IDs filtrados y migración 1.5.0→1.6.0). `npm run smoke` **36/36** en Chromium, contra un editor y un gateway de demostración aislados en 5174 y 8788. Tres comprobaciones nuevas: observación que enfoca sin seleccionar; explicación breve, animada, guardable y ampliable; elementos para todo público y elemento propio reinsertado agrupado. `npm run smoke:ai -- compatible` con DeepSeek real **9/9**: «¿Qué hace este diagrama?» se interpretó como explicación, con 73 palabras y un recorrido de 5 pasos válidos; «Explicar más» dio 180 palabras. Capturas 10, 17, 18 y 19 revisadas.
@@ -138,7 +153,6 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
   - licencia del código;
   - `DIAGRAMIA_ALERT_WEBHOOK_URL` en producción;
   - revisión manual del usuario de P1, P2, P4.1, P5.1, P6.3, P7 y P8.1, y de lo nuevo del 03/10: P1.6, P2.5 y P8.5;
-  - limpiar `.env.example` antes de cualquier commit (tiene el secreto de Auth0).
 - **Después de lanzar, según datos:** billing con Paddle (P4.6), agente Data/Product (P7.4), assets en almacenamiento (P4.3), export temporal (P6.4), recorte por viewport para más de 500 nodos, y CAPTCHA o señales de riesgo si aparece abuso.
 - **Límite conocido:** el motor detecta las superposiciones modeladas, pero no garantiza que todas las curvas, rutas manuales o cruces entre conexiones queden libres.
 
@@ -152,9 +166,10 @@ Resultado: `npm run check` **102/102** y todos los smokes aprobados. **No se des
 
 ## Próxima acción inequívoca
 
-El usuario prueba a mano lo del 03/10 (chat, explicación animada, paleta, estilos y elementos propios) y sigue `docs/GUIA_PASO_A_PASO.md`: los pasos 2 (base local) y 3 (Auth0) ya están hechos. Para el agente:
+El usuario prueba a mano lo del 03/10 (chat, explicación animada, paleta, estilos, elementos propios y, de la tercera vuelta, menos cruces y vista previa de enlaces: puntos 15 y 16 de `VALIDATION.md`) y sigue `docs/GUIA_PASO_A_PASO.md`: los pasos 2 (base local) y 3 (Auth0) ya están hechos. Para el agente:
 
-0. **Antes de commitear:** `git checkout -- .env.example` (contiene el secreto de Auth0) y commitear el resto sin `.env`.
+0. **Antes de cada commit:** comprobar que `.env.example` no tenga valores reales (el usuario los cargó ahí una vez). El trabajo de esta sesión se commitea local, sin push.
+0b. **Sin bloqueos, si el usuario lo decide:** mapas reales (P1.7). Requiere elegir proveedor de teselas (OpenStreetMap tiene política de uso que no admite tráfico intenso; MapTiler o Stadia son pagos por volumen), ajustar la CSP `img-src` y decidir si el navegador del usuario pide las teselas directo (el proveedor ve su IP) o pasan por el servidor.
 
 1. **Con `OPENAI_API_KEY`:** `npm run api` y `npm run smoke:ai -- openai`. Repetirlo con `DIAGRAMIA_OPENAI_REASONING_EFFORT` en none, low y medium, y registrar costo por pedido, latencia y calidad. Con eso P3.1 queda verificada y se ajustan los créditos Free.
 2. **Con el tenant de Auth0:** configurar Google y email con verificación obligatoria, y probar el login real (P4.1). Agregar el email del fundador a `DIAGRAMIA_ADMIN_EMAILS`.
@@ -185,6 +200,7 @@ Ninguno es necesario para levantar el editor. El gateway de IA sólo llama a un 
 | 01/10/2026 (continuación) | P5.2 implementada | MCP remoto Streamable HTTP y OAuth resource server, JWT RS256/JWKS, scopes read/write, audiencia exacta y autorización por proyecto; ADR 042 y guía `docs/MCP_REMOTO.md`. | `npm run check`: 88/88; `npm run smoke:mcp-remote` y `npm run smoke:repository` aprobados. Issuer/JWKS local firmado, sin Auth0 ni host externo. | P4.3; prueba real de Auth0/proxy/hosts y P5.3 |
 | 02/10/2026 (planificación) | Plan reordenado; P4.4, P4.6 y P7 redefinidas | Higgsfield retirado del producto, GPT-6 Luna para Free, Auth0 confirmado, telemetría propia y orden Lean. ADR 044–048; `development-plan.json`, plan, backlog y criterio A16 actualizados; `07_IA_MCP_HIGGSFIELD.md` renombrado a `07_IA_Y_MCP.md`. | `npm run check` 88/88 (sin cambios de código) | P3.1 adapter Luna; P7.1 eventos |
 | 02/10/2026 (noche) | P3.1 (adapter), P4.4, P7.1–P7.3 implementadas; P8.2 implementada; P8.3/P8.4 parciales | Luna con structured outputs, proveedores por plan, telemetría propia y dashboard, antiabuso, ruteo con grilla espacial y poda exacta, checksum de migraciones por LF, artefactos de despliegue. ADR 049–055 | check 102/102; smoke 33/33 ×3 (dev, build prod, contenedor prod); smoke:repository, smoke:shared, smoke:dashboard; prueba de pila prod con respaldo y vuelta atrás | Credenciales (OpenAI, Auth0), autorización de despliegue, revisión manual |
+| 03/10/2026 (3.ª vuelta) | P1.7 avanza (sigue parcial) | Commit del trabajo anterior sin secretos; menos cruces entre zonas, capas desenredadas y curvas que rodean nodos; vista previa de enlaces con protección SSRF. ADR 065–066 | check 117/117; smoke 37/37; cruces medidos en evi-2 y checkout; vista previa contra sitios reales | Revisión manual (puntos 15–16); decidir proveedor de mapas; Luna con clave |
 | 03/10/2026 (noche, 2.ª vuelta) | P1.6 ampliada; P1.7 parcial | Formas con diseño propio, vista previa real, diseñador automático con recorrido, «Darle diseño», distribución nueva, enlaces y mapa. ADR 062–064 | check 110/110; smoke 36/36; 4 corridas reales con DeepSeek | Revisión manual; vista previa remota de enlaces y mapas reales; limpiar `.env.example` |
 | 03/10/2026 (noche) | P8.5, P2.5 y P1.6 implementadas; P2.6 y P4.7 registradas | Revisión manual del usuario: login visible, intención deducida, respuestas breves con «Explicar más», enfoque de observaciones, explicación animada, schema 1.6.0 con iconos y estilos, elementos propios. ADR 057–061 | check 109/109; smoke 36/36; smoke:ai DeepSeek 9/9 | Revisión manual de lo nuevo; limpiar `.env.example`; Luna con clave |
 | 03/10/2026 (tarde) | P3.1 con proveedor provisorio | DeepSeek conectado por el adaptador compatible (sólo `.env`); doctor distingue proveedor de prueba | smoke:ai DeepSeek 7/7; doctor local y con ejemplo de producción | Pasos 2 y 3 de la guía; Luna cuando haya clave |

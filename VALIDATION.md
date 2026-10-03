@@ -247,3 +247,10 @@ Pasó `npm run check` 109/109, `npm run smoke` 36/36 y `npm run smoke:ai -- comp
 13. **Pedido nuevo a la IA:** pedile de nuevo el viaje a Mar del Plata y compará con `evidencias/evi-2-viaje-con-diseno.png`.
 14. **Enlaces:** en Propiedades, «Enlace (https://…)»; el nodo muestra el dominio y el botón ↗ abre la página.
 
+
+### Tercera vuelta del 03/10/2026 (cruces entre zonas y vista previa de enlaces)
+
+`npm run check` 117/117 (un test de layout con zonas satélite y seis de vista previa: direcciones internas, URL, DNS mixto, lectura del `<head>`, redirecciones y límites, ruta del gateway). `npm run smoke` 37/37 en Chromium contra un editor y un gateway de demostración aislados (5174 y 8788); el paso nuevo pone un enlace a `http://127.0.0.1/admin`, pide la vista previa y comprueba el rechazo por red privada sin tocar el documento. Medición con `ARRANGE_DOCUMENT`: viaje `evi-2` de 7 a 2 cruces y de 6 a 1 conexión sobre nodos; checkout de 6 a 2 y de 4 a 1. Vista previa real comprobada contra example.com, wikipedia.org y github.com (https); `http://github.com` no responde desde esta red ni con curl. `perf:core` sin cambios; peor caso nuevo (16 zonas, 120 conexiones curvas entre zonas): ordenar 0,35 s.
+
+15. **Menos cruces:** abrí `evidencias/evi-2-viaje-con-diseno.json` y, sin nada seleccionado, tocá «Ordenar todo sin superposiciones» en Propiedades: el itinerario queda al centro y las demás zonas alrededor, cerca de los días con los que se conectan; las curvas rodean los nodos en lugar de pasarles por encima.
+16. **Vista previa de un enlace:** con sesión iniciada, poné un enlace en un elemento y tocá «Traer título y descripción de la página». Revisá la tarjeta y «Usar como nombre y detalle» (Ctrl+Z lo deshace). Un enlace a `http://localhost` o a una IP privada tiene que rechazarse con un mensaje claro.

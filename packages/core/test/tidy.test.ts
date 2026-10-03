@@ -117,6 +117,22 @@ test('an edge can attach anywhere on a node border, use straight or curved lines
   assert.equal(moved.toAnchor,null);assert.deepEqual(moved.fromAnchor,{x:.25,y:1});assert.equal(moved.startArrow,'diamond');
 });
 
+test('arranging a plan puts side zones next to the steps they point to, and curves go around nodes',()=>{
+  // Como el viaje de evidencias/evi-2: un itinerario de diez días y zonas que se conectan con días sueltos.
+  const zone=(id:string,x:number)=>({type:'CREATE_ZONE' as const,zone:{id,label:id,bounds:{x,y:0,width:900,height:900}}});
+  const at=(z:string,i:number,x:number)=>({position:{x:x+20,y:60+i*100},zoneId:z,size:{width:180,height:70}});
+  const days=Array.from({length:10},(_,i)=>`d${i+1}`);
+  const actions:ActionInput[]=[zone('plan',0),zone('stay',1000),zone('night',2000),zone('food',3000),
+    ...days.map((id,i)=>({type:'ADD_NODE' as const,node:node(id,'Día '+(i+1),at('plan',i%8,(i>>3)*200))})),
+    ...days.slice(1).map((id,i)=>({type:'ADD_EDGE' as const,edge:edge(days[i],id)})),
+    ...['car','hotel'].map((id,i)=>({type:'ADD_NODE' as const,node:node(id,id,at('stay',i,1000))})),
+    ...['casino','bar','show'].map((id,i)=>({type:'ADD_NODE' as const,node:node(id,id,at('night',i,2000))})),
+    ...['ice','fish'].map((id,i)=>({type:'ADD_NODE' as const,node:node(id,id,at('food',i,3000))}))];
+  for(const [from,to] of [['car','d1'],['hotel','d10'],['casino','d5'],['bar','d8'],['show','d7'],['ice','d4'],['fish','d6']])actions.push({type:'ADD_EDGE',edge:edge(from,to,{line:'curved'})});
+  const arranged=run(emptyDocument('plan','Plan'),...actions,{type:'ARRANGE_DOCUMENT'});
+  assert.deepEqual(findOverlaps(arranged),[]);
+  assert.deepEqual(run(emptyDocument('plan','Plan'),...actions,{type:'ARRANGE_DOCUMENT'}).nodes.map(n=>n.position),arranged.nodes.map(n=>n.position));
+});
 test('a placement inside a full zone grows the zone instead of failing',()=>{
   const base=architecture();
   let d=base;
