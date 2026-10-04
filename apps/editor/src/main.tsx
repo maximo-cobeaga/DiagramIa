@@ -5,7 +5,7 @@ import {HISTORY_LIMIT,MAX_TABS,addTab,closeTab,dismissExternalChange,documentSto
 import {playbackStore,useCameraFollow,usePlaybackClock} from './store/playbackStore';
 import {select,selectionStore} from './store/selectionStore';
 import {setFocusMode,setTheme,viewStore,zoomAt,zoomBy,type Panel,type Tool} from './store/viewStore';
-import {deleteSelection,designAll,fitAll} from './commands';
+import {clipboardStore,paste,deleteSelection,designAll,fitAll} from './commands';
 import {EXPORT_FORMATS,addImage,exportDocument,importFile,type ExportFormat} from './io';
 import {SHORTCUTS,useShortcuts} from './shortcuts';
 import {KIND_LABELS,saveFile} from './ui';
@@ -125,12 +125,14 @@ function Tools(){
 
 function CanvasToolbar(){
   const {camera,viewport,sideOpen}=useStore(viewStore);
+  const {clip}=useStore(clipboardStore);
   return <div className="canvas-toolbar">
     <span className="canvas-label"><span aria-hidden="true"/>Tu lienzo</span>
     <div>
       <button onClick={()=>zoomBy(1/1.2)} aria-label="Alejar">−</button>
       <button className="zoom-readout" onClick={()=>zoomAt(viewport.width/2,viewport.height/2,1)} title="Volver a 100%">{Math.round(camera.zoom*100)}%</button>
       <button onClick={()=>zoomBy(1.2)} aria-label="Acercar">+</button>
+      {clip&&<button onClick={paste} title="Pegar (Ctrl + V)">Pegar</button>}
       <button className="wide design-button" onClick={designAll} title="Colores, formas, iconos y recorrido automáticos">✦ Darle diseño</button>
       <button className="wide" onClick={()=>fitAll()} title="Encuadrar todo (1)">Encuadrar</button>
       <button className={'panel-toggle'+(sideOpen?' chosen':'')} aria-pressed={sideOpen} aria-controls="side-panel" onClick={()=>viewStore.set({sideOpen:!sideOpen})} aria-label={sideOpen?'Ocultar el panel lateral':'Mostrar el panel lateral'} title={sideOpen?'Ocultar panel':'Mostrar panel'}>

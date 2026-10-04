@@ -1,5 +1,13 @@
 # Diseño de producto y movimiento
 
+## Piezas, organización y conexiones (ADR 077–079)
+
+Figuras, texto y dibujos se seleccionan y se mueven juntos. Un grupo se selecciona completo por clic, teclado o rectángulo; Alt permite elegir un miembro. Copiar/Duplicar/Agrupar/Desagrupar quedan junto a la selección; Pegar aparece en la barra del lienzo cuando hay algo copiado. Los grupos incluyen trazos, se guardan y conservan sus distancias internas al mover o alinear. Las copias preservan imágenes, enlaces internos y grupos; sólo las copias reciben IDs nuevos. No duplican el recorrido de animación ni el historial.
+
+Al mover, guías de bordes y centros ajustan suavemente a 6 px de distancia visible. Alt mueve libremente; la preferencia de grilla puede apagar las ayudas. «Acomodar» despliega alineación y separación uniforme cerca de la selección, con grupos tratados como piezas completas. Las guías no guardan contenido; cada operación confirmada se deshace en un paso.
+
+Cuatro puntos + alrededor de una figura seleccionada permiten arrastrar una conexión o elegir origen y destino con dos clics/toques. Enter/Espacio sobre un punto y luego sobre el destino hacen lo mismo con teclado. La flecha previa destaca el destino y muestra su nombre; sólo al confirmar se crea la conexión. Esc cancela también durante un arrastre. Puntos, ajuste y destino previo son UI, sin claves ni dependencia nueva.
+
 Manual completo en brand. La landing incluida sirve de referencia para una identidad original, limpia y técnica. No sustituir por una plantilla genérica de tarjetas, degradados decorativos y slogans sin prueba.
 
 ## Espacio de trabajo

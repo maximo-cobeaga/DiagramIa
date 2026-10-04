@@ -2,6 +2,12 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Piezas, organización y conexiones (03/10/2026)
+
+- **Orden aprobado implementado, P1.1/P1.3/P8.1 (ADR 077–079):** figuras/textos/dibujos seleccionables y movibles juntos; grupos mixtos persistentes; copiar/pegar/duplicar con rutas, grupos e imágenes conservados. Guías al mover y «Acomodar»/Propiedades alinean piezas completas; Alt libera ayudas. Cuatro puntos + para conectar con drag, clics/toques o teclado, destino visible y cancelación.
+- **Modelo y evidencia:** schema 1.8.0 y migración aditiva, ejemplos y JSON Schemas actualizados. Check 139/139; Chromium completo 53/53 sin errores de consola y comprobación enfocada final 5/5, incluyendo alineación en Propiedades. Capturas revisadas en evidencias/ui-pieza-mixta.png, ui-acomodar.png, ui-guias.png, ui-conectar.png, ui-pieza-movil.png y ui-puntos-conexion.png. Gateway local habitual actualizado y sano en schema 1.8.0; sin push, despliegue, nuevas dependencias ni IA paga en QA.
+- **Próximo paso:** revisión manual 29–31 con usuario y dispositivos físicos; P8.1 permanece parcial. Grupos incluyen figuras/dibujos; las conexiones semánticas siguen vinculadas a figuras. Distribuir puede conservar solapamientos si ya estaban presentes. Refinamiento automático de escritura pendiente.
+
 ## Revisión de inserción y dibujo (03/10/2026)
 
 - **Feedback aplicado (ADR 076):** guiado con formas automáticas al soltar, suavizado por distancia, vista previa tolerante al temblor e indicación de forma reconocida. Check 130/130; navegador estable 50/50 sin errores de consola, capturas `evidencias/ui-guiado-automatico.png` y `ui-guiado-feedback.png`. Próximo paso: revisión manual 27 con el usuario; P8.1 sigue parcial y no se certifica refinamiento de letras.

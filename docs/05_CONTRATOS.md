@@ -2,13 +2,13 @@
 
 Fuente de verdad ejecutable: `packages/core/src` (`schema.ts`, `engine.ts`, `geometry.ts`, `layout.ts`, `library.ts`). Contratos generados: `schemas/document.schema.json` y `schemas/action-batch.schema.json` (`npm run schemas`). Referencias completas: `examples/*.json`. El JSON Schema sirve para generación/validación estructural; el engine además valida referencias, pertenencia a zonas, grupos, revisiones, límites y otros invariantes que JSON Schema no expresa.
 
-## Documento, schema 1.7.0
+## Documento, schema 1.8.0
 
 `schemaVersion`, `id`, `title`, `revision`, `nodes`, `edges`, `drawings`, `zones`, `groups`, `frames`, `animations`, `assets`, `annotations`, `appliedBatches`.
 
 - **Node:** id, kind, label, position, size, `zoneId`, `groupId`, subtitle, `assetId`, `icon`, `shape`, `style` y `details`. Tipos semánticos: service, database, cache, queue, external, actor, decision, note, text, image, custom. `shape` elige una forma básica, de flujo o UML; `style` conserva relleno, trazo y texto editables. Un nodo con `assetId` dibuja esa imagen; `icon` es uno de los glifos de `ICONS`.
 - **Edge:** extremos por ID, label, `alternative`, `fromPort`/`toPort` (auto, top, right, bottom, left), `fromAnchor`/`toAnchor` sobre cualquier punto del borde, puntas, estilo, línea ortogonal/recta/curva y `points` opcionales (ruta manual).
-- **Zone:** id, label, bounds. **Frame:** id, label, bounds (encuadre de cámara para presentar). **Group:** id, label, `parentId` (anidamiento; los miembros se indican con `groupId` en cada nodo).
+- **Zone:** id, label, bounds. **Frame:** id, label, bounds (encuadre de cámara para presentar). **Group:** id, label, `parentId` (anidamiento; los miembros se indican con `groupId` en cada nodo o dibujo). **Drawing:** id, kind (line/arrow/freehand), points, style y `groupId` nullable, libre por defecto.
 - **Animation:** id, label, `scenarios` (id, label, description), steps y tracks. **Step:** id, caption, durationMs, nodeIds, edgeIds, tone, `frameId`, `scenarioIds` (vacío = ocurre en todos los escenarios), `states` (nodeId, label, tone), `focus` y `transition`. **Track:** highlight, caption o camera; sus clips se vinculan por `stepId`.
 - **Asset:** id, label, mediaType (PNG, JPEG, WebP, SVG), `data` en base64, width, height. Máximo 400 KB y 40 por documento.
 - **Annotation:** id, `targetId` (elemento o null = documento), severity (info, warning, risk), text, suggestion, source (user, ai), resolved.
@@ -17,7 +17,7 @@ Invariantes: IDs únicos entre nodos, conexiones, zonas, grupos, frames, animaci
 
 ## Versiones y migración
 
-`openDocument(input)` abre las versiones de 1.0.0 a 1.7.0 (`READABLE_VERSIONS`), las migra en memoria sin tocar IDs ni geometría y devuelve `{document, migratedFrom}`. `validateDocument` acepta sólo la versión vigente. Una versión desconocida falla con `UNSUPPORTED_VERSION`; el editor conserva el contenido original, pausa el guardado y ofrece exportarlo. Cada migración nueva se agrega a `MIGRATIONS` en `engine.ts` con pruebas de conservación de contenido. De 1.6.0 a 1.7.0, los pasos sin cámara reciben `focus: auto` y `transition: smooth`; la revisión y el historial permanecen iguales.
+`openDocument(input)` abre las versiones de 1.0.0 a 1.8.0 (`READABLE_VERSIONS`), las migra en memoria sin tocar IDs ni geometría y devuelve `{document, migratedFrom}`. `validateDocument` acepta sólo la versión vigente. Una versión desconocida falla con `UNSUPPORTED_VERSION`; el editor conserva el contenido original, pausa el guardado y ofrece exportarlo. Cada migración nueva se agrega a `MIGRATIONS` en `engine.ts` con pruebas de conservación de contenido. De 1.6.0 a 1.7.0, los pasos sin cámara reciben `focus: auto` y `transition: smooth`; la revisión y el historial permanecen iguales.
 
 `CAPABILITIES` enumera versión, acciones, tipos, puertos y límites reales. El MCP lo devuelve en `get_schema` y el gateway lo incluye en el prompt de sistema. No anunciar operaciones fuera de esa lista.
 
@@ -42,7 +42,7 @@ Sólo es válido si esos IDs existen y el resultado cabe dentro de la zona. Ejem
 | `CREATE_ZONE` / `UPDATE_ZONE` | Label y límites; achicar por debajo de sus nodos se rechaza |
 | `MOVE_ZONE` | Mueve la zona junto con sus nodos |
 | `DELETE_ZONE` | `members: release` (por defecto) libera los nodos; `delete` los elimina |
-| `CREATE_GROUP` / `UPDATE_GROUP` / `DELETE_GROUP` | Agrupar nodos ya agrupados anida su grupo raíz; desagrupar devuelve los miembros al grupo padre; un grupo vacío desaparece |
+| `CREATE_GROUP` / `UPDATE_GROUP` / `DELETE_GROUP` | `nodeIds` y `drawingIds` opcionales, al menos un miembro y hasta 500 entre ambos; IDs únicos. Agrupar piezas ya agrupadas anida su grupo raíz; desagrupar devuelve figuras y trazos al grupo padre; un grupo vacío desaparece |
 | `CREATE_FRAME` / `UPDATE_FRAME` / `DELETE_FRAME` | Eliminar un frame deja `frameId: null` en los pasos que lo usaban |
 | `CREATE_ANIMATION` / `UPDATE_ANIMATION` / `DELETE_ANIMATION` | |
 | `ADD_STEP` / `UPDATE_STEP` / `MOVE_STEP` / `DELETE_STEP` | Edición de timeline. No se puede eliminar el último paso (`EMPTY_ANIMATION`) ni dejar un escenario sin pasos (`EMPTY_SCENARIO`) |
@@ -115,3 +115,5 @@ Errores: `BUDGET_EXCEEDED` (402, antes de llamar al proveedor), `RATE_LIMITED` (
 ## Errores esperables del engine
 
 REVISION_CONFLICT, IDEMPOTENCY_CONFLICT, DUPLICATE_ID, NOT_FOUND, DANGLING_EDGE, DANGLING_ZONE, DANGLING_GROUP, GROUP_CYCLE, OUTSIDE_ZONE, DANGLING_ANIMATION, ANIMATION_TOO_LONG, EMPTY_ANIMATION, BATCH_TOO_LARGE, INVALID_SELECTION, AMBIGUOUS_ZONE, AMBIGUOUS_PLACEMENT, NO_SPACE, LAYOUT_NEEDS_MORE, UNSUPPORTED_VERSION, INVALID_DOCUMENT, INVALID_COMPONENT, INVALID_MERMAID, DUPLICATE_SCENARIO, EMPTY_SCENARIO, DANGLING_ASSET, UNUSED_ASSET, INVALID_ASSET, UNSAFE_ASSET, ASSET_TOO_LARGE, DANGLING_ANNOTATION. `describeError` y `errorCode` dan el mensaje para el usuario y el código, sin stack traces.
+
+Desde 1.7.0 a 1.8.0 los dibujos reciben `groupId` null sin cambiar IDs, puntos, estilos, revisión ni historial. `selectionMoveActions`/`selectionMovePreview` comparten los efectos para figuras, dibujos, zonas y encuadres; las rutas manuales internas se trasladan con la pieza. `captureSelection`/`cloneSelectionActions` conservan referencias, grupos e imágenes al copiar; sólo las copias reciben IDs nuevos. Guías y destino de conexión son estado de interfaz.

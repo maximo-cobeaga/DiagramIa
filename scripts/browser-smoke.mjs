@@ -4,7 +4,7 @@
 // levantá otra instancia (npm run dev -w @diagramia/editor -- --port 5174) y apuntá DIAGRAMIA_URL a ella.
 // Deja capturas en state/smoke/. Variables: DIAGRAMIA_URL, BROWSER (ruta al ejecutable).
 import {spawn} from 'node:child_process';
-import {existsSync,mkdirSync,mkdtempSync,rmSync,writeFileSync} from 'node:fs';
+import {existsSync,mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -53,7 +53,7 @@ const click=point=>drag(point,point);
 // Dos pulsaciones seguidas, sin movimientos intermedios, para que cuenten como doble clic.
 async function doubleClick(point){for(let i=0;i<2;i++){await mouse('mousePressed',point.x,point.y);await mouse('mouseReleased',point.x,point.y);}await sleep(150);}
 const tap=async selector=>{if(!await js(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;el.click();return true;})()`))throw new Error(`no existe ${selector}`);};
-const KEYS={Enter:['Enter',13],F2:['F2',113],c:['KeyC',67],z:['KeyZ',90],n:['KeyN',78],l:['KeyL',76],p:['KeyP',80],a:['KeyA',65],d:['KeyD',68],e:['KeyE',69],f:['KeyF',70],g:['KeyG',71],Escape:['Escape',27],ArrowRight:['ArrowRight',39],ArrowUp:['ArrowUp',38],End:['End',35],Delete:['Delete',46],'1':['Digit1',49]};
+const KEYS={Enter:['Enter',13],F2:['F2',113],c:['KeyC',67],z:['KeyZ',90],n:['KeyN',78],l:['KeyL',76],p:['KeyP',80],a:['KeyA',65],d:['KeyD',68],e:['KeyE',69],f:['KeyF',70],g:['KeyG',71],Escape:['Escape',27],ArrowRight:['ArrowRight',39],ArrowUp:['ArrowUp',38],End:['End',35],Delete:['Delete',46],'0':['Digit0',48],'1':['Digit1',49]};
 async function key(name,modifiers=0){
   const [code,vk]=KEYS[name],base={key:name,code,windowsVirtualKeyCode:vk,modifiers};
   await send('Input.dispatchKeyEvent',{type:'rawKeyDown',...base});await send('Input.dispatchKeyEvent',{type:'keyUp',...base});await sleep(60);
@@ -69,7 +69,9 @@ const clickText=(text,scope='body')=>js(`(()=>{const b=[...document.querySelecto
 const status=()=>js(`document.querySelector('.status span').textContent`);
 
 const results=[];
+const checkFilter=process.env.DIAGRAMIA_SMOKE_FILTER?new RegExp(process.env.DIAGRAMIA_SMOKE_FILTER):null;
 async function check(name,fn){
+  if(checkFilter&&!checkFilter.test(name))return;
   try{const detail=await fn();results.push({name,ok:true,detail});console.log(`ok   ${name}${detail?' — '+detail:''}`);}
   catch(e){results.push({name,ok:false});console.log(`FAIL ${name} — ${e.message}`);}
 }
@@ -208,6 +210,63 @@ try{
     const converted=await saved();expect(converted.nodes.at(-1).kind==='text'&&converted.nodes.at(-1).label==='Mi nota'&&!converted.drawings.some(d=>d.id===drawing.id),'la conversión no es un reemplazo editable');
     await key('z',CTRL);const restored=await saved();expect(restored.drawings.some(d=>d.id===drawing.id)&&restored.nodes.length===before.nodes.length,'undo no recupera el dibujo original');
     return 'goma con undo; original intacto hasta confirmar; texto editable y recuperación; API local '+(await js(`Boolean(navigator.createHandwritingRecognizer&&globalThis.HandwritingStroke)`)?'presente, español sin certificar':'no disponible, entrada manual');
+  });
+  const fixtureNode=(id,label,x,y,width=100,height=50)=>({id,label,kind:'note',shape:'rounded',position:{x,y},size:{width,height}});
+  const loadScene=async(nodes,drawings=[],groups=[])=>{
+    const current=await saved(),scene={...current,schemaVersion:JSON.parse(readFileSync('examples/architecture.diagramia.json','utf8')).schemaVersion,id:'editing-scene',title:'Mi lienzo',revision:0,nodes,drawings,groups,edges:[],zones:[],frames:[],assets:[],annotations:[],animations:[],appliedBatches:[]};
+    await js(`localStorage.setItem(${ACTIVE_KEY},${JSON.stringify(JSON.stringify(scene))})`);await send('Page.reload');await sleep(1100);
+    await key('0');await sleep(100);
+  };
+  const screenPoint=point=>js(`(()=>{const c=document.querySelector('.canvas'),r=c.getBoundingClientRect(),v=c.getAttribute('viewBox').split(/\\s+/).map(Number);return {x:r.left+(${point.x}-v[0])*r.width/v[2],y:r.top+(${point.y}-v[1])*r.height/v[3]};})()`);
+  await check('figura y dibujo se agrupan, mueven, copian y duplican como una pieza con undo y persistencia',async()=>{
+    await loadScene([fixtureNode('title','Mi idea',140,180),fixtureNode('other','Otra idea',440,180)],[{id:'ink',kind:'freehand',points:[{x:140,y:280},{x:200,y:300},{x:260,y:280}],style:{stroke:'#cc4455',strokeWidth:4}}]);
+    await click(await center('[data-id="title"]'));const at=await screenPoint({x:200,y:300});await mouse('mousePressed',at.x,at.y,{modifiers:SHIFT});await mouse('mouseReleased',at.x,at.y,{modifiers:SHIFT});
+    expect(await clickText('Agrupar','.selection-toolbar'),'no se puede agrupar un dibujo con una figura');let doc=await saved();const group=doc.groups[0].id;
+    expect(doc.drawings[0].groupId===group&&doc.nodes[0].groupId===group,'el grupo no conserva ambos tipos de objeto');
+    const before=doc,from=await screenPoint({x:200,y:300}),to={x:from.x+64,y:from.y+40};await mouse('mousePressed',from.x,from.y);await mouse('mouseMoved',to.x,to.y);await sleep(100);
+    expect((await saved()).revision===before.revision,'mover guarda antes de soltar');await mouse('mouseReleased',to.x,to.y);doc=await saved();
+    const dx=doc.nodes[0].position.x-before.nodes[0].position.x,dy=doc.nodes[0].position.y-before.nodes[0].position.y;
+    expect(dx!==0&&doc.drawings[0].points[0].x-before.drawings[0].points[0].x===dx&&doc.drawings[0].points[0].y-before.drawings[0].points[0].y===dy,'mover desde el dibujo deja atrás la figura');
+    expect(doc.nodes[1].position.x===before.nodes[1].position.x,'se movió un vecino externo');await shot('41-pieza-mixta');
+    await clickText('Copiar','.selection-toolbar');await clickText('Pegar','.canvas-toolbar');let pasted=await saved();expect(pasted.nodes.length===3&&pasted.drawings.length===2&&pasted.groups.length===2,'pegar perdió partes o el grupo');
+    expect(pasted.drawings[1].id!==doc.drawings[0].id&&pasted.drawings[1].style.stroke==='#cc4455','pegar reutiliza IDs o pierde el color');
+    await clickText('Duplicar','.selection-toolbar');expect((await saved()).drawings.length===3,'duplicar omite el dibujo');await key('z',CTRL);expect((await saved()).drawings.length===2,'undo no revierte la duplicación');
+    await key('z',CTRL);doc=await saved();expect(doc.drawings.length===1&&doc.groups[0].id===group,'undo no recupera la pieza original');
+    await send('Page.reload');await sleep(1000);expect((await saved()).drawings[0].groupId===group,'recargar pierde el grupo mixto');
+    const point=doc.drawings[0].points[1];await click(await screenPoint(point));expect(await js(`document.querySelectorAll('.selection-outline').length`)===2,'seleccionar el dibujo no selecciona la pieza completa');
+    await key('ArrowRight');let nudged=await saved();expect(nudged.nodes[0].position.x===doc.nodes[0].position.x+8&&nudged.drawings[0].points[0].x===doc.drawings[0].points[0].x+8,'teclado no mueve la pieza completa');await key('z',CTRL);
+    await clickText('Desagrupar','.selection-toolbar');expect((await saved()).drawings[0].groupId===null,'desagrupar no libera el trazo');await key('z',CTRL);
+    await viewport(390,844);await sleep(150);await js(`document.querySelector('.canvas-host').scrollIntoView({block:'center'})`);expect(await js(`document.documentElement.scrollWidth<=innerWidth&&(()=>{const t=document.querySelector('.selection-toolbar').getBoundingClientRect();return t.left>=0&&t.right<=innerWidth;})()`),'el grupo o la barra desbordan en móvil');await shot('45-pieza-movil');await viewport(1440,900);await js(`scrollTo(0,0)`);
+    return 'movimiento desde el trazo, grupo durable, nuevos IDs, copiar/pegar/duplicar, teclado, undo y móvil';
+  });
+  await check('Acomodar alinea piezas completas, distribuye y muestra guías al mover',async()=>{
+    await loadScene([fixtureNode('a','Una idea',40,160,80,40),fixtureNode('b','Otra idea',260,210,80,40),fixtureNode('c','Última idea',450,260,80,40)],[{id:'ink',kind:'line',points:[{x:40,y:215},{x:120,y:230}],groupId:'piece',style:{stroke:'#245cf6'}}],[{id:'piece'}]);
+    // El nodo de la pieza comparte el grupo con el trazo.
+    await js(`(()=>{const d=JSON.parse(localStorage.getItem(${ACTIVE_KEY}));d.nodes[0].groupId='piece';localStorage.setItem(${ACTIVE_KEY},JSON.stringify(d));})()`);await send('Page.reload');await sleep(1000);await key('0');await key('a',CTRL);
+    await clickText('Propiedades','.tabs');expect(await clickText('Arriba','.arrange'),'Propiedades no alinea piezas mixtas');let doc=await saved();expect(doc.nodes.every(n=>n.position.y===160)&&doc.drawings[0].points[0].y-doc.nodes[0].position.y===55,'Propiedades desarma el grupo');await key('z',CTRL);await clickText('IA','.tabs');
+    expect(await clickText('Acomodar','.selection-toolbar'),'faltan acciones para acomodar una selección mixta');await clickText('Arriba','.arrange-selection');doc=await saved();
+    expect(doc.nodes.every(n=>n.position.y===160)&&doc.drawings[0].points[0].y-doc.nodes[0].position.y===55,'alinear desarma el grupo');await key('z',CTRL);
+    await clickText('Horizontal','.arrange-selection');doc=await saved();const [a,b,c]=doc.nodes;expect(Math.abs((b.position.x-a.position.x-80)-(c.position.x-b.position.x-80))<.01,'la separación no es uniforme');await shot('42-acomodar');await key('z',CTRL);await key('Escape');
+    const from=await screenPoint({x:300,y:230}),to=await screenPoint({x:300,y:183}),before=await saved();await mouse('mousePressed',from.x,from.y);await mouse('mouseMoved',to.x,to.y);await sleep(80);
+    expect(await js(`document.querySelectorAll('.alignment-guide').length`)>0,'no aparecen guías de alineación');expect((await saved()).revision===before.revision,'las guías modifican el documento');await shot('43-guias');await mouse('mouseReleased',to.x,to.y);
+    expect((await saved()).nodes[1].position.y===160,'soltar no conserva el ajuste a la guía');
+    const freeFrom=await screenPoint({x:300,y:180}),freeTo={x:freeFrom.x+3,y:freeFrom.y+17};await mouse('mousePressed',freeFrom.x,freeFrom.y,{modifiers:1});await mouse('mouseMoved',freeTo.x,freeTo.y,{modifiers:1});expect(await js(`document.querySelectorAll('.alignment-guide').length`)===0,'Alt no libera las guías');await mouse('mouseReleased',freeTo.x,freeTo.y,{modifiers:1});
+    expect((await saved()).nodes[1].position.y===177,'Alt sigue ajustando a grilla');await key('Escape');return 'alineación y separación sin desarmar grupos; guías sin commit prematuro; Alt libre';
+  });
+  await check('los puntos de conexión ofrecen drag, dos clics, destino visible, teclado y cancelación',async()=>{
+    await loadScene([fixtureNode('from','Origen',100,220,120,80),fixtureNode('to','Destino',450,220,120,80)]);await click(await center('[data-id="from"]'));
+    expect(await js(`document.querySelectorAll('.connect-port').length`)===4,'faltan puntos de conexión');await shot('46-puntos-conexion');const port=await center('[aria-label="Conectar desde derecha"]'),target=await center('[data-id="to"]'),before=await saved();
+    await mouse('mousePressed',port.x,port.y);await mouse('mouseMoved',target.x,target.y);await sleep(100);
+    expect(await js(`Boolean(document.querySelector('.draft-edge.ready'))&&document.querySelector('.connection-feedback')?.textContent.includes('Destino')`),'no se muestra el destino o la flecha');expect((await saved()).revision===before.revision,'la vista previa guarda una conexión');await shot('44-conectar');await mouse('mouseReleased',target.x,target.y);
+    let doc=await saved();expect(doc.edges.length===1&&doc.edges[0].fromAnchor.x===1&&doc.edges[0].to==='to','la conexión no conserva el puerto o el destino');await key('z',CTRL);
+    await click(await center('[data-id="from"]'));await click(await center('[aria-label="Conectar desde izquierda"]'));expect(await js(`Boolean(document.querySelector('.connect-invitation'))`),'un clic sobre + no permite elegir el destino');await mouse('mouseMoved',target.x,target.y,{buttons:0});await click(target);expect((await saved()).edges[0].fromAnchor.x===0,'los dos clics pierden el puerto');await key('z',CTRL);
+    await click(await center('[data-id="from"]'));const cancelPort=await center('[aria-label="Conectar desde derecha"]');await mouse('mousePressed',cancelPort.x,cancelPort.y);await mouse('mouseMoved',target.x,target.y);await js(`document.querySelector('.canvas').focus()`);await key('Escape');await mouse('mouseReleased',target.x,target.y);expect((await saved()).edges.length===0,'Esc durante el drag guarda una conexión');
+    await js(`document.querySelector('[data-id="from"]').focus()`);await key('Enter');await js(`document.querySelector('[aria-label="Conectar desde derecha"]').focus()`);await key('Enter');await js(`document.querySelector('[data-id="to"]').focus()`);await key('Enter');expect((await saved()).edges.length===1,'los puntos de conexión no funcionan con teclado');await key('z',CTRL);
+    await click(await center('[data-id="from"]'));const touchPort=await center('[aria-label="Conectar desde derecha"]');
+    for(const type of ['touchStart','touchEnd'])await send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchStart'?[{x:touchPort.x,y:touchPort.y}]:[]});await sleep(100);
+    expect(await js(`Boolean(document.querySelector('.connect-invitation'))`),'tocar + desplaza el canvas en lugar de iniciar una conexión');
+    for(const type of ['touchStart','touchEnd'])await send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchStart'?[{x:target.x,y:target.y}]:[]});
+    expect((await saved()).edges.length===1,'no se puede unir con dos toques');return 'cuatro puntos, puerto real, preview de destino, drag/clic/teclado/toques y Esc reversible';
   });
   // El resto de la regresión conserva su fixture de arquitectura y no consume pestañas de las pruebas de inicio.
   await js(`(()=>{localStorage.clear();localStorage.setItem('diagramia.tutorial.seen','1');localStorage.setItem('diagramia.theme','light');})()`);await send('Page.reload');await sleep(1200);

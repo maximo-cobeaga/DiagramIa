@@ -11,3 +11,5 @@ export * from './telemetry.js';
 export * from './design.js';
 export * from './camera.js';
 export * from './ink.js';
+export * from './selection.js';
+export * from './alignment.js';

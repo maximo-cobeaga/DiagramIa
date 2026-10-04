@@ -31,6 +31,7 @@ export function validateDocument(input:unknown):DiagramDocument{
     const zone=zones.get(n.zoneId)??fail('DANGLING_ZONE',`Zona de ${n.id} inexistente.`);
     if(!contains(zone.bounds,nodeRect(n)))fail('OUTSIDE_ZONE',`«${n.label}» (${n.id}) debe caber dentro de la zona «${zone.label}» (${zone.id}). Agrandá la zona, mové el nodo o quitá la pertenencia.`);
   }
+  for(const drawing of d.drawings)if(drawing.groupId&&!groups.has(drawing.groupId))fail('DANGLING_GROUP',`Grupo de ${drawing.id} inexistente.`);
   for(const a of d.animations){
     if(!unique(a.steps.map(s=>s.id)))fail('DUPLICATE_STEP',`Pasos duplicados en ${a.id}.`);
     if(a.steps.reduce((sum,s)=>sum+s.durationMs,0)>600000)fail('ANIMATION_TOO_LONG','La animación supera diez minutos.');
@@ -68,7 +69,9 @@ const MIGRATIONS:Record<string,{to:string;run:(d:Raw)=>Raw}>={
   // 1.6.0 sólo amplía los iconos y agrega un estilo opcional: un documento 1.5.0 ya es válido tal cual.
   '1.5.0':{to:'1.6.0',run:d=>({...d,schemaVersion:'1.6.0'})},
   // 1.7.0 añade intención de cámara por paso; los defaults mantienen el encuadre automático anterior.
-  '1.6.0':{to:'1.7.0',run:d=>({...d,schemaVersion:'1.7.0'})}
+  '1.6.0':{to:'1.7.0',run:d=>({...d,schemaVersion:'1.7.0'})},
+  // Pertenencia opcional de trazos a grupos; IDs, revisión y geometría originales conservados.
+  '1.7.0':{to:'1.8.0',run:d=>({...d,schemaVersion:'1.8.0'})}
 };
 /** Abre un documento de cualquier versión legible y lo lleva al schema vigente. */
 export function openDocument(input:unknown):{document:DiagramDocument;migratedFrom:string|null}{
@@ -158,7 +161,7 @@ function detachAnnotations(d:DiagramDocument){
 function pruneEmptyGroups(d:DiagramDocument){
   // Un grupo sin nodos ni subgrupos deja de existir; se repite porque vaciar uno puede vaciar a su padre.
   for(let changed=true;changed;){
-    const used=new Set([...d.nodes.map(n=>n.groupId),...d.groups.map(g=>g.parentId)]);
+    const used=new Set([...d.nodes.map(n=>n.groupId),...d.drawings.map(n=>n.groupId),...d.groups.map(g=>g.parentId)]);
     const kept=d.groups.filter(g=>used.has(g.id));changed=kept.length!==d.groups.length;d.groups=kept;
     // Sólo al desaparecer un grupo: una anotación nueva con destino inexistente debe fallar en la validación.
     if(changed)detachAnnotations(d);
@@ -207,7 +210,8 @@ function mutate(d:DiagramDocument,a:Action){
     case 'CREATE_GROUP':{
       const group=structuredClone(a.group),byId=new Map(d.groups.map(g=>[g.id,g]));d.groups.push(group);
       // Agrupar nodos ya agrupados anida su grupo raíz, en vez de sacarlos de él.
-      for(const n of pick(d,a.nodeIds)){
+      if(!unique([...a.nodeIds,...a.drawingIds]))fail('DUPLICATE_ID','La lista de miembros repite IDs.');
+      for(const n of [...pick(d,a.nodeIds),...a.drawingIds.map(id=>find(d.drawings,id))]){
         if(!n.groupId||n.groupId===group.parentId){n.groupId=group.id;continue;}
         let root=byId.get(n.groupId)!;
         for(let hops=0;root.parentId&&byId.has(root.parentId)&&hops<600;hops++)root=byId.get(root.parentId)!;
@@ -219,6 +223,7 @@ function mutate(d:DiagramDocument,a:Action){
     case 'DELETE_GROUP':{
       const g=find(d.groups,a.id);d.groups=d.groups.filter(x=>x.id!==a.id);
       for(const n of d.nodes)if(n.groupId===a.id)n.groupId=g.parentId;
+      for(const drawing of d.drawings)if(drawing.groupId===a.id)drawing.groupId=g.parentId;
       for(const child of d.groups)if(child.parentId===a.id)child.parentId=g.parentId;
       detachAnnotations(d);
       break;
@@ -315,7 +320,7 @@ export function previewBatch(doc:unknown,batch:unknown){
 
 /** Ancestro más externo del grupo de un nodo, o null si no está agrupado. */
 export function rootGroupId(d:DiagramDocument,nodeId:string):string|null{
-  const byId=new Map(d.groups.map(g=>[g.id,g]));let id=d.nodes.find(n=>n.id===nodeId)?.groupId??null;
+  const byId=new Map(d.groups.map(g=>[g.id,g]));let id=d.nodes.find(n=>n.id===nodeId)?.groupId??d.drawings.find(n=>n.id===nodeId)?.groupId??null;
   for(let hops=0;id&&byId.get(id)?.parentId&&hops<600;hops++)id=byId.get(id)!.parentId;
   return id;
 }
@@ -323,7 +328,7 @@ export function rootGroupId(d:DiagramDocument,nodeId:string):string|null{
 export function groupMembers(d:DiagramDocument,groupId:string):string[]{
   const inside=new Set([groupId]);
   for(let grew=true;grew;){grew=false;for(const g of d.groups)if(g.parentId&&inside.has(g.parentId)&&!inside.has(g.id)){inside.add(g.id);grew=true;}}
-  return d.nodes.filter(n=>n.groupId&&inside.has(n.groupId)).map(n=>n.id);
+  return [...d.nodes,...d.drawings].filter(n=>n.groupId&&inside.has(n.groupId)).map(n=>n.id);
 }
 
 type ContextOptions={scope?:'document'|'selection';maxElements?:number};
@@ -345,6 +350,7 @@ export function getContext(input:unknown,selectedIds:string[]=[],options:Context
     return {...base,scope:'document' as const,truncated:true,total,nodes,edges:d.edges.filter(e=>ids.has(e.from)&&ids.has(e.to)).slice(0,Math.floor(max/2)),drawings:d.drawings.slice(0,Math.max(0,max-nodes.length)),zones:d.zones,groups:d.groups,frames:d.frames,animations:d.animations.map(a=>({id:a.id,label:a.label,steps:a.steps.length})),annotations:d.annotations.filter(note=>!note.targetId||ids.has(note.targetId))};
   }
   const picked=new Set(selectedIds),nodeIds=new Set<string>();
+  for(const group of d.groups)if(picked.has(group.id))for(const id of groupMembers(d,group.id))picked.add(id);
   for(const n of d.nodes)if(picked.has(n.id)||(n.zoneId&&picked.has(n.zoneId))||(n.groupId&&picked.has(n.groupId)))nodeIds.add(n.id);
   for(const e of d.edges)if(picked.has(e.id)){nodeIds.add(e.from);nodeIds.add(e.to);}
   const focus=new Set(nodeIds),edges=d.edges.filter(e=>picked.has(e.id)||focus.has(e.from)||focus.has(e.to));
@@ -355,8 +361,9 @@ export function getContext(input:unknown,selectedIds:string[]=[],options:Context
   if(truncated)nodes=[...nodes.filter(n=>focus.has(n.id)),...nodes.filter(n=>!focus.has(n.id))].slice(0,Math.max(limit!,focus.size));
   const kept=new Set(nodes.map(n=>n.id)),zoneIds=new Set([...nodes.map(n=>n.zoneId),...selectedIds]);
   return {...base,scope:'selection' as const,truncated,total,
+    drawings:d.drawings.filter(drawing=>picked.has(drawing.id)),
     focusNodeIds:[...focus],nodes,edges:edges.filter(e=>kept.has(e.from)&&kept.has(e.to)),
-    zones:d.zones.filter(z=>zoneIds.has(z.id)),groups:d.groups.filter(g=>picked.has(g.id)||nodes.some(n=>n.groupId===g.id)),frames:d.frames.filter(f=>picked.has(f.id)),
+    zones:d.zones.filter(z=>zoneIds.has(z.id)),groups:d.groups.filter(g=>picked.has(g.id)||nodes.some(n=>n.groupId===g.id)||d.drawings.some(n=>picked.has(n.id)&&n.groupId===g.id)),frames:d.frames.filter(f=>picked.has(f.id)),
     // Las zonas fuera del foco se listan por ID y label para que la IA pueda nombrarlas sin adivinar entre homónimas.
     otherZones:d.zones.filter(z=>!zoneIds.has(z.id)).map(z=>({id:z.id,label:z.label})),
     animations:d.animations.map(a=>({id:a.id,label:a.label,steps:a.steps.length})),

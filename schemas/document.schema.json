@@ -4,7 +4,7 @@
   "properties": {
     "schemaVersion": {
       "type": "string",
-      "const": "1.7.0"
+      "const": "1.8.0"
     },
     "id": {
       "type": "string",
@@ -735,13 +735,26 @@
               }
             },
             "additionalProperties": false
+          },
+          "groupId": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "id",
           "kind",
           "points",
-          "style"
+          "style",
+          "groupId"
         ],
         "additionalProperties": false
       }

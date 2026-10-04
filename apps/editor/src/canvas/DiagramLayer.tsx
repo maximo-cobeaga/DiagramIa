@@ -276,7 +276,7 @@ export function DiagramLayer({doc,selected,activeNodes,activeEdges,failed=false,
     {doc.drawings.map(d=>{
       const pts=d.points,path='M'+pts.map(p=>`${p.x} ${p.y}`).join('L'),first=pts[0],last=pts[pts.length-1],prev=pts[pts.length-2],angle=Math.atan2(last.y-prev.y,last.x-prev.x),size=10+(d.style.strokeWidth??2)*2;
       const head=d.kind==='arrow'?<path className="drawing-head" d={`M${last.x} ${last.y}L${last.x-size*Math.cos(angle-.45)} ${last.y-size*Math.sin(angle-.45)}L${last.x-size*Math.cos(angle+.45)} ${last.y-size*Math.sin(angle+.45)}Z`}/>:null;
-      return <g key={d.id} data-id={d.id} data-type="drawing" style={vars(d.style)} className={'free-drawing'+(has(selected,d.id)?' selected':'')}>
+      return <g key={d.id} data-id={d.id} data-type="drawing" style={vars(d.style)} className={'free-drawing'+(has(selected,d.id)?' selected':'')} {...(interactive?{role:'button',tabIndex:0,'aria-label':d.kind==='freehand'?'Dibujo a mano':d.kind==='arrow'?'Flecha dibujada':'Línea dibujada'}:{})}>
         <path className="free-drawing-path" d={path}/>{head}{interactive&&<path className="free-drawing-hit" d={path}/>}
       </g>;
     })}

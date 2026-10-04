@@ -1,8 +1,9 @@
-import {designDocument,describeError,fitSize,previewBatch,tidyBatch,tourOf,documentBounds,groupMembers,instantiateComponent,nodeRect,resolveMembership,rootGroupId,type ActionInput,type DiagramComponent,type DiagramDocument,type DiagramEdge,type DiagramNode} from '@diagramia/core';
+import {alignSelectionActions,captureSelection,cloneSelectionActions,selectionMoveActions,designDocument,describeError,fitSize,previewBatch,tidyBatch,tourOf,documentBounds,groupMembers,instantiateComponent,rootGroupId,type ActionInput,type DiagramComponent,type DiagramDocument,type SelectionAlign,type SelectionClipboard} from '@diagramia/core';
 import {commit,documentStore,newId,notify,transact} from './store/documentStore';
 import {select,selectionStore} from './store/selectionStore';
 import {track} from './telemetry';
 import {fit,viewStore} from './store/viewStore';
+import {createStore} from './store/createStore';
 
 const state=()=>({doc:documentStore.get().doc,ids:selectionStore.get().ids});
 const selectedNodes=(doc:DiagramDocument,ids:string[])=>doc.nodes.filter(n=>ids.includes(n.id));
@@ -15,19 +16,12 @@ export function selectionUnit(doc:DiagramDocument,nodeId:string):string[]{
 
 /** Mover nodos reevalúa la pertenencia a zonas: el nodo queda en la zona que contiene su centro, o libre. */
 export function moveActions(doc:DiagramDocument,ids:string[],dx:number,dy:number):ActionInput[]{
-  return selectedNodes(doc,ids).map(n=>{
-    const target=resolveMembership(doc,{...nodeRect(n),x:n.position.x+dx,y:n.position.y+dy});
-    return {type:'UPDATE_NODE',id:n.id,changes:{position:target.position,...(target.zoneId!==n.zoneId?{zoneId:target.zoneId}:{})}};
-  });
+  return selectionMoveActions(doc,ids,dx,dy);
 }
 
 export function nudge(dx:number,dy:number){
   const {doc,ids}=state();
-  const actions:ActionInput[]=[
-    ...moveActions(doc,ids.filter(id=>{const n=doc.nodes.find(x=>x.id===id);return n&&!(n.zoneId&&ids.includes(n.zoneId));}),dx,dy),
-    ...doc.zones.filter(z=>ids.includes(z.id)).map(z=>({type:'MOVE_ZONE' as const,id:z.id,position:{x:z.bounds.x+dx,y:z.bounds.y+dy}})),
-    ...doc.frames.filter(f=>ids.includes(f.id)).map(f=>({type:'UPDATE_FRAME' as const,id:f.id,changes:{bounds:{...f.bounds,x:f.bounds.x+dx,y:f.bounds.y+dy}}}))
-  ];
+  const actions=moveActions(doc,ids,dx,dy);
   transact(actions,'Selección movida');
 }
 
@@ -46,51 +40,41 @@ export function deleteSelection(){
 
 export function selectAll(){const {doc}=state();select([...doc.nodes,...doc.edges,...doc.drawings].map(x=>x.id));}
 
-type Clip={nodes:DiagramNode[];edges:DiagramEdge[]};
-let clipboard:Clip|null=null,pastes=0;
-function capture():Clip|null{
-  const {doc,ids}=state(),nodes=selectedNodes(doc,ids),inside=new Set(nodes.map(n=>n.id));
-  return nodes.length?{nodes,edges:doc.edges.filter(e=>inside.has(e.from)&&inside.has(e.to))}:null;
-}
-function insert(clip:Clip,offset:number,label:string){
-  const {doc}=state(),rename=new Map(clip.nodes.map(n=>[n.id,newId('node')]));
-  const actions:ActionInput[]=[
-    ...clip.nodes.map(n=>{
-      const target=resolveMembership(doc,{...nodeRect(n),x:n.position.x+offset,y:n.position.y+offset});
-      return {type:'ADD_NODE' as const,node:{...n,id:rename.get(n.id)!,groupId:null,zoneId:target.zoneId,position:target.position}};
-    }),
-    ...clip.edges.map(({points:_route,...e})=>({type:'ADD_EDGE' as const,edge:{...e,id:newId('edge'),from:rename.get(e.from)!,to:rename.get(e.to)!}}))
-  ];
-  if(transact(actions,label))select([...rename.values()]);
-}
+export const clipboardStore=createStore({clip:null as SelectionClipboard|null});
+let pastes=0;
+function capture(){const {doc,ids}=state();return captureSelection(doc,ids);}
+function insert(clip:SelectionClipboard,offset:number,label:string){const {actions,ids}=cloneSelectionActions(documentStore.get().doc,clip,offset,newId);if(transact(actions,label))select(ids);}
 export function copy(){
   const clip=capture();
-  if(!clip){notify('Seleccioná al menos un nodo para copiar.','warn');return false;}
-  clipboard=clip;pastes=0;notify(`${clip.nodes.length} nodo(s) copiados.`);track('copy',{count:clip.nodes.length});return true;
+  if(!clip){notify('Seleccioná lo que querés copiar.','warn');return false;}
+  const count=clip.nodes.length+clip.drawings.length+clip.zones.length+clip.frames.length;
+  clipboardStore.set({clip});pastes=0;notify(`${count} elemento(s) copiados.`);track('copy',{count});return true;
 }
-export function paste(){if(!clipboard){notify('No hay nada copiado en esta sesión.','warn');return;}track('paste',{count:clipboard.nodes.length});pastes++;insert(clipboard,24*pastes,'Elementos pegados');}
+export function paste(){const {clip}=clipboardStore.get();if(!clip){notify('No hay nada copiado en esta sesión.','warn');return;}track('paste',{count:clip.nodes.length+clip.drawings.length});pastes++;insert(clip,24*pastes,'Elementos pegados');}
 export function cut(){if(copy())deleteSelection();}
 export function duplicate(){const clip=capture();if(clip)insert(clip,24,'Selección duplicada');}
 
 /** Une el origen elegido en la barra contextual con un destino real, con mouse o teclado. */
-export function connectTo(to:string|null){
+export function connectTo(to:string|null,toAnchor:{x:number;y:number}|null=null){
   const {doc}=state(),from=viewStore.get().connectFromId;if(!from)return;
   if(!doc.nodes.some(n=>n.id===from)){viewStore.set({connectFromId:null,tool:'select'});notify('El elemento de origen ya no está. Elegí otro para unir.','warn');return;}
   if(!to||to===from||!doc.nodes.some(n=>n.id===to)){notify('Elegí otro elemento para unirlo con el seleccionado.');return;}
   const id=newId('edge');
-  if(transact([{type:'ADD_EDGE',edge:{id,from,to,label:''}}],'Elementos unidos')){select([id]);viewStore.set({connectFromId:null,tool:'select'});}
+  if(transact([{type:'ADD_EDGE',edge:{id,from,to,label:'',fromAnchor:viewStore.get().connectFromAnchor,toAnchor}}],'Elementos unidos')){select([id]);viewStore.set({connectFromId:null,connectFromAnchor:null,tool:'select'});}
 }
 
 export function group(){
-  const {doc,ids}=state(),nodes=selectedNodes(doc,ids);
-  if(nodes.length<2){notify('Agrupar necesita al menos dos nodos seleccionados.','warn');return;}
-  transact([{type:'CREATE_GROUP',group:{id:newId('group')},nodeIds:nodes.map(n=>n.id)}],'Grupo creado');
+  const {doc,ids}=state(),nodes=selectedNodes(doc,ids),drawings=doc.drawings.filter(d=>ids.includes(d.id));
+  if(nodes.length+drawings.length<2){notify('Seleccioná al menos dos figuras o dibujos para agrupar.','warn');return;}
+  if(transact([{type:'CREATE_GROUP',group:{id:newId('group')},nodeIds:nodes.map(n=>n.id),drawingIds:drawings.map(d=>d.id)}],'Pieza agrupada'))select([...nodes,...drawings].map(n=>n.id));
 }
 export function ungroup(){
-  const {doc,ids}=state(),roots=[...new Set(selectedNodes(doc,ids).map(n=>rootGroupId(doc,n.id)).filter((id):id is string=>Boolean(id)))];
+  const {doc,ids}=state(),roots=[...new Set(ids.map(id=>rootGroupId(doc,id)).filter((id):id is string=>Boolean(id)))];
   if(!roots.length){notify('La selección no pertenece a ningún grupo.','warn');return;}
   transact(roots.map(id=>({type:'DELETE_GROUP' as const,id})),'Grupo disuelto');
 }
+
+export function alignSelection(mode:SelectionAlign){const {doc,ids}=state();const actions=alignSelectionActions(doc,ids,mode);if(actions.length)transact(actions,mode==='horizontal'||mode==='vertical'?'Separación uniforme aplicada':'Piezas alineadas');}
 
 type Arrange=Extract<ActionInput,{type:'ALIGN_NODES'|'DISTRIBUTE_NODES'|'LAYOUT_NODES'}>;
 type ArrangeSpec=Arrange extends infer A?A extends {ids:unknown}?Omit<A,'ids'>:never:never;

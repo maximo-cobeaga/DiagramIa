@@ -1,9 +1,9 @@
-import {ARROWS,LINES,PORTS,SHAPES,assetBytes,documentBounds,fitSize,rootGroupId,type ActionInput,type DiagramDocument,type DiagramDrawing,type DiagramEdge,type DiagramFrame,type DiagramNode,type DiagramZone,type Rect} from '@diagramia/core';
+import {ARROWS,LINES,PORTS,SHAPES,assetBytes,documentBounds,fitSize,rootGroupId,selectionUnits,type ActionInput,type DiagramDocument,type DiagramDrawing,type DiagramEdge,type DiagramFrame,type DiagramNode,type DiagramZone,type Rect} from '@diagramia/core';
 import {useStore} from '../store/createStore';
 import {documentStore,transact} from '../store/documentStore';
 import {kindOf,select,selectionStore} from '../store/selectionStore';
 import {fit,viewStore} from '../store/viewStore';
-import {arrange,deleteSelection,duplicate,group,ungroup} from '../commands';
+import {alignSelection,arrange,deleteSelection,duplicate,group,ungroup} from '../commands';
 import {CREATABLE_KINDS,KIND_LABELS,NumberField,SelectField,TextField} from '../ui';
 import {Annotations} from './Annotations';
 import {IconPicker,SaveAsElement,StylePresets} from './Appearance';
@@ -100,19 +100,19 @@ function FrameInspector({frame,focusToken}:{frame:DiagramFrame;focusToken:number
   </>;
 }
 
-function Arrange({count}:{count:number}){
+function Arrange({count,layoutAllowed}:{count:number;layoutAllowed:boolean}){
   const align=[['left','Izquierda'],['center','Centro'],['right','Derecha'],['top','Arriba'],['middle','Medio'],['bottom','Abajo']] as const;
-  return <fieldset className="arrange"><legend>Ordenar {count} nodos</legend>
-    <div className="button-grid">{align.map(([mode,text])=><button key={mode} onClick={()=>arrange({type:'ALIGN_NODES',mode})}>{text}</button>)}</div>
+  return <fieldset className="arrange"><legend>Ordenar {count} piezas</legend>
+    <div className="button-grid">{align.map(([mode,text])=><button key={mode} onClick={()=>alignSelection(mode)}>{text}</button>)}</div>
     <div className="button-grid two">
-      <button disabled={count<3} onClick={()=>arrange({type:'DISTRIBUTE_NODES',axis:'horizontal'})}>Distribuir ↔</button>
-      <button disabled={count<3} onClick={()=>arrange({type:'DISTRIBUTE_NODES',axis:'vertical'})}>Distribuir ↕</button>
-      <button onClick={()=>arrange({type:'LAYOUT_NODES',direction:'right'})}>Auto-layout →</button>
-      <button onClick={()=>arrange({type:'LAYOUT_NODES',direction:'down'})}>Auto-layout ↓</button>
+      <button disabled={count<3} onClick={()=>alignSelection('horizontal')}>Distribuir ↔</button>
+      <button disabled={count<3} onClick={()=>alignSelection('vertical')}>Distribuir ↕</button>
+      {layoutAllowed&&<><button onClick={()=>arrange({type:'LAYOUT_NODES',direction:'right'})}>Auto-layout →</button>
+      <button onClick={()=>arrange({type:'LAYOUT_NODES',direction:'down'})}>Auto-layout ↓</button></>}
       <button onClick={group}>Agrupar</button>
       <button onClick={ungroup}>Desagrupar</button>
     </div>
-    <p className="inline-note">Sólo se mueven los nodos seleccionados. Si el resultado no cabe en su zona, el cambio se rechaza y se explica.</p>
+    <p className="inline-note">Sólo se acomodan las piezas seleccionadas. Los grupos conservan sus distancias internas.</p>
   </fieldset>;
 }
 
@@ -126,7 +126,7 @@ export function Inspector(){
     <span className="eyebrow">DOCUMENTO / {doc.id}</span>
     <TextField label="Título" value={doc.title} maxLength={200} onCommit={title=>transact([{type:'UPDATE_DOCUMENT',changes:{title}}],'Título cambiado')}/>
     <p className="inline-note">{doc.nodes.length} nodos · {doc.edges.length} conexiones · {doc.zones.length} zonas · {doc.frames.length} frames · {doc.groups.length} grupos · {doc.animations.length} animaciones</p>
-    <label className="check"><input type="checkbox" checked={snap} onChange={e=>viewStore.set({snap:e.target.checked})}/>Ajustar a la grilla de 8 px al mover y dibujar</label>
+    <label className="check"><input type="checkbox" checked={snap} onChange={e=>viewStore.set({snap:e.target.checked})}/>Ajustar a grilla y guías al mover (Alt mueve libre)</label>
     <button disabled={!doc.nodes.length} onClick={()=>transact([{type:'ARRANGE_DOCUMENT',direction:'right'}],'Diagrama ordenado sin superposiciones')}>Ordenar todo sin superposiciones</button>
     <button onClick={()=>fit(documentBounds(doc))}>Encuadrar todo</button>
     <p className="inline-note">Seleccioná un elemento para editar sus propiedades. Doble clic sobre un nodo, zona o conexión edita su texto en el lugar.</p>
@@ -141,11 +141,11 @@ export function Inspector(){
     {kind==='frame'&&<FrameInspector key={ids[0]} frame={doc.frames.find(f=>f.id===ids[0])!} focusToken={labelFocus}/>}
     {kind==='drawing'&&<DrawingInspector key={ids[0]} drawing={doc.drawings.find(d=>d.id===ids[0])!}/>}
     {nodes.length>1&&<StylePresets nodes={nodes}/>}
-    {nodes.length>1&&<Arrange count={nodes.length}/>}
+    {selectionUnits(doc,ids).length>1&&<Arrange count={selectionUnits(doc,ids).length} layoutAllowed={nodes.length===ids.length&&nodes.every(n=>!n.groupId)}/>}
     {nodes.length>0&&<SaveAsElement count={nodes.length}/>}
     {kind&&<Annotations key={'notes-'+ids[0]} doc={doc} targetId={ids[0]}/>}
     <div className="button-grid two">
-      <button disabled={!nodes.length} onClick={duplicate}>Duplicar</button>
+      <button onClick={duplicate}>Duplicar</button>
       <button onClick={deleteSelection}>Eliminar</button>
     </div>
   </div>;

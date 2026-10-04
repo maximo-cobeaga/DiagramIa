@@ -258,7 +258,7 @@ export function documentBounds(d:DiagramDocument,ids?:string[]):Rect|null{
   const only=ids?new Set(ids):null,pick=(id:string)=>!only||only.has(id);
   const rects:Rect[]=[...d.nodes.filter(n=>pick(n.id)).map(nodeRect),...d.zones.filter(z=>pick(z.id)).map(z=>z.bounds),...d.frames.filter(f=>pick(f.id)).map(f=>f.bounds)];
   for(const drawing of d.drawings.filter(d=>pick(d.id))){const x=Math.min(...drawing.points.map(p=>p.x)),y=Math.min(...drawing.points.map(p=>p.y));rects.push({x,y,width:Math.max(1,Math.max(...drawing.points.map(p=>p.x))-x),height:Math.max(1,Math.max(...drawing.points.map(p=>p.y))-y)});}
-  for(const [id,{points}] of routeAll(d))if(pick(id)&&points.length){
+  for(const [id,{points}] of only&&!d.edges.some(e=>only.has(e.id))?[]:routeAll(d))if(pick(id)&&points.length){
     const x=Math.min(...points.map(p=>p.x)),y=Math.min(...points.map(p=>p.y));
     rects.push({x,y,width:Math.max(...points.map(p=>p.x))-x,height:Math.max(...points.map(p=>p.y))-y});
   }

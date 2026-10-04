@@ -1,7 +1,7 @@
 import {z} from 'zod';
 
-export const SCHEMA_VERSION='1.7.0';
-export const READABLE_VERSIONS=['1.0.0','1.1.0','1.2.0','1.3.0','1.4.0','1.5.0','1.6.0','1.7.0'] as const;
+export const SCHEMA_VERSION='1.8.0';
+export const READABLE_VERSIONS=['1.0.0','1.1.0','1.2.0','1.3.0','1.4.0','1.5.0','1.6.0','1.7.0','1.8.0'] as const;
 
 export const Id=z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/);
 const Label=z.string().min(1).max(200);
@@ -40,7 +40,7 @@ export const EdgeStyleSchema=z.strictObject({stroke:Color,textColor:Color,stroke
 export const ZoneStyleSchema=z.strictObject({fill:Color,stroke:Color,textColor:Color,dash:Dash}).partial();
 /** Punto de enganche de una conexión sobre el borde de un nodo, relativo a su caja (0..1 en cada eje). */
 export const AnchorSchema=z.strictObject({x:z.number().min(0).max(1),y:z.number().min(0).max(1)});
-export const DrawingSchema=z.strictObject({id:Id,kind:z.enum(['line','arrow','freehand']),points:z.array(PositionSchema).min(2).max(500),style:EdgeStyleSchema.default({})});
+export const DrawingSchema=z.strictObject({id:Id,kind:z.enum(['line','arrow','freehand']),points:z.array(PositionSchema).min(2).max(500),style:EdgeStyleSchema.default({}),groupId:Id.nullable().default(null)});
 
 // Los campos se declaran sin defaults para que los `changes` parciales no reinicien valores omitidos.
 const nodeFields={kind:z.enum(NODE_KINDS),label:Label,position:PositionSchema,size:SizeSchema,zoneId:Id.nullable(),groupId:Id.nullable(),subtitle:z.string().max(120),assetId:Id.nullable(),icon:z.enum(ICONS).nullable(),
@@ -114,13 +114,13 @@ export const ActionSchema=z.discriminatedUnion('type',[
   z.strictObject({type:z.literal('UPDATE_EDGE'),id:Id,changes:z.strictObject({...edgeFields,points:Route.nullable()}).partial()}),
   z.strictObject({type:z.literal('DELETE_EDGE'),id:Id}),
   z.strictObject({type:z.literal('ADD_DRAWING'),drawing:DrawingSchema}),
-  z.strictObject({type:z.literal('UPDATE_DRAWING'),id:Id,changes:z.strictObject({kind:z.enum(['line','arrow','freehand']),points:z.array(PositionSchema).min(2).max(500),style:EdgeStyleSchema}).partial()}),
+  z.strictObject({type:z.literal('UPDATE_DRAWING'),id:Id,changes:z.strictObject({kind:z.enum(['line','arrow','freehand']),points:z.array(PositionSchema).min(2).max(500),style:EdgeStyleSchema,groupId:Id.nullable()}).partial()}),
   z.strictObject({type:z.literal('DELETE_DRAWING'),id:Id}),
   z.strictObject({type:z.literal('CREATE_ZONE'),zone:ZoneSchema}),
   z.strictObject({type:z.literal('UPDATE_ZONE'),id:Id,changes:z.strictObject({label:Label,bounds:BoundsSchema,style:ZoneStyleSchema}).partial()}),
   z.strictObject({type:z.literal('MOVE_ZONE'),id:Id,position:PositionSchema}),
   z.strictObject({type:z.literal('DELETE_ZONE'),id:Id,members:z.enum(['release','delete']).default('release')}),
-  z.strictObject({type:z.literal('CREATE_GROUP'),group:GroupSchema,nodeIds:Ids}),
+  z.strictObject({type:z.literal('CREATE_GROUP'),group:GroupSchema,nodeIds:z.array(Id).max(500).default([]),drawingIds:z.array(Id).max(500).default([])}).refine(a=>a.nodeIds.length+a.drawingIds.length>0&&a.nodeIds.length+a.drawingIds.length<=500,'Un grupo requiere entre 1 y 500 miembros'),
   z.strictObject({type:z.literal('UPDATE_GROUP'),id:Id,changes:z.strictObject({label:z.string().max(200)}).partial()}),
   z.strictObject({type:z.literal('DELETE_GROUP'),id:Id}),
   z.strictObject({type:z.literal('CREATE_FRAME'),frame:FrameSchema}),

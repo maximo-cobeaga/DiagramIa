@@ -537,6 +537,19 @@ button.danger:disabled{opacity:.5}
 .selection-actions{display:flex;align-items:center;gap:3px;flex-wrap:wrap}
 .selection-actions button{border-color:transparent;background:transparent;min-height:40px;padding:6px 10px;border-radius:10px;font-size:13px;transform:none}
 .selection-actions button:hover:not(:disabled){background:var(--blue-soft);box-shadow:none;transform:none}
+.arrange-selection{display:grid;gap:8px;padding:10px;border-top:1px solid var(--line);margin-top:5px}
+.arrange-selection>span{font-size:12px;font-weight:700;color:var(--muted)}
+.arrange-selection>div{display:flex;gap:5px;flex-wrap:wrap}
+.arrange-selection button{min-height:40px;font-size:12px;padding:5px 9px}
+.alignment-guide{stroke:var(--blue);stroke-dasharray:4 4;pointer-events:none}
+.free-drawing:focus{outline:none}
+.free-drawing:focus-visible{outline:2px solid var(--blue);outline-offset:4px}
+.connect-port{cursor:crosshair;outline:none}
+.connect-port circle:not(.connect-port-hit){fill:var(--surface);stroke:var(--blue)}
+.connect-port path{fill:none;stroke:var(--blue);pointer-events:none}
+.connect-port-hit{fill:transparent;stroke:none}
+.connect-port:hover circle:not(.connect-port-hit),.connect-port:focus-visible circle:not(.connect-port-hit){fill:var(--blue-soft);stroke-width:2.5}
+.connection-feedback{position:absolute;z-index:2;max-width:190px;padding:6px 10px;border-radius:10px;background:var(--blue);color:white;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .selection-colors{padding:10px 7px 6px;border-top:1px solid var(--line);margin-top:5px;max-height:300px;overflow:auto;max-width:330px}
 .connect-invitation{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--blue);border-radius:14px;padding:8px 12px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center;max-width:calc(100% - 24px);font-size:14px;width:max-content}
 @media(max-width:600px){.selection-actions button{padding:6px 8px;font-size:12px}.connect-invitation{flex-wrap:wrap;justify-content:center;text-align:center;font-size:13px}}

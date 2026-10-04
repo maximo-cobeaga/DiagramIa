@@ -28,7 +28,7 @@ export const viewStore=createStore({
   tool:'select' as Tool,template:{kind:'service',shape:null,label:'Nuevo componente',size:{width:160,height:80}} as NodeTemplate,snap:true,
   // El panel lateral abre en IA: es el primer recorrido del producto.
   panel:'assistant' as Panel,sideOpen:true,timelineOpen:false,timelineHeight:300,presenting:false,tutorial:false,theme:initialTheme(),
-  startMode:'choose' as 'choose'|'draw'|'examples',focusMode:false,connectFromId:null as string|null,
+  startMode:'choose' as 'choose'|'draw'|'examples',focusMode:false,connectFromId:null as string|null,connectFromAnchor:null as {x:number;y:number}|null,
   penColor:'#ffffff',penWidth:2,
   labelFocus:0,editingId:null as string|null,staging:null as Staging|null,flash:null as Flash|null,
   // Recorrido de una explicación que se está presentando: una copia del documento con la animación, nunca guardada.
@@ -38,7 +38,7 @@ export const viewStore=createStore({
 });
 
 // Elegir otra herramienta cancela el origen de una unión pendiente, incluso desde la paleta.
-viewStore.subscribe(()=>{const {tool,connectFromId}=viewStore.get();if(tool!=='connect'&&connectFromId)viewStore.set({connectFromId:null});});
+viewStore.subscribe(()=>{const {tool,connectFromId,connectFromAnchor}=viewStore.get();if(tool!=='connect'&&(connectFromId||connectFromAnchor))viewStore.set({connectFromId:null,connectFromAnchor:null});});
 
 export function setTheme(theme:Theme){
   viewStore.set({theme});

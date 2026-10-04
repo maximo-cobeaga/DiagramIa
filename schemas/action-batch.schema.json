@@ -1478,13 +1478,26 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "groupId": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
                   "id",
                   "kind",
                   "points",
-                  "style"
+                  "style",
+                  "groupId"
                 ],
                 "additionalProperties": false
               }
@@ -1573,6 +1586,17 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "groupId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -1891,7 +1915,16 @@
                 "additionalProperties": false
               },
               "nodeIds": {
-                "minItems": 1,
+                "default": [],
+                "maxItems": 500,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$"
+                }
+              },
+              "drawingIds": {
+                "default": [],
                 "maxItems": 500,
                 "type": "array",
                 "items": {
@@ -1903,7 +1936,8 @@
             "required": [
               "type",
               "group",
-              "nodeIds"
+              "nodeIds",
+              "drawingIds"
             ],
             "additionalProperties": false
           },
