@@ -5,7 +5,7 @@ import {HISTORY_LIMIT,MAX_TABS,addTab,closeTab,dismissExternalChange,documentSto
 import {playbackStore,useCameraFollow,usePlaybackClock} from './store/playbackStore';
 import {select,selectionStore} from './store/selectionStore';
 import {setFocusMode,setTheme,viewStore,zoomAt,zoomBy,type Panel,type Tool} from './store/viewStore';
-import {clipboardStore,paste,deleteSelection,designAll,fitAll} from './commands';
+import {clipboardStore,paste,deleteSelection,designAll,fitAll,fitSelection,goBackToView,openCanvasSearch} from './commands';
 import {EXPORT_FORMATS,addImage,exportDocument,importFile,type ExportFormat} from './io';
 import {SHORTCUTS,useShortcuts} from './shortcuts';
 import {KIND_LABELS,saveFile} from './ui';
@@ -124,17 +124,19 @@ function Tools(){
 }
 
 function CanvasToolbar(){
-  const {camera,viewport,sideOpen}=useStore(viewStore);
+  const {camera,viewport,sideOpen,searchOpen,navigationBack,staging,editingId}=useStore(viewStore),{ids}=useStore(selectionStore);
   const {clip}=useStore(clipboardStore);
   return <div className="canvas-toolbar">
-    <span className="canvas-label"><span aria-hidden="true"/>Tu lienzo</span>
+    <button className="canvas-search-toggle" disabled={Boolean(staging||editingId)} aria-expanded={searchOpen} title="Buscar en el lienzo (Ctrl + F)" onClick={()=>searchOpen?viewStore.set({searchOpen:false}):openCanvasSearch()}><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>Buscar</button>
     <div>
+      {navigationBack&&<button className="navigation-back" onClick={goBackToView} aria-label="Volver a la vista anterior" title="Volver a la vista anterior">↶</button>}
       <button onClick={()=>zoomBy(1/1.2)} aria-label="Alejar">−</button>
       <button className="zoom-readout" onClick={()=>zoomAt(viewport.width/2,viewport.height/2,1)} title="Volver a 100%">{Math.round(camera.zoom*100)}%</button>
       <button onClick={()=>zoomBy(1.2)} aria-label="Acercar">+</button>
       {clip&&<button onClick={paste} title="Pegar (Ctrl + V)">Pegar</button>}
       <button className="wide design-button" onClick={designAll} title="Colores, formas, iconos y recorrido automáticos">✦ Darle diseño</button>
       <button className="wide" onClick={()=>fitAll()} title="Encuadrar todo (1)">Encuadrar</button>
+      {ids.length>0&&!staging&&<button className="wide selection-fit" onClick={fitSelection} title="Ver selección (Shift + 1)">Ver selección</button>}
       <button className={'panel-toggle'+(sideOpen?' chosen':'')} aria-pressed={sideOpen} aria-controls="side-panel" onClick={()=>viewStore.set({sideOpen:!sideOpen})} aria-label={sideOpen?'Ocultar el panel lateral':'Mostrar el panel lateral'} title={sideOpen?'Ocultar panel':'Mostrar panel'}>
         <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M10 2.5v11"/>{sideOpen&&<path className="fill" d="M10 3h4v10h-4z"/>}</svg>
       </button>

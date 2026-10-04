@@ -53,7 +53,7 @@ const click=point=>drag(point,point);
 // Dos pulsaciones seguidas, sin movimientos intermedios, para que cuenten como doble clic.
 async function doubleClick(point){for(let i=0;i<2;i++){await mouse('mousePressed',point.x,point.y);await mouse('mouseReleased',point.x,point.y);}await sleep(150);}
 const tap=async selector=>{if(!await js(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;el.click();return true;})()`))throw new Error(`no existe ${selector}`);};
-const KEYS={Enter:['Enter',13],F2:['F2',113],c:['KeyC',67],z:['KeyZ',90],n:['KeyN',78],l:['KeyL',76],p:['KeyP',80],a:['KeyA',65],d:['KeyD',68],e:['KeyE',69],f:['KeyF',70],g:['KeyG',71],Escape:['Escape',27],ArrowRight:['ArrowRight',39],ArrowUp:['ArrowUp',38],End:['End',35],Delete:['Delete',46],'0':['Digit0',48],'1':['Digit1',49]};
+const KEYS={Enter:['Enter',13],F2:['F2',113],c:['KeyC',67],z:['KeyZ',90],n:['KeyN',78],l:['KeyL',76],p:['KeyP',80],a:['KeyA',65],d:['KeyD',68],e:['KeyE',69],f:['KeyF',70],g:['KeyG',71],Escape:['Escape',27],ArrowRight:['ArrowRight',39],ArrowUp:['ArrowUp',38],ArrowDown:['ArrowDown',40],End:['End',35],Delete:['Delete',46],'0':['Digit0',48],'1':['Digit1',49]};
 async function key(name,modifiers=0){
   const [code,vk]=KEYS[name],base={key:name,code,windowsVirtualKeyCode:vk,modifiers};
   await send('Input.dispatchKeyEvent',{type:'rawKeyDown',...base});await send('Input.dispatchKeyEvent',{type:'keyUp',...base});await sleep(60);
@@ -267,6 +267,48 @@ try{
     expect(await js(`Boolean(document.querySelector('.connect-invitation'))`),'tocar + desplaza el canvas en lugar de iniciar una conexión');
     for(const type of ['touchStart','touchEnd'])await send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchStart'?[{x:target.x,y:target.y}]:[]});
     expect((await saved()).edges.length===1,'no se puede unir con dos toques');return 'cuatro puntos, puerto real, preview de destino, drag/clic/teclado/toques y Esc reversible';
+  });
+  await check('Buscar navega por nombre, detalles y grupos de dibujos sin cambiar selección ni contenido',async()=>{
+    await loadScene([fixtureNode('origin','Mi idea',100,220),{...fixtureNode('remote','Aprobar acción',3400,220,200,110),details:'Nota privada para repasar'},fixtureNode('coffee','CAFÉ siguiente',3700,320,180,90)],
+      [{id:'ink-one',kind:'freehand',points:[{x:4000,y:220},{x:4100,y:250}],groupId:'notes',style:{stroke:'#cc4455'}},{id:'ink-two',kind:'line',points:[{x:4020,y:290},{x:4200,y:350}],groupId:'notes',style:{stroke:'#245cf6'}}],[{id:'notes',label:'Apuntes a mano'}]);
+    await key('1');await click(await center('[data-id="origin"]'));const before=await saved(),initial=await js(`document.querySelector('.canvas').getAttribute('viewBox')`);
+    await js(`document.querySelector('.canvas').focus()`);await key('f',CTRL);
+    expect(await js(`document.activeElement.getAttribute('role')==='combobox'`),'Ctrl+F no enfoca el buscador');
+    await setValue('.canvas-search input','ACCION');expect(await js(`document.querySelectorAll('.canvas-search-result').length===1&&document.querySelector('.canvas-search-result strong').textContent==='Aprobar acción'`),'no encuentra sin tildes/caso');await shot('47-buscar-lienzo');await key('Enter');await sleep(550);
+    expect(await js(`Boolean(document.querySelector('.focus-flash'))&&document.querySelector('[data-id="origin"]').classList.contains('selected')&&!document.querySelector('.canvas-search')`),'buscar cambia la selección o no resalta el resultado');
+    const target=await center('[data-id="remote"]'),host=await center('.canvas-host');expect(target.x>host.left&&target.x<host.left+host.width,'la cámara no lleva al resultado distante');await shot('48-buscar-destino');
+    await tap('[aria-label="Volver a la vista anterior"]');await sleep(550);expect(await js(`document.querySelector('.canvas').getAttribute('viewBox')`)===initial,'Volver no recupera la cámara');
+    await tap('.canvas-search-toggle');await setValue('.canvas-search input','repasar privada');await key('Enter');await sleep(550);expect((await center('[data-id="remote"]')).x>host.left,'no encuentra detalles con palabras en otro orden');
+    await tap('.canvas-search-toggle');await setValue('.canvas-search input','apuntes a mano');expect(await js(`document.querySelector('.canvas-search-result strong').textContent==='Apuntes a mano'`),'el grupo no aparece primero');await key('Enter');await sleep(550);
+    expect(await js(`document.querySelectorAll('.focus-flash').length`)===2,'el grupo sólo de dibujos no se enfoca completo');
+    await clickText('Ver selección','.canvas-toolbar');const selected=await center('[data-id="origin"]');expect(selected.x>host.left&&selected.x<host.left+host.width,'Ver selección no recupera la pieza seleccionada');
+    await key('1',SHIFT);expect(JSON.stringify(await saved())===JSON.stringify(before),'buscar/encuadrar modifica contenido, IDs o revisión');
+    await key('f',CTRL);await setValue('.canvas-search input','zzzz inexistente');await key('Enter');expect(await js(`Boolean(document.querySelector('.canvas-search'))&&document.querySelectorAll('.canvas-search-result').length===0`),'buscar sin resultado dispara una acción');await key('Escape');
+    expect(await js(`document.activeElement.classList.contains('canvas-search-toggle')&&document.querySelector('[data-id="origin"]').classList.contains('selected')`),'Esc pierde el foco o la selección');
+    return 'tildes/detalles, cámara reversible, grupo sólo de trazos, Ctrl+F/Enter/Esc y Shift+1; documento idéntico';
+  });
+  await check('Buscar pagina con teclado y conserva legibilidad en oscuro, móvil y movimiento reducido',async()=>{
+    await loadScene(Array.from({length:26},(_,i)=>fixtureNode('item-'+i,i===25?'<img src=x onerror=alert(1)>':'Idea '+i,(i%6)*140,Math.floor(i/6)*100)));
+    await tap('.canvas-search-toggle');expect(await js(`document.querySelectorAll('.canvas-search-result').length`)===12,'la búsqueda no limita los resultados visibles');
+    for(let i=0;i<13;i++)await key('ArrowDown');expect(await js(`document.querySelector('.canvas-search-pages span').textContent.startsWith('13–24')&&document.querySelector('.canvas-search input').getAttribute('aria-activedescendant')==='canvas-result-13'`),'el teclado no llega a la siguiente página');
+    await tap('[aria-label="Más resultados"]');expect(await js(`document.querySelectorAll('.canvas-search-result').length`)===2,'la última página pierde resultados');
+    expect(await js(`!document.querySelector('.canvas-search img')&&document.querySelector('.canvas-search').textContent.includes('<img src=x onerror=alert(1)>')`),'la etiqueta se interpreta como HTML');
+    await setValue('.canvas-search input','onerror');await key('Enter');await sleep(550);await tap('.canvas-search-toggle');
+    await tap('[aria-label="Cambiar a modo oscuro"]');await setValue('.canvas-search input','idea');await sleep(220);await shot('49-buscar-oscuro');
+    await viewport(390,844,true);await sleep(200);await js(`document.querySelector('.canvas-host').scrollIntoView({block:'center'})`);
+    expect(await js(`document.documentElement.scrollWidth<=innerWidth&&(()=>{const p=document.querySelector('.canvas-search').getBoundingClientRect(),h=document.querySelector('.canvas-host').getBoundingClientRect();return p.left>=h.left&&p.right<=h.right&&p.top>=h.top&&p.bottom<=h.bottom;})()`),'el buscador recorta el lienzo o desborda en móvil');
+    for(let i=0;i<10;i++)await key('ArrowDown');expect(await js(`(()=>{const input=document.querySelector('.canvas-search input').getBoundingClientRect(),r=document.getElementById(document.querySelector('.canvas-search input').getAttribute('aria-activedescendant')).getBoundingClientRect(),box=document.querySelector('.canvas-search [role=listbox]').getBoundingClientRect();return r.top>=box.top-1&&r.bottom<=box.bottom+1&&input.height>0;})()`),'el resultado activo queda oculto al usar teclado');await shot('50-buscar-movil');
+    await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await key('Enter');expect(await js(`getComputedStyle(document.querySelector('.focus-flash')).animationName`)==='none','el resaltado ignora reduced-motion');
+    await send('Emulation.setEmulatedMedia',{features:[]});await viewport(1440,900);await js(`scrollTo(0,0)`);await tap('[aria-label="Cambiar a modo claro"]');
+    await tap('.canvas-search-toggle');await tap('.doc-tab-add');expect(await js(`!document.querySelector('.canvas-search')&&!document.querySelector('.navigation-back')`),'otra pestaña conserva navegación del documento anterior');
+    await tap('.canvas-search-toggle');expect(await js(`document.querySelector('.canvas-search-summary').textContent.includes('vacío')`),'un documento vacío muestra resultados de otra pestaña');await key('Escape');return '26 resultados accesibles, texto seguro, foco visible, sin clipping y estado aislado por pestaña';
+  });
+  await check('Buscar en San Pancho pausa el recorrido y funciona en concentración sin editar el viaje',async()=>{
+    await setValue('select[aria-label="Cargar ejemplo"]','4');await sleep(400);const before=await saved();expect(before.nodes.length===29,'no se abrió el ejemplo complejo del viaje');
+    await tap('.play-button');await sleep(100);await tap('.canvas-search-toggle');expect(await js(`document.querySelector('.play-button').dataset.playing`)==='false','buscar no pausa la cámara del recorrido');
+    await setValue('.canvas-search input','sayulita');await key('Enter');await sleep(550);const settled=await js(`document.querySelector('.canvas').getAttribute('viewBox')`);await sleep(550);expect(await js(`document.querySelector('.canvas').getAttribute('viewBox')`)===settled,'la cámara de animación reemplaza el resultado de búsqueda');
+    await tap('.focus-toggle');await tap('.canvas-search-toggle');await setValue('.canvas-search input','hotel');await shot('51-buscar-viaje');expect(await js(`document.querySelectorAll('.canvas-search-result').length`)>1,'no encuentra las distintas referencias al hotel');
+    await key('Escape');await tap('.focus-toggle');expect(JSON.stringify(await saved())===JSON.stringify(before),'la navegación altera el viaje o su animación');return 'ejemplo real de 29 elementos, cámara estable al pausar, concentración y contenido conservado';
   });
   // El resto de la regresión conserva su fixture de arquitectura y no consume pestañas de las pruebas de inicio.
   await js(`(()=>{localStorage.clear();localStorage.setItem('diagramia.tutorial.seen','1');localStorage.setItem('diagramia.theme','light');})()`);await send('Page.reload');await sleep(1200);

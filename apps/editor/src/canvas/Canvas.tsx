@@ -12,6 +12,7 @@ import {singleDrawingDocument,singleNodeDocument,templateNode} from './templateN
 import {Welcome} from '../shell/Welcome';
 import {SelectionToolbar} from './SelectionToolbar';
 import {PenTools} from './PenTools';
+import {CanvasSearch} from './CanvasSearch';
 
 type BoxKind='node'|'zone'|'frame';
 type Anchor={x:number;y:number}|null;
@@ -103,7 +104,7 @@ function InlineEditor({target,camera}:{target:Editable;camera:Camera}){
 }
 
 export function Canvas(){
-  const {doc:saved}=useStore(documentStore),{camera,viewport,tool,template,staging,editingId,flash,dragTemplate,connectFromId,connectFromAnchor}=useStore(viewStore),doc=staging?.doc??saved,stagedIds=useMemo(()=>staging?new Set(staging.changed):undefined,[staging]),{ids}=useStore(selectionStore),{animationId,time,scenarioId}=useStore(playbackStore);
+  const {doc:saved}=useStore(documentStore),{camera,viewport,tool,template,staging,editingId,flash,dragTemplate,connectFromId,connectFromAnchor,searchOpen}=useStore(viewStore),doc=staging?.doc??saved,stagedIds=useMemo(()=>staging?new Set(staging.changed):undefined,[staging]),{ids}=useStore(selectionStore),{animationId,time,scenarioId}=useStore(playbackStore);
   const [gesture,showGesture]=useState<Gesture|null>(null),[spaceHeld,setSpaceHeld]=useState(false),[ghostAt,setGhostAt]=useState<Point|null>(null);
   const [connectHover,setConnectHover]=useState<{point:Point;target:string|null}|null>(null);
   useEffect(()=>setConnectHover(null),[tool,connectFromId]);
@@ -376,7 +377,7 @@ export function Canvas(){
   const ghost=useMemo(()=>ghostTemplate&&placeAt&&!staging&&(!gesture||gesture.type==='place')?singleNodeDocument(templateNode(ghostTemplate,placeAt)):null,[ghostTemplate,placeAt,staging,gesture]);
   const empty=!doc.nodes.length&&!doc.zones.length&&!doc.frames.length&&!doc.drawings.length;
   const cursor=gesture?.type==='pan'?'grabbing':tool==='pan'||spaceHeld||staging?'grab':tool==='select'?'default':'crosshair';
-  const connectionPortBox=single==='node'&&tool==='select'&&!gesture&&!staging&&!editingId&&!playbackStore.get().playing?nodeRect(doc.nodes.find(n=>n.id===ids[0])!):null;
+  const connectionPortBox=single==='node'&&tool==='select'&&!gesture&&!staging&&!editingId&&!searchOpen&&!playbackStore.get().playing?nodeRect(doc.nodes.find(n=>n.id===ids[0])!):null;
   const pendingFrom=connectFromId?doc.nodes.find(n=>n.id===connectFromId):null;
   const pendingTarget=connectHover?.target?doc.nodes.find(n=>n.id===connectHover.target):null;
   const wire=gesture?.type==='connect'?{from:(r=>({x:r.x+(gesture.fromAnchor?.x??.5)*r.width,y:r.y+(gesture.fromAnchor?.y??.5)*r.height}))(nodeRect(doc.nodes.find(n=>n.id===gesture.from)!)),to:gesture.current,ready:Boolean(gesture.target)}
@@ -442,6 +443,7 @@ export function Canvas(){
     {!staging&&<PenTools guideLabel={gesture?.type==='stroke'?gesture.guideLabel:undefined}/>}
     {shownWire?.ready&&wireTarget&&<div className="connection-feedback" role="status" style={{left:Math.max(8,Math.min(viewport.width-200,(wireTarget.x-camera.x)*camera.zoom)),top:Math.max(8,Math.min(viewport.height-40,(wireTarget.y-camera.y)*camera.zoom-38))}}>Unir con {doc.nodes.find(n=>n.position.x===wireTarget.x&&n.position.y===wireTarget.y)?.label??'este elemento'}</div>}
     <SelectionToolbar busy={Boolean(gesture)}/>
+    <CanvasSearch/>
     {viewStore.get().connectFromId&&tool==='connect'&&<div className="connect-invitation" role="status">Elegí el otro elemento para unirlos.<button onClick={()=>{viewStore.set({connectFromId:null,tool:'select'});notify('Unión cancelada.');}}>Cancelar</button></div>}
     {editing&&<InlineEditor key={editing.id} target={editing} camera={camera}/>}
     {staging&&<p className="canvas-banner" role="status">Vista previa de la propuesta · paso {staging.step} de {staging.total} · aceptala o rechazala en el panel IA</p>}

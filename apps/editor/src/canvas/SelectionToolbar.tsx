@@ -12,14 +12,14 @@ import {ArrangeSelection} from './ArrangeSelection';
 
 /** Acciones pequeñas cerca de la selección. Los cambios siguen pasando por el motor canónico. */
 export function SelectionToolbar({busy}:{busy:boolean}){
-  const {doc}=useStore(documentStore),{ids}=useStore(selectionStore),{camera,viewport,tool,staging,editingId,connectFromId}=useStore(viewStore);
+  const {doc}=useStore(documentStore),{ids}=useStore(selectionStore),{camera,viewport,tool,staging,editingId,connectFromId,searchOpen}=useStore(viewStore);
   const {playing}=useStore(playbackStore);
   const [colorsOpen,setColorsOpen]=useState(false),[textOpen,setTextOpen]=useState(false),[arrangeOpen,setArrangeOpen]=useState(false),[size,setSize]=useState({width:410,height:48}),ref=useRef<HTMLDivElement>(null);
   const nodes=doc.nodes.filter(n=>ids.includes(n.id)),edges=doc.edges.filter(e=>ids.includes(e.id)),drawings=doc.drawings.filter(d=>ids.includes(d.id)),zones=doc.zones.filter(z=>ids.includes(z.id));
   const textTarget=ids.length===1?[...doc.nodes,...doc.edges,...doc.zones,...doc.frames].find(x=>x.id===ids[0]):null;
   const hasGroup=ids.some(id=>Boolean(rootGroupId(doc,id))),editable=nodes.length+drawings.length+zones.length+doc.frames.filter(f=>ids.includes(f.id)).length;
   const unitCount=selectionUnits(doc,ids).length;
-  const visible=Boolean(ids.length&&!busy&&!playing&&tool==='select'&&!staging&&!editingId&&!connectFromId),bounds=visible?documentBounds(doc,ids):null;
+  const visible=Boolean(ids.length&&!busy&&!playing&&tool==='select'&&!staging&&!editingId&&!connectFromId&&!searchOpen),bounds=visible?documentBounds(doc,ids):null;
   const box=bounds?{left:(bounds.x-camera.x)*camera.zoom,top:(bounds.y-camera.y)*camera.zoom,right:(bounds.x+bounds.width-camera.x)*camera.zoom,bottom:(bounds.y+bounds.height-camera.y)*camera.zoom}:null;
   const onScreen=Boolean(box&&box.right>=0&&box.left<=viewport.width&&box.bottom>=0&&box.top<=viewport.height);
   useLayoutEffect(()=>{setColorsOpen(false);setTextOpen(false);setArrangeOpen(false);},[ids.join('|')]);

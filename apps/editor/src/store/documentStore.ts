@@ -116,6 +116,7 @@ export const undo=()=>travel('undo'),redo=()=>travel('redo');
 export function replaceDocument(next:DiagramDocument,message:string,tone:Notice['tone']='info'){
   const {doc,activeId}=documentStore.get();
   if(sharedAdapter?.active(activeId))sharedAdapter.detach(activeId);
+  viewStore.set({searchOpen:false,navigationBack:null,flash:null});
   // La revisión sigue creciendo para que un lote armado contra el documento anterior no se aplique por error.
   install(validateDocument({...next,revision:Math.max(next.revision,doc.revision+1)}),doc,{history:'push',notice:{text:message,tone},log:message});
 }
@@ -190,7 +191,7 @@ function stash(){
 function show(id:string,tabs:Tab[],notice:Notice){
   cancelCameraMove();
   const state=states.get(id)!;
-  selectionStore.set({ids:[]});viewStore.set({staging:null,editingId:null,tool:'select',startMode:'choose',connectFromId:null});
+  selectionStore.set({ids:[]});viewStore.set({staging:null,editingId:null,tool:'select',startMode:'choose',connectFromId:null,searchOpen:false,navigationBack:null,flash:null});
   persisted=state.doc;
   documentStore.set({doc:state.doc,past:state.past,future:state.future,dropped:state.dropped,recovery:state.recovery,activeId:id,tabs,save:saveOf(state.recovery),notice,externalChange:null});
   if(state.camera)viewStore.set({camera:state.camera});else fit(documentBounds(state.doc));

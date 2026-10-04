@@ -2,6 +2,13 @@
 
 ## Último checkpoint
 
+03/10/2026 (buscar y recuperar la vista; ADR 080). Extensión implementada de P1.1/P8.1:
+- **Buscar en el lienzo:** botón visible y Ctrl/⌘+F fuera de campos de texto; encuentra nombres/detalles, zonas, grupos, encuadres, conexiones y dibujos por su tipo. Tolera tildes/caso y palabras en otro orden, prioriza nombres, distingue contexto y pagina doce resultados. Flechas/Enter/Esc, foco devuelto, vacío y ausencia de coincidencias explícitos.
+- **Navegar:** un resultado acerca la cámara y se resalta; conserva selección, contenido, revisión, IDs e historial. Buscar pausa el recorrido y cancela la herramienta de unión pendiente. «Ver selección»/Shift+1 acerca las piezas elegidas; «Volver a la vista anterior» recupera la cámara previa. Los grupos sólo de dibujos ahora se enfocan completos. Navegación de sesión, aislada por pestaña, sin persistir búsquedas ni telemetría de contenido.
+- **UI:** popup temporal dentro del lienzo, controles contextuales ocultos mientras se busca, resultados con scroll propio sin perder el campo; barra móvil reacomodada, claro/oscuro, concentración y reduced-motion. Schema 1.8.0 conservado, sin dependencias ni cambios de API.
+- **Verificación:** check final 141/141, prueba enfocada 5/5 y regresión estable 56/56 sin errores de consola. Revisión visual del ejemplo real San Pancho y móvil; detalle en VALIDATION.md. Gateway mock aislado y editor 5174, sin IA paga; editor habitual 5173 conservado. Trabajo local, sin push ni despliegue.
+- **Próximo paso inequívoco:** revisión manual 32–33 con el usuario y personas sin experiencia, teclado asistido y dispositivos físicos. P8.1 continúa parcial; estas pruebas automáticas no certifican usabilidad universal ni reconocimiento de escritura.
+
 03/10/2026 (piezas completas → organización → conexiones, ADR 077–079). Implementado el orden aprobado, extensión de P1.1/P1.3/P8.1:
 - **Piezas mixtas:** selección por clic/teclado/rectángulo y movimiento conjunto de figuras/texto/dibujos. Grupos durables de figuras y trazos, selección de miembro con Alt, copiar/pegar/duplicar preservando grupos, rutas internas e imágenes entre documentos. Nuevos IDs sólo para copias. Copiar/Pegar/Agrupar/Desagrupar accesibles desde la UI; nudge, preview y undo conservados.
 - **Organizar:** guías visuales de bordes/centros al mover, tolerancia sensible al zoom, Alt libre. «Acomodar» y Propiedades alinean/distribuyen piezas completas sin mover vecinos ni desarmar grupos. Layout avanzado sólo para figuras independientes; distribución conserva el rango y puede mantener solapamientos previos.

@@ -1,4 +1,4 @@
-import {documentBounds,type DiagramDocument,type DiagramNode,type Rect} from '@diagramia/core';
+import {documentBounds,groupMembers,type DiagramDocument,type DiagramNode,type Rect} from '@diagramia/core';
 import {trackThrottled} from '../telemetry';
 import {createStore} from './createStore';
 
@@ -31,6 +31,7 @@ export const viewStore=createStore({
   startMode:'choose' as 'choose'|'draw'|'examples',focusMode:false,connectFromId:null as string|null,connectFromAnchor:null as {x:number;y:number}|null,
   penColor:'#ffffff',penWidth:2,
   labelFocus:0,editingId:null as string|null,staging:null as Staging|null,flash:null as Flash|null,
+  searchOpen:false,navigationBack:null as Camera|null,
   // Recorrido de una explicación que se está presentando: una copia del documento con la animación, nunca guardada.
   tour:null as {doc:DiagramDocument;previousAnimationId:string}|null,
   // Plantilla que se está arrastrando desde la paleta: el canvas la dibuja bajo el cursor antes de soltarla.
@@ -38,7 +39,11 @@ export const viewStore=createStore({
 });
 
 // Elegir otra herramienta cancela el origen de una unión pendiente, incluso desde la paleta.
-viewStore.subscribe(()=>{const {tool,connectFromId,connectFromAnchor}=viewStore.get();if(tool!=='connect'&&(connectFromId||connectFromAnchor))viewStore.set({connectFromId:null,connectFromAnchor:null});});
+viewStore.subscribe(()=>{
+  const {tool,connectFromId,connectFromAnchor,searchOpen,staging,presenting,tutorial,editingId}=viewStore.get();
+  if(tool!=='connect'&&(connectFromId||connectFromAnchor))viewStore.set({connectFromId:null,connectFromAnchor:null});
+  if(searchOpen&&(staging||presenting||tutorial||editingId))viewStore.set({searchOpen:false});
+});
 
 export function setTheme(theme:Theme){
   viewStore.set({theme});
@@ -117,13 +122,13 @@ let flashTimer:ReturnType<typeof setTimeout>|undefined;
  * Devuelve false si el elemento ya no existe.
  */
 export function focusOn(doc:DiagramDocument,id:string,tone:Flash['tone']='info'){
-  const inGroup=(groupId:string|null):boolean=>groupId===id||Boolean(groupId&&inGroup(doc.groups.find(g=>g.id===groupId)?.parentId??null));
-  const ids=doc.groups.some(g=>g.id===id)?doc.nodes.filter(n=>inGroup(n.groupId)).map(n=>n.id):[id];
+  const ids=doc.groups.some(g=>g.id===id)?groupMembers(doc,id):[id];
   const bounds=documentBounds(doc,ids);
   if(!bounds)return false;
   // Margen generoso: el elemento se ve con su contexto, no aislado.
   const {viewport}=viewStore.get(),pad=Math.max(80,Math.min(viewport.width,viewport.height)*.18);
-  moveCamera(cameraFor(bounds,viewport,pad,1.25));
+  const goal=cameraFor(bounds,viewport,pad,1.25);
+  moveCamera(goal.zoom<LEGIBLE_ZOOM?{zoom:LEGIBLE_ZOOM,x:bounds.x-24/LEGIBLE_ZOOM,y:bounds.y-24/LEGIBLE_ZOOM}:goal);
   clearTimeout(flashTimer);
   viewStore.set({flash:{ids,tone,key:Date.now()}});
   flashTimer=setTimeout(()=>viewStore.set({flash:null}),2600);

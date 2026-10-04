@@ -2,6 +2,12 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Buscar y recuperar la vista (03/10/2026)
+
+- **P1.1/P8.1, extensión implementada (ADR 080):** buscador local por nombre/detalle/contexto, grupos, zonas, encuadres, conexiones y tipos de dibujo. Tildes/caso, todos los términos, orden por nombre, paginación, teclado y estados vacíos. Acercar y resaltar sin seleccionar ni modificar contenido; Ver selección/Shift+1 y regreso a la cámara previa.
+- **Comprobación:** check 141/141, prueba enfocada 5/5 y regresión estable 56/56, sin errores de consola. San Pancho real, móvil/oscuro, reducción de movimiento, pausa del recorrido, grupos sólo de trazos, etiquetas como texto, aislamiento por pestaña y documento idéntico comprobados. Capturas en evidencias/ui-buscar-*.png. Sin schema/dependencias/IA paga. Ver VALIDATION.md 32–33.
+- **Próximo paso:** revisión manual con usuarios y dispositivos reales. P8.1 sigue parcial; buscar no interpreta lo escrito en trazos ni sustituye el reconocimiento pendiente.
+
 ## Piezas, organización y conexiones (03/10/2026)
 
 - **Orden aprobado implementado, P1.1/P1.3/P8.1 (ADR 077–079):** figuras/textos/dibujos seleccionables y movibles juntos; grupos mixtos persistentes; copiar/pegar/duplicar con rutas, grupos e imágenes conservados. Guías al mover y «Acomodar»/Propiedades alinean piezas completas; Alt libera ayudas. Cuatro puntos + para conectar con drag, clics/toques o teclado, destino visible y cancelación.
@@ -106,7 +112,7 @@ Tercera vuelta, el mismo día: menos cruces entre zonas (zonas alrededor de la m
 - Editor y MCP comparten documentos por PostgreSQL al activar el espacio local; los cambios aparecen mediante polling y CAS con conflicto visible. También hay documentos de cuenta privados. MCP remoto expone Streamable HTTP con token OAuth por usuario, scopes y aislamiento de proyecto; se probó con issuer/JWKS local firmado, falta comprobar Auth0, proxy y dos hosts externos. El MCP stdio conserva el token de servidor.
 - Las imágenes viajan dentro del documento (tope 400 KB cada una, 40 por documento): no hay almacenamiento de archivos hasta P4.3. `custom` se dibuja como caja genérica.
 - Las ramas de animación son escenarios con nombre; no hay variables ni triggers con expresiones. Las pistas se sincronizan por ID de paso y admiten resaltado, texto y cámara; falta revisión manual de la UX.
-- Schema 1.7.0 (ADR 067 agrega enfoque y transición por paso): formas básicas, de flujo y UML, iconos grandes, estilos, enganches y pistas editables. El layout separa nodos y reserva espacio para etiquetas, pero rutas manuales/curvas y cruces entre conexiones aún pueden superponerse; no existe garantía universal de ausencia de cruces.
+- Schema 1.8.0 (ADR 067 agrega enfoque/transición por paso; ADR 077 grupos de figuras y dibujos): formas básicas, de flujo y UML, iconos grandes, estilos, enganches y pistas editables. El layout separa nodos y reserva espacio para etiquetas, pero rutas manuales/curvas y cruces entre conexiones aún pueden superponerse; no existe garantía universal de ausencia de cruces.
 - Los grupos no muestran marcador de anotación en el canvas (sí en el inspector).
 - El routing ortogonal evita nodos y reparte extremos compartidos; no elimina todos los cruces entre conexiones.
 - La IA se probó con un modelo real local (Ollama, qwen2.5-coder:7b). El modo Crear usa un inventario de elementos convertido a acciones por el gateway; dos smokes pasaron con el test básico y otro con verificación estricta de etiquetas y relaciones. Entre ellos, el test estricto detectó etiquetas superpuestas y se corrigió el layout. Ese modelo todavía puede pedir aclaraciones innecesarias o interpretar mal pedidos libres. Claude sigue sin probarse: falta ANTHROPIC_API_KEY. Con la key: `npm run api` y `npm run smoke:ai -- anthropic`.
@@ -120,5 +126,5 @@ Tercera vuelta, el mismo día: menos cruces entre zonas (zonas alrededor de la m
 - Export: PDF raster del diagrama y PDF por páginas de la presentación; no hay video con tiempo/movimiento. Mermaid y DOT pierden posiciones; draw.io conserva geometría del subset. Los tres formatos reportan lo que no representan. JSON sigue siendo el formato completo.
 - PostgreSQL local y el repositorio de documentos pasaron backup/restore aislado con versiones y recibos. Cuentas, proyectos, aislamiento, cuotas, sync local y MCP remoto se probaron con proveedor OIDC/OAuth simulado y PostgreSQL efímero; faltan Auth0 real, hosts MCP externos, billing y BYOK. draw.io, DOT, PlantUML y BPMN cubren sólo los subconjuntos documentados en `docs/INTEROP.md`.
 - PlantUML importa clases/secuencia/estados simples y exporta cada tipo; BPMN importa/exporta un proceso básico no ejecutable. Los elementos avanzados se informan o hacen fallar la importación si dejarían referencias rotas. Falta revisión manual con archivos ajenos variados.
-- Pan, portapapeles, pinch/táctil, edición de pasos por UI y lector de pantalla no tienen prueba automática: revisarlos a mano. El catálogo móvil se pliega para mostrar el canvas, pero el zoom inicial puede dejar texto pequeño.
+- Smoke cubre pan, portapapeles de piezas mixtas, conexiones por toque simulado, teclado, búsqueda y edición de pasos por UI. Siguen pendientes pinch/táctil/stylus físicos, teclado asistido y lectores de pantalla: revisarlos a mano. El catálogo móvil se pliega para mostrar el canvas, pero el zoom inicial puede dejar texto pequeño.
 - MANIFEST.json describe el ZIP original; no se regeneró y sus hashes ya no coinciden con el árbol actual.

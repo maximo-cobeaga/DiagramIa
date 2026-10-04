@@ -2,11 +2,23 @@ import {alignSelectionActions,captureSelection,cloneSelectionActions,selectionMo
 import {commit,documentStore,newId,notify,transact} from './store/documentStore';
 import {select,selectionStore} from './store/selectionStore';
 import {track} from './telemetry';
-import {fit,viewStore} from './store/viewStore';
+import {fit,moveCamera,viewStore} from './store/viewStore';
 import {createStore} from './store/createStore';
+import {playbackStore} from './store/playbackStore';
 
 const state=()=>({doc:documentStore.get().doc,ids:selectionStore.get().ids});
 const selectedNodes=(doc:DiagramDocument,ids:string[])=>doc.nodes.filter(n=>ids.includes(n.id));
+
+/** Acerca la selección sin tocar sus IDs, contenido ni historial. */
+export function fitSelection(){
+  const {doc,ids}=state(),bounds=documentBounds(doc,ids);if(!ids.length||!bounds)return;
+  playbackStore.set({playing:false});
+  const before=viewStore.get().camera;
+  const fits=fit(bounds);viewStore.set({navigationBack:before});
+  notify(fits?'Vista acercada a la selección.':'Selección grande: acercamos el inicio para que se pueda leer. Usá la mano para recorrerla.');
+}
+export function goBackToView(){const {navigationBack}=viewStore.get();if(!navigationBack)return;const {playing}=playbackStore.get();playbackStore.set({playing:false});viewStore.set({navigationBack:null,flash:null});moveCamera(navigationBack,playing?0:450);}
+export function openCanvasSearch(){playbackStore.set({playing:false});viewStore.set({searchOpen:true,tool:'select',connectFromId:null});}
 
 /** Un clic sobre un nodo agrupado selecciona el grupo más externo completo. */
 export function selectionUnit(doc:DiagramDocument,nodeId:string):string[]{

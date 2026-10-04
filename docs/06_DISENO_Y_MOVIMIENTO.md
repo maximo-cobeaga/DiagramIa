@@ -67,3 +67,9 @@ La diferencia debe estar en topología y estados, no sólo color. Labels y capti
 ## Prueba visual de fase
 
 Desktop 1440×900 y 1920×1080; tablet 1024×768; móvil 390×844. Abrir los tres fixtures, mover, seleccionar, editar, reproducir, cambiar escenario, importar/exportar y revisar errores. En diagramas grandes usar pan/zoom/fit; no hacer etiquetas ilegibles para meter todo en una pantalla. Capturar evidencia si se dispone de browser; si no, registrar la limitación sin inventar screenshots.
+
+## Buscar y recuperar el contexto (ADR 080)
+
+«Buscar» queda en la barra del lienzo y se abre también con Ctrl/⌘+F cuando no se escribe en un campo. Popup temporal no modal, nombres y detalles legibles, contexto de zona/grupo y doce resultados por página. Flechas recorren todos los resultados, Enter acerca/resalta y Esc cierra devolviendo foco; los resultados tienen scroll propio. El buscador tolera tildes/caso y orden de palabras, prioriza los nombres y muestra estados vacíos. No interpreta letras de dibujos libres.
+
+La navegación conserva selección, documento, IDs, revisión e historial. Buscar pausa reproducción y cancela la herramienta/unión pendiente. «Ver selección» o Shift+1 acerca las piezas elegidas; «Volver a la vista anterior» recupera la cámara previa. Los grupos sólo de dibujos se enfocan por sus miembros. Cámara anterior y búsqueda viven sólo en UI de sesión; se limpian al cambiar documento. Concentración, claro/oscuro, móvil y reduced-motion conservados; popup y controles contenidos en el lienzo.
