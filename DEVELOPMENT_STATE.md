@@ -2,6 +2,13 @@
 
 ## Último checkpoint
 
+03/10/2026 (menos texto y preguntas de IA; ADR 081–082). Extensión implementada de P3.3/P3.4/P8.1:
+- **UI:** retirados el párrafo de gestos y la línea permanente de alcance/cuotas Admin. Ayudas en títulos de herramientas/tutorial, alcance en el placeholder y metadatos en Detalles. Selector de proveedor sólo con varias opciones; demostración identificada.
+- **Preguntar primero:** los siete modos pueden pedir información esencial. Una pregunta explícita tiene prioridad sobre borradores, incluso inválidos; no produce lote, reparación ni staging. Responder conserva el modo y el pedido original en una ventana acotada, usando documento/selección actuales. Cancelar no modifica contenido; pestañas separan conversaciones. Propuestas posteriores conservan aceptación, CAS, undo y límites.
+- **Costo observado:** muestra comunicada por el usuario (USD 0,05, 24 solicitudes, 404.998 tokens) registrada en docs/USO_DEEPSEEK.md. Promedio observado USD 0,0021/solicitud, sin inferir tarifa ni configurar precios del adapter.
+- **Verificación:** check final 145/145, contratos enfocados 37/37, navegador enfocado 3/3 y regresión 57/57 sin errores de consola. Capturas desktop/móvil revisadas en evidencias/ui-ia-pregunta.png, ui-texto-reducido.png y ui-chat-simple-movil.png. Gateway habitual actualizado y sano en schema 1.8.0; editor 5173 conservado. Detalle y límites en VALIDATION.md.
+- **Próximo paso inequívoco:** revisión manual 34–35, incluyendo una pregunta con DeepSeek real y personas sin experiencia. Las pruebas usan contratos simulados y gateway mock aislado, sin IA paga; no certifican cuándo DeepSeek detectará ambigüedad ni usabilidad universal. P3.4 sigue implemented y P8.1 parcial. Schema 1.8.0 sin cambios; sin dependencias nuevas, push ni despliegue.
+
 03/10/2026 (buscar y recuperar la vista; ADR 080). Extensión implementada de P1.1/P8.1:
 - **Buscar en el lienzo:** botón visible y Ctrl/⌘+F fuera de campos de texto; encuentra nombres/detalles, zonas, grupos, encuadres, conexiones y dibujos por su tipo. Tolera tildes/caso y palabras en otro orden, prioriza nombres, distingue contexto y pagina doce resultados. Flechas/Enter/Esc, foco devuelto, vacío y ausencia de coincidencias explícitos.
 - **Navegar:** un resultado acerca la cámara y se resalta; conserva selección, contenido, revisión, IDs e historial. Buscar pausa el recorrido y cancela la herramienta de unión pendiente. «Ver selección»/Shift+1 acerca las piezas elegidas; «Volver a la vista anterior» recupera la cámara previa. Los grupos sólo de dibujos ahora se enfocan completos. Navegación de sesión, aislada por pestaña, sin persistir búsquedas ni telemetría de contenido.

@@ -619,3 +619,10 @@ button.color-dot.chosen{outline:2px solid var(--blue);outline-offset:2px}
 .canvas-search-pages span,.canvas-search-tip{font-size:11px;color:var(--muted)}
 .canvas-search-tip{margin:8px 2px 0;line-height:1.5}
 @media(max-width:600px){.canvas-toolbar{padding:8px;gap:6px;justify-content:flex-start}.canvas-toolbar>div{display:contents}.canvas-toolbar .wide{font-size:12px}.canvas-search{top:8px;left:8px;width:calc(100% - 16px);max-height:calc(100% - 16px)}.canvas-search-tip{display:none}.canvas-search-pages button,.canvas-search-heading button{min-height:44px;min-width:44px}}
+
+/* Preguntas del asistente: una decisión clara, sin texto administrativo permanente. */
+.assistant-question>p{margin:0 0 12px}
+.question-actions{display:flex;gap:8px;align-items:center}
+.question-actions button{min-height:40px;font-size:13px}
+.bubble.kind-clarification{border-color:var(--blue);background:var(--blue-soft)}
+.cancelled-question{color:var(--muted)}

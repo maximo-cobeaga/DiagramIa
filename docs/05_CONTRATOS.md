@@ -112,6 +112,12 @@ El presupuesto diario limita gasto: sólo lo consumen los proveedores remotos. L
 
 Errores: `BUDGET_EXCEEDED` (402, antes de llamar al proveedor), `RATE_LIMITED` (429), `IN_PROGRESS`/`IDEMPOTENCY_CONFLICT` (409), `PROVIDER_NOT_CONFIGURED` (409), `PROPOSAL_REJECTED`/`INVALID_MODEL_OUTPUT` (422, tras una reparación), `TIMEOUT` (504, sin reintento automático), `CANCELLED`, `REFUSED`, `AUTH`, `UPSTREAM`.
 
+## Preguntas antes de proponer (ADR 082)
+
+Todos los modos admiten una respuesta `kind: clarification`. El gateway reconoce `clarification` no vacía (hasta 2.000 caracteres) antes de interpretar el contenido del modo; si el modelo mezcla pregunta y acciones/inventario, devuelve sólo la pregunta, sin lote, staging ni reparación. Explain/Review incluyen `clarification` nullable en sus formatos estrictos; Document puede devolver un JSON con la pregunta en lugar de Markdown. Las salidas normales anteriores siguen aceptadas.
+
+Responder usa el modo original, el documento y la selección actuales, y una ventana de historial de tres turnos que retiene el pedido raíz y los dos más recientes. No conserva todos los intercambios intermedios de una conversación larga. Cancelar excluye ese turno del contexto; cambiar documento reinicia el chat. Preguntar no cambia contenido, IDs, revisión ni historial; las propuestas posteriores siguen requiriendo aceptación y revisión optimista. Preguntas remotas se contabilizan con los mismos guards que otras respuestas; reintentar el mismo requestId no duplica el consumo. No cambia el schema canónico ni el contrato de solicitud.
+
 ## Errores esperables del engine
 
 REVISION_CONFLICT, IDEMPOTENCY_CONFLICT, DUPLICATE_ID, NOT_FOUND, DANGLING_EDGE, DANGLING_ZONE, DANGLING_GROUP, GROUP_CYCLE, OUTSIDE_ZONE, DANGLING_ANIMATION, ANIMATION_TOO_LONG, EMPTY_ANIMATION, BATCH_TOO_LARGE, INVALID_SELECTION, AMBIGUOUS_ZONE, AMBIGUOUS_PLACEMENT, NO_SPACE, LAYOUT_NEEDS_MORE, UNSUPPORTED_VERSION, INVALID_DOCUMENT, INVALID_COMPONENT, INVALID_MERMAID, DUPLICATE_SCENARIO, EMPTY_SCENARIO, DANGLING_ASSET, UNUSED_ASSET, INVALID_ASSET, UNSAFE_ASSET, ASSET_TOO_LARGE, DANGLING_ANNOTATION. `describeError` y `errorCode` dan el mensaje para el usuario y el código, sin stack traces.

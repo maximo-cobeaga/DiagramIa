@@ -2,6 +2,13 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Menos texto y preguntas de IA (03/10/2026)
+
+- **P3.3/P3.4/P8.1, extensión implementada (ADR 081–082):** ayuda de herramientas bajo demanda; quitada la frase permanente de alcance/Admin; selector sólo con múltiples proveedores. Preguntas antes de acciones en los siete modos, prioridad sobre borradores inválidos, Responder/Cancelar, continuación con modo/pedido original y documento/selección actuales, chat separado por pestaña. Sin cambios canónicos ni dependencias.
+- **Costo:** muestra del usuario registrada en docs/USO_DEEPSEEK.md (USD 0,05 / 24 solicitudes / 404.998 tokens). Promedios observados, sin configurar tarifas ni modificar recibos. Preguntas del modelo pueden consumir tokens/créditos.
+- **Comprobación:** check final 145/145, contratos 37/37, browser enfocado 3/3 y regresión 57/57, sin errores de consola. Capturas revisadas en evidencias/ui-ia-pregunta.png, ui-texto-reducido.png y ui-chat-simple-movil.png. Gateway habitual actualizado y sano; editor 5173 conservado.
+- **Próximo paso:** VALIDATION.md 34–35 con DeepSeek real y personas/dispositivos físicos. Sin consumo pago en QA. P3.4 conserva implemented; P8.1 permanece parcial. La ventana acotada retiene el pedido raíz y los dos turnos más recientes; no todos los intercambios de una conversación larga.
+
 ## Buscar y recuperar la vista (03/10/2026)
 
 - **P1.1/P8.1, extensión implementada (ADR 080):** buscador local por nombre/detalle/contexto, grupos, zonas, encuadres, conexiones y tipos de dibujo. Tildes/caso, todos los términos, orden por nombre, paginación, teclado y estados vacíos. Acercar y resaltar sin seleccionar ni modificar contenido; Ver selección/Shift+1 y regreso a la cámara previa.

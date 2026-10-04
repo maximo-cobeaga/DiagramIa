@@ -200,6 +200,35 @@ test('explain returns text, review returns findings bound to existing IDs, ambig
     assert.equal(question.kind,'clarification');assert.match(question.clarification,/dos zonas/);
   }finally{await g.close();}
 });
+
+test('an explicit question wins over invalid drafts in every mode, without staging, repair or duplicate spending',async()=>{
+  const question=JSON.stringify({summary:42,clarification:'  ¿Horizontal o vertical?  ',actions:[{type:'INVALID'}],nodes:[{kind:'inventado'}],findings:[{targetId:'missing'}],tour:[{nodeIds:['missing']}]});
+  const {provider,calls}=scripted([question]),g=await gateway([provider]);
+  try{
+    const doc=architecture(),before=structuredClone(doc);
+    for(const mode of ['create','edit','transform','animate','explain','review','document']){
+      const request=g.ask({requestId:'question-'+mode,mode,document:doc,prompt:'Necesito elegir cómo seguir',selectedIds:[]});
+      const response=await g.post(request),body=await response.json();assert.equal(response.status,200);
+      assert.equal(body.kind,'clarification');assert.equal(body.clarification,'¿Horizontal o vertical?');assert.equal(body.batch,undefined);assert.equal(body.repairs,0);assert.equal(body.usage.calls,1);
+      assert.equal((await(await g.post(request)).json()).replayed,true);
+    }
+    assert.equal(calls.length,7);assert.deepEqual(doc,before);assert.equal(g.ledger.summary().reservedTokens,0);
+    assert.ok(calls.every(call=>call.messages.at(-1)!.content.includes('preguntá antes')));
+  }finally{await g.close();}
+});
+
+test('answering a creation question uses the current document revision and retains the original request in history',async()=>{
+  const {provider,calls}=scripted([JSON.stringify({clarification:'¿Qué destino querés?',nodes:[],zones:[],edges:[]}),JSON.stringify({summary:'Viaje a San Pancho.',clarification:null,zones:[],nodes:[{id:'trip',kind:'note',label:'San Pancho'}],edges:[]})]),g=await gateway([provider]);
+  try{
+    const first=emptyDocument('trip-doc','Viaje');
+    assert.equal((await(await g.post(g.ask({requestId:'trip-question',mode:'create',prompt:'Creá un viaje de 10 días',document:first,selectedIds:[]}))).json()).kind,'clarification');
+    const current=applyBatch(first,{id:'manual',baseRevision:0,actions:[{type:'ADD_NODE',node:{id:'my-note',kind:'note',label:'Mi apunte',position:{x:0,y:0},size:{width:160,height:80}}}]});
+    const body=await(await g.post(g.ask({requestId:'trip-answer',mode:'create',prompt:'San Pancho',document:current,selectedIds:[],history:[{role:'user',content:'Creá un viaje de 10 días'},{role:'assistant',content:'¿Qué destino querés?'}]}))).json();
+    assert.equal(body.kind,'proposal');assert.equal(body.baseRevision,current.revision);assert.equal(body.batch.baseRevision,current.revision);
+    assert.ok(calls[1].messages[0].content.includes('10 días'));assert.ok(calls[1].messages.at(-1)!.content.includes('San Pancho'));
+    assert.equal(applyBatch(current,body.batch).nodes.find(n=>n.id==='my-note')?.label,'Mi apunte');
+  }finally{await g.close();}
+});
 test('mode "auto" is resolved before the call; an explanation is brief by default and its tour keeps only real IDs',async()=>{
   const tour=JSON.stringify({answer:'El usuario entra por la web y la API guarda los datos.',tour:[
     {caption:'Todo empieza con el usuario.',nodeIds:['user','inventado'],edgeIds:[]},

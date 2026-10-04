@@ -218,6 +218,35 @@ try{
     await key('0');await sleep(100);
   };
   const screenPoint=point=>js(`(()=>{const c=document.querySelector('.canvas'),r=c.getBoundingClientRect(),v=c.getAttribute('viewBox').split(/\\s+/).map(Number);return {x:r.left+(${point.x}-v[0])*r.width/v[2],y:r.top+(${point.y}-v[1])*r.height/v[3]};})()`);
+  await check('la interfaz reduce texto y las preguntas de IA esperan una respuesta antes de proponer cambios',async()=>{
+    await loadScene([fixtureNode('one','Primera idea',100,220),fixtureNode('two','Otra idea',400,220)]);
+    const configured=await js(`fetch('/api/v1/providers',{headers:{'x-diagramia-client':'editor'}}).then(r=>r.json())`);
+    if(!configured.providers?.some(p=>p.id==='mock'&&p.configured))return 'OMITIDO: requiere gateway mock aislado';
+    expect(await js(`!document.querySelector('.tool-note')&&!document.querySelector('.composer-hint')&&!document.querySelector('.chat-composer').textContent.includes('Sobre todo el diagrama')`),'siguen visibles los textos redundantes');
+    expect(await js(`document.querySelector('.tool-grid button').title.includes('Arrastrá para mover')`),'se perdió la ayuda de la herramienta');
+    const before=await saved();
+    // Respuestas guionadas sólo para probar UI. El gateway y su contrato se prueban por separado.
+    await js(`(()=>{window.__questionFetch=window.fetch;window.__questionBodies=[];window.__questionAgain=false;window.fetch=async(url,init)=>{if(String(url).includes('/v1/assist')){const body=JSON.parse(init.body);window.__questionBodies.push(body);const n=window.__questionBodies.length;if(n<=2||window.__questionAgain){window.__questionAgain=false;return new Response(JSON.stringify({requestId:body.requestId,mode:'transform',provider:'mock',providerKind:'mock',model:'mock',baseRevision:body.document.revision,contextTruncated:false,repairs:0,replayed:false,usage:{inputTokens:0,outputTokens:0,calls:0,estimatedCostUsd:null,costBasis:'none'},kind:'clarification',summary:'',clarification:n===1?'¿Horizontal o vertical?':'¿Todas las ideas o sólo la elegida?'}),{headers:{'content-type':'application/json'}});}}return window.__questionFetch(url,init);};})()`);
+    try{
+      await setValue('#chat-prompt','Reorganizá estas ideas, preguntame primero si falta algo');await sendChat();await sleep(200);
+      expect(await js(`Boolean(document.querySelector('.assistant-question'))&&!document.querySelector('.staged')&&!document.querySelector('.canvas-banner')&&document.querySelector('#chat-prompt').placeholder==='Respondé acá…'`),'la pregunta no espera o muestra una propuesta');
+      expect(JSON.stringify(await saved())===JSON.stringify(before),'preguntar cambió el documento');await shot('52-ia-pregunta');
+      expect(await clickText('Responder','.assistant-question'),'falta Responder');expect(await js(`document.activeElement.id==='chat-prompt'`),'Responder no enfoca el cuadro');
+      // El usuario sigue editando y elige otra pieza antes de contestar: se usa la revisión/selección actual.
+      await click(await center('[data-id="two"]'));await key('ArrowRight');const current=await saved();
+      await setValue('#chat-prompt','Horizontal');await sendChat();await sleep(200);
+      expect(await js(`window.__questionBodies[1].mode==='transform'&&window.__questionBodies[1].document.revision===${current.revision}&&window.__questionBodies[1].selectedIds.includes('two')`),'la respuesta corta cambia de intención o usa contexto viejo');
+      await setValue('#chat-prompt','Sólo la elegida');await sendChat();await sleep(1200);
+      expect(await js(`window.__questionBodies[2].mode==='transform'&&window.__questionBodies[2].history[0].content.includes('Reorganizá estas ideas')`),'la segunda respuesta pierde el pedido original');
+      expect((await saved()).revision===current.revision,'la respuesta aplicó cambios sin aceptar');expect(await clickText('Aceptar y aplicar','.chat'),'responder no permite continuar con una propuesta válida');
+      const applied=await saved();expect(applied.nodes.length===before.nodes.length+1,'la propuesta no se aplicó al aceptar');await shot('53-ui-texto-reducido');
+      await clickText('Nueva conversación','.chat');await js(`window.__questionAgain=true`);await setValue('#chat-prompt','Reorganizá mi idea');await sendChat();await sleep(200);await clickText('Cancelar','.assistant-question');
+      expect(await js(`document.querySelector('#chat-prompt').placeholder!=='Respondé acá…'&&document.querySelector('.cancelled-question')?.textContent.includes('cancelada')`),'cancelar deja la pregunta activa');expect(JSON.stringify(await saved())===JSON.stringify(applied),'cancelar cambió el documento');
+      await viewport(390,844);await sleep(200);await js(`document.querySelector('.chat-composer').scrollIntoView({block:'center'})`);expect(await js(`document.documentElement.scrollWidth<=innerWidth`),'el chat desborda en móvil');await shot('54-chat-simple-movil');await viewport(1440,900);await js(`scrollTo(0,0)`);
+      await js(`window.__questionAgain=true`);await setValue('#chat-prompt','Reorganizá estas piezas');await sendChat();await sleep(200);await tap('.doc-tab-add');expect(await js(`!document.querySelector('.assistant-question')`),'una pregunta de otro documento queda activa');
+      return 'ayuda a demanda, preguntas sin staging, respuesta con intención/contexto actual, aceptar/cancelar y móvil';
+    }finally{await js(`window.fetch=window.__questionFetch`);}
+  });
   await check('figura y dibujo se agrupan, mueven, copian y duplican como una pieza con undo y persistencia',async()=>{
     await loadScene([fixtureNode('title','Mi idea',140,180),fixtureNode('other','Otra idea',440,180)],[{id:'ink',kind:'freehand',points:[{x:140,y:280},{x:200,y:300},{x:260,y:280}],style:{stroke:'#cc4455',strokeWidth:4}}]);
     await click(await center('[data-id="title"]'));const at=await screenPoint({x:200,y:300});await mouse('mousePressed',at.x,at.y,{modifiers:SHIFT});await mouse('mouseReleased',at.x,at.y,{modifiers:SHIFT});

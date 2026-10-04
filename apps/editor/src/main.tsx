@@ -102,9 +102,8 @@ function Tools(){
   return <aside className="tools" aria-label="Herramientas y formas">
     <div className="tools-heading"><span className="eyebrow">CREÁ A TU MANERA</span><strong>Tu caja de ideas</strong></div>
     <div className="tool-grid" role="toolbar" aria-label="Herramienta activa">{TOOLS.map(([id,label,key,icon])=>
-      <button key={id} className={tool===id?'chosen':''} aria-pressed={tool===id} title={`${label} (${key})`} onClick={()=>viewStore.set({tool:id,connectFromId:null})}><svg viewBox="0 0 16 16" aria-hidden="true"><path d={icon}/></svg><span>{label}</span></button>)}
+      <button key={id} className={tool===id?'chosen':''} aria-pressed={tool===id} title={`${label} (${key}) · ${TOOL_HINTS[id]}`} onClick={()=>viewStore.set({tool:id,connectFromId:null})}><svg viewBox="0 0 16 16" aria-hidden="true"><path d={icon}/></svg><span>{label}</span></button>)}
     </div>
-    <p className="tool-note">{TOOL_HINTS[tool]}</p>
     <button className="tool-extra-toggle" aria-expanded={expanded} aria-controls="tool-extra" onClick={()=>setExpanded(!expanded)}>{expanded?'Ocultar formas y elementos':'Mostrar formas y elementos'}</button>
     {expanded&&<div className="tool-extra" id="tool-extra">
     <span className="eyebrow">AGREGÁ UNA IDEA</span>
@@ -182,9 +181,10 @@ function PrivacySettings(){
 
 function SidePanel(){
   const {panel}=useStore(viewStore);
+  const {activeId}=useStore(documentStore);
   return <aside className="side" id="side-panel" aria-label="Panel lateral">
     <div className="tabs" role="tablist">{PANELS.map(([id,label])=><button key={id} role="tab" aria-selected={panel===id} className={panel===id?'chosen':''} onClick={()=>viewStore.set({panel:id})}>{label}</button>)}</div>
-    <div role="tabpanel" className={'side-body panel-'+panel}>{panel==='inspector'?<Inspector/>:panel==='assistant'?<Chat/>:panel==='library'?<LibraryPanel/>:<SessionPanel/>}</div>
+    <div role="tabpanel" className={'side-body panel-'+panel}>{panel==='inspector'?<Inspector/>:panel==='assistant'?<Chat key={activeId}/>:panel==='library'?<LibraryPanel/>:<SessionPanel/>}</div>
   </aside>;
 }
 

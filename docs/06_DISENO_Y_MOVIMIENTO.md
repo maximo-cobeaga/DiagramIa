@@ -68,6 +68,12 @@ La diferencia debe estar en topología y estados, no sólo color. Labels y capti
 
 Desktop 1440×900 y 1920×1080; tablet 1024×768; móvil 390×844. Abrir los tres fixtures, mover, seleccionar, editar, reproducir, cambiar escenario, importar/exportar y revisar errores. En diagramas grandes usar pan/zoom/fit; no hacer etiquetas ilegibles para meter todo en una pantalla. Capturar evidencia si se dispone de browser; si no, registrar la limitación sin inventar screenshots.
 
+## Menos texto y preguntas claras (ADR 081–082)
+
+La ayuda de gestos se consulta en el título de cada herramienta y en el tutorial; no ocupa espacio fijo. El chat elimina la frase permanente de alcance/cuotas Admin, conserva el alcance de selección en su placeholder y ofrece Detalles por respuesta para metadatos. El selector de proveedor sólo aparece si hay varias opciones; una demostración conserva su identificación explícita.
+
+Si la IA necesita información esencial, muestra una pregunta con Responder (enfoca el campo) y Cancelar (no modifica el diagrama). El campo indica «Respondé acá…». Las preguntas no producen staging; la propuesta posterior sigue mostrando su vista previa y controles de aceptación. Cambiar documento inicia otro chat. Se conserva la identidad visual, foco visible y controles legibles en desktop/móvil; la evaluación con personas reales sigue pendiente.
+
 ## Buscar y recuperar el contexto (ADR 080)
 
 «Buscar» queda en la barra del lienzo y se abre también con Ctrl/⌘+F cuando no se escribe en un campo. Popup temporal no modal, nombres y detalles legibles, contexto de zona/grupo y doce resultados por página. Flechas recorren todos los resultados, Enter acerca/resalta y Esc cierra devolviendo foco; los resultados tienen scroll propio. El buscador tolera tildes/caso y orden de palabras, prioriza los nombres y muestra estados vacíos. No interpreta letras de dibujos libres.

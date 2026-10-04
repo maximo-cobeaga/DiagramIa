@@ -11,14 +11,13 @@ import {ReauthButton} from '../shell/SharedPanel';
 import {accountStore,signIn} from '../store/accountStore';
 import {Markdown} from './Markdown';
 import {playTour,saveTour,type TourStep} from './tour';
+import {conversationWindow} from './conversation';
 
 // El gateway se alcanza por el proxy del servidor de desarrollo: el navegador nunca ve claves de proveedores.
 const API='/api';
 const HEADERS={'content-type':'application/json','x-diagramia-client':'editor'};
 type Changes=ReturnType<typeof previewBatch>['changes'];
 type ProviderInfo={id:string;label:string;model:string;kind:'remote'|'local'|'mock';configured:boolean;missing:string|null};
-type Budget={tokens:number;dailyTokenBudget:number;estimatedUsd:number;dailyUsdBudget:number};
-type Credits={daily:number;monthly:number;dailyLimit:number;monthlyLimit:number};
 type Usage={inputTokens:number;outputTokens:number;calls:number;estimatedCostUsd:number|null;costBasis:string};
 type AiMode='create'|'edit'|'transform'|'animate'|'explain'|'review'|'document';
 type Common={requestId:string;mode:AiMode;provider:string;providerKind:ProviderInfo['kind'];model:string;baseRevision:number;contextTruncated:boolean;repairs:number;replayed:boolean;usage:Usage};
@@ -29,7 +28,7 @@ type Result=Common&(
   |{kind:'text';text:string;tour?:TourStep[]}
   |{kind:'review';summary:string;findings:Finding[]});
 /** `shown` es lo que se ve en la burbuja del usuario cuando difiere del pedido (por ejemplo, «Explicar más»). */
-type Turn={id:string;prompt:string;shown?:string;body:string;status:'sending'|'done'|'error';result?:Result;error?:{message:string;retryable:boolean;code?:string};outcome?:'applied'|'rejected'|'saved';feedback?:'asking-reason'|'sent'};
+type Turn={id:string;prompt:string;shown?:string;questionRootId?:string;body:string;status:'sending'|'done'|'error';result?:Result;error?:{message:string;retryable:boolean;code?:string};outcome?:'applied'|'rejected'|'saved'|'cancelled';feedback?:'asking-reason'|'sent'};
 const REASON_LABELS:Record<typeof FEEDBACK_REASONS[number],string>={misunderstood:'No entendió el pedido',incorrect:'Resultado incorrecto',too_simple:'Demasiado simple',too_complex:'Demasiado complejo',bad_layout:'Diseño malo',missing_elements:'Faltan elementos',other:'Otro'};
 
 // El asistente deduce qué querés del pedido. Si se equivoca, se puede volver a pedir como otra cosa.
@@ -66,18 +65,19 @@ const replyOf=(result:Result)=>(result.kind==='proposal'?`Propuse ${result.batch
 /** Chat con el asistente: mensajes en burbujas, propuestas como tarjetas que se ven en el canvas, y el cuadro de texto abajo. */
 export function Chat(){
   const {doc}=useStore(documentStore),{ids}=useStore(selectionStore),{staging}=useStore(viewStore),{auth}=useStore(accountStore);
-  const [providers,setProviders]=useState<ProviderInfo[]|null>(null),[budget,setBudget]=useState<Budget|null>(null),[credits,setCredits]=useState<Credits|null>(null),[admin,setAdmin]=useState(false),[offline,setOffline]=useState(false),[authRequired,setAuthRequired]=useState(false),[providerId,setProviderId]=useState(''),[prompt,setPrompt]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[stageNote,setStageNote]=useState('');
+  const [providers,setProviders]=useState<ProviderInfo[]|null>(null),[offline,setOffline]=useState(false),[authRequired,setAuthRequired]=useState(false),[providerId,setProviderId]=useState(''),[prompt,setPrompt]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[stageNote,setStageNote]=useState('');
   const controller=useRef<AbortController|null>(null),threadRef=useRef<HTMLDivElement>(null),opened=useRef(false);
   const last=turns[turns.length-1],sending=last?.status==='sending';
+  const question=last?.status==='done'&&last.result?.kind==='clarification'&&!last.outcome?last:null;
   const patch=(id:string,changes:Partial<Turn>)=>setTurns(list=>list.map(turn=>turn.id===id?{...turn,...changes}:turn));
 
   async function loadProviders(){
     try{
       const response=await fetch(API+'/v1/providers',{headers:HEADERS});
-      if(response.status===401){setAuthRequired(true);setOffline(false);setProviders(null);setAdmin(false);return;}
+      if(response.status===401){setAuthRequired(true);setOffline(false);setProviders(null);return;}
       if(!response.ok)throw new Error(String(response.status));
       const body=await response.json(),list=body.providers as ProviderInfo[];
-      setProviders(list);setBudget(body.usage);setCredits(body.credits??null);setAdmin(body.admin===true);setOffline(false);setAuthRequired(false);
+      setProviders(list);setOffline(false);setAuthRequired(false);
       setProviderId(current=>list.some(p=>p.id===current&&p.configured)?current:list.find(p=>p.configured&&p.kind!=='mock')?.id??list.find(p=>p.configured)?.id??'');
     }catch{setProviders(null);setOffline(true);}
   }
@@ -108,11 +108,12 @@ export function Chat(){
   function submit(text=prompt,options:{mode?:AiMode|'auto';detail?:'brief'|'expanded';shown?:string;upTo?:Turn}={}){
     if(!text.trim()||!providerId||sending)return;
     const until=options.upTo?turns.indexOf(options.upTo)+1:turns.length;
-    const history=turns.slice(0,until).filter(t=>t.status==='done'&&t.result).slice(-HISTORY_TURNS).flatMap(t=>[{role:'user',content:t.prompt},{role:'assistant',content:replyOf(t.result!)}]);
+    const rootId=!options.mode&&!options.upTo&&question?(question.questionRootId??question.id):undefined;
+    const history=conversationWindow(turns.slice(0,until),rootId,HISTORY_TURNS).flatMap(t=>[{role:'user',content:t.prompt},{role:'assistant',content:replyOf(t.result!)}]);
     const id=newId('ai');
     // Sólo se vacía el cuadro si lo que se envió es lo que estaba escrito: ampliar o re-pedir no borra un borrador.
     if(text===prompt)setPrompt('');
-    void send({id,prompt:text.trim(),shown:options.shown,status:'sending',body:JSON.stringify({requestId:id,providerId,mode:options.mode??'auto',detail:options.detail??'brief',prompt:text.trim(),document:doc,selectedIds:ids,history})});
+    void send({id,prompt:text.trim(),shown:options.shown,questionRootId:rootId,status:'sending',body:JSON.stringify({requestId:id,providerId,mode:options.mode??(rootId?question!.result!.mode:'auto'),detail:options.detail??'brief',prompt:text.trim(),document:doc,selectedIds:ids,history})});
   }
   const explainMore=(turn:Turn)=>submit(EXPAND_PROMPT,{mode:'explain',detail:'expanded',shown:'Explicar más',upTo:turn});
   const configured=providers?.filter(p=>p.configured)??[],provider=providers?.find(p=>p.id===providerId);
@@ -147,7 +148,7 @@ export function Chat(){
 
   function answer(turn:Turn){
     const result=turn.result!;
-    if(result.kind==='clarification')return <p>{result.clarification}</p>;
+    if(result.kind==='clarification')return turn.outcome==='cancelled'?<p className="cancelled-question">Pregunta cancelada.</p>:<div className="assistant-question"><p>{result.clarification}</p>{turn===last&&!turn.outcome&&<div className="question-actions"><button onClick={()=>document.getElementById('chat-prompt')?.focus()}>Responder</button><button className="quiet" onClick={()=>patch(turn.id,{outcome:'cancelled'})}>Cancelar</button></div>}</div>;
     if(result.kind==='text'){
       const tour=result.tour??[],label=`Explicación: ${turn.shown??turn.prompt}`.slice(0,120);
       return <>
@@ -199,6 +200,7 @@ export function Chat(){
   /** Pie de cada respuesta: ampliarla, corregir cómo se interpretó el pedido y opinar. */
   function footer(turn:Turn){
     const result=turn.result!,latest=turn===last;
+    if(result.kind==='clarification')return null;
     const expandable=(result.kind==='text'&&result.mode==='explain')||result.kind==='review'||result.kind==='proposal';
     return <div className="answer-footer">
       {expandable&&<button className="quiet more" disabled={sending} onClick={()=>explainMore(turn)}>Explicar más</button>}
@@ -247,7 +249,7 @@ export function Chat(){
       </div>}
       {turns.map(turn=><div key={turn.id} className="exchange">
         <div className={'bubble user'+(turn.shown?' derived':'')}>{turn.shown??turn.prompt}</div>
-        {turn.status==='sending'&&<div className="bubble assistant typing" role="status"><span/><span/><span/><em>Pensando… el diagrama no cambia mientras tanto.</em></div>}
+        {turn.status==='sending'&&<div className="bubble assistant typing" role="status"><span/><span/><span/><em>Pensando…</em></div>}
         {turn.status==='error'&&<div className="bubble assistant error" role="alert">✕ {turn.error!.message} {turn.error!.retryable&&turn===last&&<button className="quiet" onClick={()=>void send(turn)}>Reintentar</button>}{turn.error!.code==='EMAIL_NOT_VERIFIED'&&<ReauthButton/>}</div>}
         {turn.status==='done'&&<div className={'bubble assistant kind-'+turn.result!.kind}>
           {answer(turn)}{footer(turn)}
@@ -256,22 +258,21 @@ export function Chat(){
       </div>)}
     </div>
     <div className="chat-composer">
-      {provider?.kind==='mock'&&<p className="inline-note warn">⚠ DEMOSTRACIÓN: este proveedor no es una IA; devuelve siempre la misma propuesta.</p>}
+      {provider?.kind==='mock'&&<p className="inline-note warn">Demostración · sin IA</p>}
       <div className="composer-box">
         <textarea id="chat-prompt" rows={2} maxLength={4000} value={prompt} aria-label="Mensaje para el asistente" disabled={authRequired}
-          placeholder={authRequired?'Iniciá sesión para escribirle a la IA':ids.length?`Preguntá o pedí algo sobre lo seleccionado (${ids.length})…`:'Preguntá o pedí lo que necesites…'} onChange={e=>setPrompt(e.target.value)}
+          placeholder={authRequired?'Iniciá sesión para escribirle a la IA':question?'Respondé acá…':ids.length?`Sobre la selección (${ids.length})…`:'Preguntá o pedí lo que necesites…'} onChange={e=>setPrompt(e.target.value)}
           // El panel de IA se ve por defecto: la intención de usarla es enfocar el cuadro, no abrir el editor.
           onFocus={()=>{if(!opened.current){opened.current=true;track('ai_opened',{});}}}
           onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit();}}}/>
         {sending?<button className="send stop" onClick={()=>controller.current?.abort()} aria-label="Cancelar el pedido" title="Cancelar">■</button>
           :<button className="primary send" disabled={!prompt.trim()||!ready} onClick={()=>submit()} aria-label="Enviar" title="Enviar (Enter)">↑</button>}
       </div>
-      <div className="composer-row">
-        {configured.length>1&&<select id="chat-provider" aria-label="Proveedor" value={providerId} onChange={e=>setProviderId(e.target.value)}>
+      {configured.length>1&&<div className="composer-row">
+        <select id="chat-provider" aria-label="Proveedor" value={providerId} onChange={e=>setProviderId(e.target.value)}>
           {providers?.map(p=><option key={p.id} value={p.id} disabled={!p.configured}>{p.label}{p.configured?'':' — sin configurar'}</option>)}
-        </select>}
-        <p className="composer-hint">{ids.length?`Sobre lo seleccionado (${ids.length})`:'Sobre todo el diagrama'}{admin?' · Admin: sin cuota de créditos ni límite por minuto':credits?` · te quedan ${Math.max(0,credits.dailyLimit-credits.daily)} créditos hoy`:budget?` · hoy ${budget.tokens.toLocaleString('es')} de ${budget.dailyTokenBudget.toLocaleString('es')} tokens`:''}</p>
-      </div>
+        </select>
+      </div>}
     </div>
   </div>;
 }

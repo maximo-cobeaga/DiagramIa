@@ -16,7 +16,9 @@ export const AssistRequestSchema=z.strictObject({
 }).refine(r=>r.history.every((turn,i)=>turn.role===(i%2?'assistant':'user'))&&r.history.length%2===0,'history debe alternar user/assistant y terminar en assistant');
 // Los modelos suelen mandar null donde el contrato dice texto vacío: se acepta y se normaliza en vez de gastar una reparación.
 const Text=(max:number)=>z.string().max(max).nullish().transform(value=>value??'');
-const ProposalSchema=z.object({summary:Text(2000),clarification:z.string().max(2000).nullable().default(null),actions:z.array(z.unknown()).max(200).default([])});
+const QuestionSchema=z.object({clarification:z.string().trim().min(1).max(2000),summary:Text(2000).catch('').optional()});
+const Clarification=z.string().trim().max(2000).nullable().default(null).transform(value=>value||null);
+const ProposalSchema=z.object({summary:Text(2000),clarification:Clarification,actions:z.array(z.unknown()).max(200).default([])});
 // El modo Crear describe contenido y relaciones. El gateway construye las acciones y la geometría queda en el core.
 // Alias semánticos frecuentes de modelos chicos. La traducción es cerrada: un tipo desconocido sigue fallando.
 const CREATE_KIND_ALIASES:Record<string,typeof NODE_KINDS[number]>={
@@ -26,7 +28,7 @@ const CREATE_KIND_ALIASES:Record<string,typeof NODE_KINDS[number]>={
   message_queue:'queue',message_broker:'queue'
 };
 const CreateKind=z.preprocess(value=>typeof value==='string'?CREATE_KIND_ALIASES[value.trim().toLowerCase()]??value:value,z.enum(NODE_KINDS).default('service'));
-const CreateSchema=z.object({summary:Text(2000),clarification:z.string().max(2000).nullable().default(null),
+const CreateSchema=z.object({summary:Text(2000),clarification:Clarification,
   zones:z.array(z.object({id:Id,label:z.string().min(1).max(200)})).max(20).default([]),
   nodes:z.array(z.object({id:Id,kind:CreateKind,label:z.string().min(1).max(200),zoneId:Id.nullish(),shape:z.enum(SHAPES).nullish(),icon:z.enum(ICONS).nullish(),details:Text(2000),style:NodeStyleSchema.optional()})).max(100).default([]),
   edges:z.array(z.object({from:Id,to:Id,label:Text(160),line:z.enum(LINES).optional(),startArrow:z.enum(ARROWS).optional(),endArrow:z.enum(ARROWS).optional(),style:EdgeStyleSchema.optional()})).max(150).default([])
@@ -52,8 +54,8 @@ const STRICT_SCHEMAS:Partial<Record<Mode,{name:string;schema:Record<string,unkno
       style:nullable(strictObject({fill:color,stroke:color,textColor:color,strokeWidth:nullable({type:'number'}),dash,fontSize:nullable({type:'integer'}),bold:nullable({type:'boolean'}),italic:nullable({type:'boolean'}),align:nullable(oneOf(['left','center','right'])),iconSize:nullable(oneOf(['small','large']))}))})),
     edges:list(strictObject({from:text,to:text,label:text,line:nullable(oneOf(LINES)),startArrow:nullable(oneOf(ARROWS)),endArrow:nullable(oneOf(ARROWS)),
       style:nullable(strictObject({stroke:color,textColor:color,strokeWidth:nullable({type:'number'}),dash,fontSize:nullable({type:'integer'})}))}))})},
-  explain:{name:'diagram_explanation',schema:strictObject({answer:text,tour:list(strictObject({caption:text,nodeIds:list(text),edgeIds:list(text)}))})},
-  review:{name:'diagram_review',schema:strictObject({summary:text,findings:list(strictObject({targetId:text,severity:oneOf(['info','warning','risk']),observation:text,evidence:text,suggestion:text}))})}
+  explain:{name:'diagram_explanation',schema:strictObject({clarification:nullable(text),answer:text,tour:list(strictObject({caption:text,nodeIds:list(text),edgeIds:list(text)}))})},
+  review:{name:'diagram_review',schema:strictObject({clarification:nullable(text),summary:text,findings:list(strictObject({targetId:text,severity:oneOf(['info','warning','risk']),observation:text,evidence:text,suggestion:text}))})}
 };
 /** Schema estricto que el gateway entrega al proveedor en este modo, si hay uno. */
 export const strictSchemaFor=(mode:Mode)=>STRICT_SCHEMAS[mode];
@@ -80,15 +82,16 @@ const EXPLAIN_DETAIL={
   expanded:'Respuesta AMPLIADA pero clara: hasta 3 párrafos cortos o una lista breve, en lenguaje simple. Profundizá en lo que la respuesta anterior dejó sin explicar; no la repitas.'
 } as const;
 const OUTPUT_CONTRACT=(mode:Mode,detail:keyof typeof EXPLAIN_DETAIL='brief')=>mode==='explain'
-  ?`${EXPLAIN_DETAIL[detail]}\nRespondé ÚNICAMENTE con JSON: {"answer": string, "tour": [{"caption": string, "nodeIds": string[], "edgeIds": string[]}]}. "answer" es la explicación en Markdown simple. "tour" es un recorrido de ${detail==='brief'?'3 a 6':'4 a 8'} pasos que muestra el diagrama en un orden lógico (por ejemplo, siguiendo el camino de los datos o del usuario): cada paso tiene una frase corta (máximo 20 palabras) y los IDs EXACTOS de los nodos y conexiones que se resaltan en ese paso. Si el contexto tiene menos de 2 elementos, "tour" va vacío.`
+  ?`${EXPLAIN_DETAIL[detail]}\nRespondé ÚNICAMENTE con JSON: {"clarification": null, "answer": string, "tour": [{"caption": string, "nodeIds": string[], "edgeIds": string[]}]}. "answer" es la explicación en Markdown simple. "tour" es un recorrido de ${detail==='brief'?'3 a 6':'4 a 8'} pasos que muestra el diagrama en un orden lógico (por ejemplo, siguiendo el camino de los datos o del usuario): cada paso tiene una frase corta (máximo 20 palabras) y los IDs EXACTOS de los nodos y conexiones que se resaltan en ese paso. Si el contexto tiene menos de 2 elementos, "tour" va vacío.`
   :mode==='create'
   ?`Respondé ÚNICAMENTE con JSON: {"summary":string,"clarification":null,"zones":[{"id":string,"label":string}],"nodes":[{"id":string,"kind":string,"label":string,"zoneId":string|null}],"edges":[{"from":string,"to":string,"label":string}]}. kind DEBE ser exactamente uno de: ${NODE_KINDS.join(', ')}. Ejemplos: usuario→actor; frontend/API/backend→service; base de datos→database. Describí TODOS los elementos y conexiones pedidos. Si el tema no es técnico (un viaje, un plan, un proyecto, una clase, una idea), armá algo RICO y concreto: varias zonas temáticas, secuencias conectadas en orden (por ejemplo día 1 → día 2), y sólo las conexiones entre zonas que aporten (una o dos por elemento como máximo, con una etiqueta corta; no conectes todo con todo); en details poné 1 o 2 líneas útiles (horario, costo, duración, dirección). Si hay un destino o lugares, agregá un nodo con shape "map". Formas con diseño propio: sticky (nota), card (tarjeta con encabezado), bubble (globo), pill (ítem corto), avatar (persona), badge (insignia), ribbon (cinta), folder, browser (pantalla web), chevron (paso), map. En nodos podés agregar shape, icon (uno de: ${ICONS.join(', ')}), details y style (con iconSize "large" el icono va grande sobre el nombre, ideal para temas no técnicos); en conexiones line, startArrow, endArrow y style cuando el pedido lo necesite. Los IDs son únicos y cortos; from/to y zoneId deben referir IDs declarados. No escribas acciones, posiciones, tamaños ni comandos de layout: los calcula el engine. Si falta información esencial, usá clarification y dejá las listas vacías.`
   :ACTION_MODES.includes(mode)
   ?'Respondé ÚNICAMENTE con un objeto JSON, sin texto ni bloques de código alrededor: {"summary": string, "clarification": string|null, "actions": Action[]}. Conservá el contenido no mencionado y usá sólo las acciones necesarias. Si el pedido es ambiguo o no se puede cumplir, devolvé "actions": [] y explicá en "clarification" qué necesitás saber. No incluyas id de lote ni baseRevision: los pone el gateway.'
   :mode==='review'
-    ?'Respondé ÚNICAMENTE con un objeto JSON: {"summary": string, "findings": [{"targetId": string, "severity": "info"|"warning"|"risk", "observation": string, "evidence": string, "suggestion": string}]}. Cada targetId debe ser el ID de un nodo, conexión, zona, grupo o frame del contexto; nunca el de un paso o una animación.'
+    ?'Respondé ÚNICAMENTE con un objeto JSON: {"clarification": null, "summary": string, "findings": [{"targetId": string, "severity": "info"|"warning"|"risk", "observation": string, "evidence": string, "suggestion": string}]}. Cada targetId debe ser el ID de un nodo, conexión, zona, grupo o frame del contexto; nunca el de un paso o una animación.'
     :'Respondé con texto en Markdown. No devuelvas acciones ni JSON.';
 const SUMMARY_RULE='\n"summary" es una o dos oraciones simples que cualquier persona entienda.';
+const QUESTION_RULE='\nSi falta información esencial o hay varias interpretaciones que cambiarían el resultado, preguntá antes de preparar cambios o inventar datos. Hacé una pregunta breve y concreta, con dos o tres alternativas si ayudan. Devolvé clarification con la pregunta; dejá actions/zones/nodes/edges/findings/tour vacíos y answer vacío según tu formato. Documentar puede devolver sólo {"clarification": "pregunta"} en vez de Markdown. Si podés resolver detalles de estilo razonablemente, avanzá sin preguntar por ellos. Al recibir la respuesta, continuá el pedido original del historial con el documento y la selección actuales.';
 
 /** Prompt de sistema estable (se cachea): instrucciones del producto + contrato de acciones vigente. */
 export function systemPrompt(productPrompt:string){
@@ -203,7 +206,7 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   // Índices cortos de IDs reales: evitan que el modelo invente identificadores o confunda nombres con IDs.
   const nodeIndex=doc.nodes.length?`\n\nNODOS (ID → nombre): ${doc.nodes.slice(0,80).map(n=>`${n.id} → ${n.label}`).join('; ')}${doc.nodes.length>80?'; …':''}`:'';
   const zoneIndex=doc.zones.length?`\n\nZONAS (ID → nombre): ${doc.zones.slice(0,60).map(z=>`${z.id} → ${z.label}`).join('; ')}`:'';
-  const first=`MODO: ${request.mode}\n${MODE_BRIEF[request.mode]}\n\nCONTEXTO DEL DOCUMENTO (JSON):\n${context.body}${nodeIndex}${zoneIndex}${choice?.chosen?`\nEl usuario eligió la zona de ID "${choice.chosen.id}" entre las ${choice.twins.length} que se llaman «${choice.chosen.label}». Usá ese ID.`:''}\n\nPEDIDO DEL USUARIO:\n${request.prompt}\n\nFORMATO DE RESPUESTA:\n${OUTPUT_CONTRACT(request.mode,request.detail)}${ACTION_MODES.includes(request.mode)||request.mode==='review'?SUMMARY_RULE:''}`;
+  const first=`MODO: ${request.mode}\n${MODE_BRIEF[request.mode]}\n\nCONTEXTO DEL DOCUMENTO (JSON):\n${context.body}${nodeIndex}${zoneIndex}${choice?.chosen?`\nEl usuario eligió la zona de ID "${choice.chosen.id}" entre las ${choice.twins.length} que se llaman «${choice.chosen.label}». Usá ese ID.`:''}\n\nPEDIDO DEL USUARIO:\n${request.prompt}\n\nFORMATO DE RESPUESTA:\n${OUTPUT_CONTRACT(request.mode,request.detail)}${ACTION_MODES.includes(request.mode)||request.mode==='review'?SUMMARY_RULE:''}${QUESTION_RULE}`;
   const inputEstimate=(messages:ChatMessage[])=>estimateTokens(deps.system.length+messages.reduce((sum,m)=>sum+m.content.length,0));
   const callCost=(messages:ChatMessage[])=>inputEstimate(messages)+deps.config.maxOutputTokens;
   // Peor caso en USD: toda la entrada sin caché y la salida máxima. Se reserva antes de llamar y se libera al liquidar.
@@ -227,6 +230,11 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
       calls++;inputTokens+=result.usage.inputTokens;outputTokens+=result.usage.outputTokens;cachedInputTokens+=result.usage.cachedInputTokens??0;model=result.model;
       let problem:string;
       try{
+        // Una pregunta explícita tiene prioridad incluso si el modelo adjunta borradores inválidos.
+        // No se dimensiona, repara ni previsualiza nada hasta que el usuario responda.
+        let question:ReturnType<typeof QuestionSchema.parse>|undefined;
+        try{const parsed=QuestionSchema.safeParse(extractJson(result.text));if(parsed.success)question=parsed.data;}catch{/* el texto/JSON normal sigue el contrato de su modo */}
+        if(question){const response={...base(),kind:'clarification' as const,summary:question.summary??'',clarification:question.clarification};settle('completed',response);return response;}
         if(request.mode==='document'){
           const response={...base(),kind:'text' as const,text:result.text.trim()};settle('completed',response);return response;
         }
