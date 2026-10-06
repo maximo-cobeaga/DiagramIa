@@ -2,6 +2,17 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Cierre de la sesión del 04/10 (05/10/2026)
+
+- **P1.1/P1.4/P3.4/P3.5/P8.1, extensión implementada (ADR 083–086):** navegación con dos dedos y tolerancia al pulso; huella visible de las piezas y etiquetas de conexión en varias líneas; prompt compacto de Crear, IDs sin colisión y consumo contabilizado en respuestas fallidas; nombre debajo de una figura legible en claro y oscuro. Sin schema ni dependencias nuevas.
+- **Comprobación:** check 151/151 y navegador 61/61, sin errores de consola ni IA paga. La falla «ejemplo incompleto» era una carrera de la prueba y quedó corregida. Ver `VALIDATION.md` y `docs/USO_DEEPSEEK.md`.
+- **Próximo paso:** revisión manual 37–39 con dispositivo táctil físico y DeepSeek real. Pendiente menor observado: en móvil con muchas pestañas, «+ Nueva idea» tapa parte de la tira. No cambia el estado de ninguna microfase.
+
+## Diagrama de exhibición NextUp × Microsoft Graph (05/10/2026)
+
+- **Hecho:** ejemplo `nextup-graph` en el selector, generado por `scripts/build-nextup-graph-example.mjs` desde `graph-diagram.txt`; dos animaciones con escenarios, estados y cámara. Barra de presentación corregida (botones encimados). Check 151/151; ver `DEVELOPMENT_STATE.md`.
+- **Pendiente:** revisión manual 36. `graph-diagram.txt` no está versionado (texto fuente del usuario; decidir si se publica). No cambia el estado de ninguna microfase.
+
 ## Menos texto y preguntas de IA (03/10/2026)
 
 - **P3.3/P3.4/P8.1, extensión implementada (ADR 081–082):** ayuda de herramientas bajo demanda; quitada la frase permanente de alcance/Admin; selector sólo con múltiples proveedores. Preguntas antes de acciones en los siete modos, prioridad sobre borradores inválidos, Responder/Cancelar, continuación con modo/pedido original y documento/selección actuales, chat separado por pestaña. Sin cambios canónicos ni dependencias.
