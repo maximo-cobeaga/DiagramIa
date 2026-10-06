@@ -6,6 +6,7 @@ import login from '../../../../examples/login.diagramia.json';
 import sanPancho from '../../../../examples/san-pancho.diagramia.json';
 import idea from '../../../../examples/explain-idea.diagramia.json';
 import task from '../../../../examples/plan-task.diagramia.json';
+import nextupGraph from '../../../../examples/nextup-graph.diagramia.json';
 import {addTab} from '../store/documentStore';
 import {playbackStore} from '../store/playbackStore';
 import {viewStore} from '../store/viewStore';
@@ -18,7 +19,8 @@ const sources=[
   ['Inicio de sesión','Un ejemplo técnico con efectos sincronizados.',login,'login'],
   ['San Pancho · viaje de 10 días','Tres fechas, actividades y un presupuesto estimado.',sanPancho,'san-pancho'],
   ['Explicar una idea','Qué querés hacer, a quién ayuda y cómo empezar.',idea,'explain-idea'],
-  ['Planificar una tarea','Un objetivo, lo necesario y tus próximos pasos.',task,'plan-task']
+  ['Planificar una tarea','Un objetivo, lo necesario y tus próximos pasos.',task,'plan-task'],
+  ['NextUp × Microsoft Graph','Una integración entre sistemas: zonas, personas, fallas y dos recorridos.',nextupGraph,'nextup-graph']
 ] as const;
 export const TEMPLATES=sources.map(([label,description,source,slug])=>({label,description,doc:openDocument(source).document,slug}));
 /** Los ejemplos se abren como documentos reales en otra pestaña, sin reemplazar el trabajo actual. */
