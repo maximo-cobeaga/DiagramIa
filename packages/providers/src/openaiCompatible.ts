@@ -55,13 +55,15 @@ export function openAICompatibleProvider(options:OpenAICompatibleOptions):Provid
     if(!response.ok)throw new ProviderError(response.status>=500?'UPSTREAM':'BAD_REQUEST',`El servidor del modelo respondió ${response.status}: ${(await response.text().catch(()=>'')).slice(0,300)}`,response.status>=500);
     const body=await response.json().catch(()=>null) as Completion|null;
     const choice=body?.choices?.[0],text=choice?.message?.content;
+    const cached=body?.usage?.prompt_tokens_details?.cached_tokens??0;
+    const usage={inputTokens:body?.usage?.prompt_tokens??0,outputTokens:body?.usage?.completion_tokens??0,...(cached>0?{cachedInputTokens:cached}:{})};
+    const failed=(code:'REFUSED'|'TRUNCATED'|'UPSTREAM',message:string)=>Object.assign(new ProviderError(code,message),{usage,model:body?.model??model});
     // Con structured outputs, una negativa llega como `refusal` en lugar de contenido.
     if(typeof choice?.message?.refusal==='string'&&choice.message.refusal||choice?.finish_reason==='content_filter')
-      throw new ProviderError('REFUSED','El modelo declinó el pedido. Reformulalo; no se generó ninguna propuesta.');
-    if(typeof text!=='string')throw new ProviderError('UPSTREAM','El servidor del modelo devolvió una respuesta sin texto.');
-    if(choice?.finish_reason==='length')throw new ProviderError('TRUNCATED','La respuesta superó el máximo de tokens de salida y quedó incompleta. Pedí un cambio más acotado.');
-    const cached=body?.usage?.prompt_tokens_details?.cached_tokens??0;
+      throw failed('REFUSED','El modelo declinó el pedido. Reformulalo; no se generó ninguna propuesta.');
+    if(choice?.finish_reason==='length')throw failed('TRUNCATED','La respuesta superó el máximo de tokens de salida y quedó incompleta. Pedí un cambio más acotado.');
+    if(typeof text!=='string')throw failed('UPSTREAM','El servidor del modelo devolvió una respuesta sin texto.');
     return {text,model:body?.model??model,stopReason:choice?.finish_reason??'unknown',providerRequestId:body?.id??null,
-      usage:{inputTokens:body?.usage?.prompt_tokens??0,outputTokens:body?.usage?.completion_tokens??0,...(cached>0?{cachedInputTokens:cached}:{})}};
+      usage};
   }};
 }

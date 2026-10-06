@@ -1,6 +1,6 @@
 import type {DiagramDocument,DiagramEdge,DiagramNode,Port} from './schema.js';
 import {find} from './errors.js';
-import {shapeOf,textWidth} from './text.js';
+import {LABEL_BELOW_SHAPES,edgeLabelLayout,shapeOf,textWidth,wrapLabel} from './text.js';
 
 export type Point={x:number;y:number};
 export type Rect={x:number;y:number;width:number;height:number};
@@ -8,6 +8,15 @@ export type Side=Exclude<Port,'auto'>;
 export type Routed={points:Point[];label:Point|null};
 
 export const nodeRect=(n:Pick<DiagramNode,'position'|'size'>):Rect=>({x:n.position.x,y:n.position.y,width:n.size.width,height:n.size.height});
+/** Huella visible: reserva también los títulos que se dibujan debajo de avatares, mapas e imágenes. */
+export function nodeVisualRect(n:DiagramNode):Rect{
+  const rect=nodeRect(n);
+  if(!n.assetId&&!LABEL_BELOW_SHAPES.includes(shapeOf(n)))return rect;
+  const width=Math.max(140,rect.width),size=n.style.fontSize??15;
+  const x=n.style.align==='left'?rect.x+12:n.style.align==='right'?rect.x+rect.width-12-width:rect.x+(rect.width-width)/2;
+  const left=Math.min(rect.x,x),right=Math.max(rect.x+rect.width,x+width);
+  return {x:left,y:rect.y,width:right-left,height:rect.height+Math.round(size*1.2)*wrapLabel(n.label,width,size,4).length+size*.18+6};
+}
 export const contains=(outer:Rect,inner:Rect)=>inner.x>=outer.x&&inner.y>=outer.y&&inner.x+inner.width<=outer.x+outer.width&&inner.y+inner.height<=outer.y+outer.height;
 export const overlaps=(a:Rect,b:Rect)=>a.x<b.x+b.width&&b.x<a.x+a.width&&a.y<b.y+b.height&&b.y<a.y+a.height;
 export const inflate=(r:Rect,by:number):Rect=>({x:r.x-by,y:r.y-by,width:r.width+by*2,height:r.height+by*2});
@@ -40,7 +49,19 @@ export function anchorAt(rect:Rect,point:Point):Point{
   return side==='left'?{x:0,y:t}:side==='right'?{x:1,y:t}:side==='top'?{x:t,y:0}:{x:t,y:1};
 }
 const inset=(r:Rect,by:number):Rect=>({x:r.x+by,y:r.y+by,width:r.width-by*2,height:r.height-by*2});
-const segmentHits=(a:Point,b:Point,r:Rect)=>Math.max(a.x,b.x)>r.x&&Math.min(a.x,b.x)<r.x+r.width&&Math.max(a.y,b.y)>r.y&&Math.min(a.y,b.y)<r.y+r.height;
+/** Intersección con el interior: una diagonal cercana o tocar una esquina no equivale a atravesar la pieza. */
+export function segmentHitsRect(a:Point,b:Point,r:Rect):boolean{
+  if(r.width<=0||r.height<=0)return false;
+  let enter=0,exit=1;
+  for(const [start,delta,min,max] of [[a.x,b.x-a.x,r.x,r.x+r.width],[a.y,b.y-a.y,r.y,r.y+r.height]]){
+    if(!delta){if(start<=min||start>=max)return false;continue;}
+    const low=(min-start)/delta,high=(max-start)/delta;
+    enter=Math.max(enter,Math.min(low,high));exit=Math.min(exit,Math.max(low,high));
+    if(enter>=exit)return false;
+  }
+  return true;
+}
+const segmentHits=segmentHitsRect;
 function simplify(points:Point[]):Point[]{
   const out:Point[]=[];
   for(const p of points){
@@ -121,7 +142,7 @@ export function routeAll(d:DiagramDocument):Map<string,Routed>{
 }
 function computeRoutes(d:DiagramDocument):Map<string,Routed>{
   const rects=new Map(d.nodes.map(n=>[n.id,nodeRect(n)])),nodes=new Map(d.nodes.map(n=>[n.id,n])),out=new Map<string,Routed>();
-  const obstacles:Obstacles={grid:new Grid(),rects:d.nodes.map(nodeRect)};obstacles.rects.forEach((r,i)=>obstacles.grid.add(i,r));
+  const obstacles:Obstacles={grid:new Grid(),rects:d.nodes.map(nodeVisualRect)};obstacles.rects.forEach((r,i)=>obstacles.grid.add(i,r));
   const center=(r:Rect):Point=>({x:r.x+r.width/2,y:r.y+r.height/2});
   // 1. Lado de salida y llegada de cada conexión, y reparto a lo largo de cada lado.
   const ends=new Map<string,{from:End;to:End}>(),slots=new Map<string,{edge:DiagramEdge;end:'from'|'to';order:number}[]>();
@@ -167,7 +188,7 @@ function computeRoutes(d:DiagramDocument):Map<string,Routed>{
   const placed:Rect[]=[],placedGrid=new Grid();
   for(const e of d.edges){
     const routed=out.get(e.id);if(!routed||!e.label)continue;
-    const width=textWidth(e.label,e.style.fontSize??11,true)+10,height=(e.style.fontSize??11)+7;
+    const {width,height}=edgeLabelLayout(e.label,e.style.fontSize??11);
     let chosen:Point|null=null,fallback:Point|null=null;
     for(const t of [.5,.38,.62,.26,.74,.16,.84]){
       const p=pointOnPolyline(routed.points,t),at={x:p.x,y:p.y-8},box={x:at.x-width/2,y:at.y-height+3,width,height};
@@ -256,7 +277,7 @@ export function pointOnPolyline(points:Point[],progress:number):Point{
 /** Límites de todo el contenido visible; null si el documento está vacío. */
 export function documentBounds(d:DiagramDocument,ids?:string[]):Rect|null{
   const only=ids?new Set(ids):null,pick=(id:string)=>!only||only.has(id);
-  const rects:Rect[]=[...d.nodes.filter(n=>pick(n.id)).map(nodeRect),...d.zones.filter(z=>pick(z.id)).map(z=>z.bounds),...d.frames.filter(f=>pick(f.id)).map(f=>f.bounds)];
+  const rects:Rect[]=[...d.nodes.filter(n=>pick(n.id)).map(nodeVisualRect),...d.zones.filter(z=>pick(z.id)).map(z=>z.bounds),...d.frames.filter(f=>pick(f.id)).map(f=>f.bounds)];
   for(const drawing of d.drawings.filter(d=>pick(d.id))){const x=Math.min(...drawing.points.map(p=>p.x)),y=Math.min(...drawing.points.map(p=>p.y));rects.push({x,y,width:Math.max(1,Math.max(...drawing.points.map(p=>p.x))-x),height:Math.max(1,Math.max(...drawing.points.map(p=>p.y))-y)});}
   for(const [id,{points}] of only&&!d.edges.some(e=>only.has(e.id))?[]:routeAll(d))if(pick(id)&&points.length){
     const x=Math.min(...points.map(p=>p.x)),y=Math.min(...points.map(p=>p.y));

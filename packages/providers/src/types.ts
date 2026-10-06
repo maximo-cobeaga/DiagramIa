@@ -29,5 +29,7 @@ export interface Provider{info():ProviderInfo;generate(request:ProviderRequest):
 
 export type ProviderErrorCode='NOT_CONFIGURED'|'AUTH'|'RATE_LIMIT'|'REFUSED'|'CANCELLED'|'BAD_REQUEST'|'TRUNCATED'|'UPSTREAM';
 export class ProviderError extends Error{
+  /** Consumo informado por una respuesta fallida, por ejemplo JSON truncado. Nunca incluye contenido. */
+  usage?:Usage;model?:string;
   constructor(public code:ProviderErrorCode,message:string,public retryable=false){super(message);this.name='ProviderError';}
 }

@@ -1,5 +1,5 @@
 import type {CSSProperties,ReactNode} from 'react';
-import {ICON_LARGE,LABEL_BELOW_SHAPES,detailBlock,PILL_ICON,SHAPE_INSET,assetDataUrl,detailLines,pointOnPolyline,routeAll,shapeOf,usableFraction,wrapLabel,type DiagramAnnotation,type DiagramDocument,type DiagramEdge,type DiagramNode,type Point} from '@diagramia/core';
+import {ICON_LARGE,LABEL_BELOW_SHAPES,detailBlock,PILL_ICON,SHAPE_INSET,assetDataUrl,detailLines,edgeLabelLayout,pointOnPolyline,routeAll,shapeOf,usableFraction,wrapLabel,type DiagramAnnotation,type DiagramDocument,type DiagramEdge,type DiagramNode,type Point} from '@diagramia/core';
 
 export {wrapLabel};
 type Shape=ReturnType<typeof shapeOf>;
@@ -228,7 +228,9 @@ export function nodeTitleLayout(n:DiagramNode,asset=false){
   const blockHeight=lines.length*lineHeight+(n.subtitle?15:0)+(shape==='class'?0:extra.length*16);
   const top=below?y+h+size+3:shape==='class'?y+size+6:y+h/2-blockHeight/2+size*.82+iconShift+((inset.top??0)-(inset.bottom??0))/2+(shape==='cylinder'?Math.min(12,h/5)/2:shape==='triangle'?h*.16:0);
   const textStyle:CSSProperties={fontWeight:n.style.bold?700:undefined,fontStyle:n.style.italic?'italic':undefined};
-  return {size,lineHeight,below,extra,tx,anchorAt:anchorAt as 'start'|'end'|'middle',ownIcon,bigIcon,iconShift,lines,top,textStyle,color:n.style.textColor??(n.style.fill?readableOn(n.style.fill):undefined),box:{x:align==='left'?tx:align==='right'?tx-width:tx-width/2,y:top-size*.82,width,height:Math.max(lineHeight,lines.length*lineHeight)}};
+  // Un título debajo de la figura se lee sobre el lienzo, no sobre el relleno: sin color elegido usa la tinta del tema.
+  if(below&&!n.style.textColor)textStyle.fill='var(--d-ink,#141619)';
+  return {size,lineHeight,below,extra,tx,anchorAt:anchorAt as 'start'|'end'|'middle',ownIcon,bigIcon,iconShift,lines,top,textStyle,color:n.style.textColor??(n.style.fill&&!below?readableOn(n.style.fill):undefined),box:{x:align==='left'?tx:align==='right'?tx-width:tx-width/2,y:top-size*.82,width,height:Math.max(lineHeight,lines.length*lineHeight)}};
 }
 
 export type LayerProps={
@@ -299,7 +301,7 @@ export function DiagramLayer({doc,selected,activeNodes,activeEdges,failed=false,
         {arrowHead(e.endArrow,points[points.length-1],points[points.length-2],head)}
         {arrowHead(e.startArrow,points[0],points[1],head)}
         {interactive&&<path className="hit-edge" d={d}/>}
-        {e.label&&routed.label&&editing!==e.id&&<text className="edge-label" x={routed.label.x} y={routed.label.y} fontSize={e.style.fontSize}>{e.label}</text>}
+        {e.label&&routed.label&&editing!==e.id&&(()=>{const label=edgeLabelLayout(e.label,e.style.fontSize??11);return <text className="edge-label" x={routed.label.x} y={routed.label.y-(label.lines.length-1)*label.lineHeight} fontSize={e.style.fontSize}><title>{e.label}</title>{label.lines.map((line,i)=><tspan key={i} x={routed.label!.x} dy={i?label.lineHeight:0}>{line}</tspan>)}</text>;})()}
       </g>;
     })}
     {doc.nodes.map(n=>{

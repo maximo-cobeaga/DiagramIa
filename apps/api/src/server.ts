@@ -62,7 +62,7 @@ const flowCookie=(token:string,secure:boolean,maxAge:number)=>`diagramia_oidc_fl
  * Con OIDC configurado, las rutas de cuenta aíslan documentos por proyecto.
  */
 export function createApp(options:AppOptions):Server{
-  const system=systemPrompt(options.productPrompt),eventLimiter=new RateLimiter(options.eventsPerMinute??60,60_000);
+  const system=systemPrompt(options.productPrompt),createSystem=systemPrompt(options.productPrompt,true),eventLimiter=new RateLimiter(options.eventsPerMinute??60,60_000);
   const aiPerIp=new RateLimiter(options.aiPerIpPerMinute??20,60_000),aiPerUser=new RateLimiter(options.aiPerUserPerMinute??6,60_000);
   const previewPerIp=new RateLimiter(20,60_000),previewPerUser=new RateLimiter(10,60_000),previews=new LinkPreviewCache();
   // La telemetría nunca rompe el producto: un fallo al registrar queda en el log sin datos del pedido.
@@ -277,13 +277,13 @@ export function createApp(options:AppOptions):Server{
             // El ledger del proceso es global: su ID interno incluye la cuenta para que dos usuarios
             // que elijan el mismo requestId nunca compartan una respuesta ni un recibo.
             const privateId='acct-'+createHash('sha256').update(session.userId+'\0'+input.requestId).digest('hex').slice(0,32);
-            const answer=await assist({...body as object,requestId:privateId},{providers,ledger:options.ledger,config:options.config,system,rateLimitExempt:admin},abort.signal);
+            const answer=await assist({...body as object,requestId:privateId},{providers,ledger:options.ledger,config:options.config,system,createSystem,rateLimitExempt:admin},abort.signal);
             const publicAnswer={...answer,requestId:input.requestId};
             await options.accounts!.settleCredits(session.userId,input.requestId,publicAnswer);
             track({answer:publicAnswer});return send(200,publicAnswer);
           }catch(error){await options.accounts!.releaseCredits(session.userId,input.requestId);throw error;}
         }
-        const answer=await assist(body,{providers:options.providers,ledger:options.ledger,config:options.config,system},abort.signal);
+        const answer=await assist(body,{providers:options.providers,ledger:options.ledger,config:options.config,system,createSystem},abort.signal);
         track({answer});return send(200,answer);
         }catch(error){track({error});throw error;}
       }

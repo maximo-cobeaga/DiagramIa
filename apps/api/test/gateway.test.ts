@@ -303,7 +303,7 @@ test('OpenAI-compatible adapter talks to /chat/completions and reports truncatio
   try{
     assert.equal(provider.info().kind,'local');
     assert.deepEqual(await provider.generate(request),{text:'respuesta local',model:'qwen',stopReason:'stop',providerRequestId:'c1',usage:{inputTokens:7,outputTokens:3}});
-    finish='length';await assert.rejects(provider.generate(request),(e:unknown)=>e instanceof ProviderError&&e.code==='TRUNCATED');
+    finish='length';await assert.rejects(provider.generate(request),(e:unknown)=>e instanceof ProviderError&&e.code==='TRUNCATED'&&e.usage?.inputTokens===7&&e.usage?.outputTokens===3);
   }finally{upstream.closeAllConnections();await new Promise(resolve=>upstream.close(resolve));}
   await assert.rejects(provider.generate(request),(e:unknown)=>e instanceof ProviderError&&e.code==='UPSTREAM'&&e.retryable);
   assert.equal(openAICompatibleProvider({}).info().configured,false);
@@ -637,4 +637,29 @@ test('the included AI needs a verified email and per-account and per-IP limits s
     await new Promise(resolve=>setTimeout(resolve,20));
     assert.deepEqual(spy.server.map(s=>[s.event.props.outcome,s.event.props.errorCode]),[['blocked','EMAIL_NOT_VERIFIED'],['text',null],['text',null],['blocked','RATE_LIMITED'],['blocked','RATE_LIMITED']]);
   }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
+
+test('Crear uses a compact inventory prompt and generated IDs do not collide with drawings or animation names',async()=>{
+  const base=applyBatch(emptyDocument('compact','Ideas'),{id:'manual',baseRevision:0,actions:[{type:'ADD_DRAWING',drawing:{id:'edge-1',kind:'line',points:[{x:0,y:0},{x:40,y:0}]}}]});
+  const json=JSON.stringify({summary:'Ideas.',nodes:[{id:'recorrido',kind:'note',label:'Objetivo'},{id:'a',kind:'note',label:'Invitar'},{id:'b',kind:'note',label:'Preparar'},{id:'c',kind:'note',label:'Disfrutar'}],edges:[{from:'a',to:'b',label:'después'}]});
+  const {provider,calls}=scripted([json,redis()]),g=await gateway([provider]);
+  try{
+    const result=await(await g.post(g.ask({requestId:'compact',mode:'create',prompt:'Creá una idea con estos pasos',document:base,selectedIds:[]}))).json();
+    assert.equal(result.kind,'proposal');
+    const after=applyBatch(base,result.batch);assert.deepEqual(after.drawings,base.drawings);assert.ok(after.nodes.some(n=>n.id==='recorrido'));
+    assert.ok(after.animations.every(a=>a.id!=='recorrido'));assert.ok(after.edges.every(e=>e.id!=='edge-1'));
+    await g.post(g.ask({requestId:'normal-edit'}));
+    assert.ok(calls[0].system.length<calls[1].system.length/3,'Crear no necesita el catálogo completo de acciones');
+    assert.match(calls[0].messages.at(-1)!.content,/sólo elementos NUEVOS/);
+  }finally{await g.close();}
+});
+
+test('a truncated compatible response still charges reported tokens and releases its reservation without changes',async()=>{
+  const upstream=createServer((_req,res)=>{res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({model:'real-model',choices:[{finish_reason:'length',message:{content:'{"nodes":['}}],usage:{prompt_tokens:5000,completion_tokens:6000,prompt_tokens_details:{cached_tokens:3000}}}));});
+  const source=openAICompatibleProvider({id:'fake',baseURL:await listen(upstream),model:'configured-model',kind:'remote',pricing:{inputPerMTok:1,outputPerMTok:2,cachedInputPerMTok:.1}}),g=await gateway([source]);
+  try{
+    const doc=architecture(),before=structuredClone(doc),response=await g.post(g.ask({requestId:'truncated',document:doc})),body=await response.json();
+    assert.equal(response.status,502);assert.equal(body.error.code,'TRUNCATED');assert.deepEqual(doc,before);
+    const usage=g.ledger.summary();assert.equal(usage.tokens,11000);assert.equal(usage.reservedTokens,0);assert.equal(usage.recent.length,1);assert.equal(usage.recent[0].model,'real-model');assert.equal(usage.recent[0].status,'failed');
+  }finally{await g.close();upstream.closeAllConnections();await new Promise(resolve=>upstream.close(resolve));}
 });

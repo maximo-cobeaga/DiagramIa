@@ -144,3 +144,34 @@ test('a placement inside a full zone grows the zone instead of failing',()=>{
   assert.ok(d.nodes.filter(n=>n.id.startsWith('q')).every(n=>n.zoneId==='backend'));
   assert.throws(()=>tidyBatch(base,{id:'amb',baseRevision:0,actions:[{type:'ADD_NODE',node:node('x'),placement:{insideLabel:'No existe'}}]}),/No existe una zona/);
 });
+
+test('arranging reserves visible titles below small shapes and preserves IDs and original labels',()=>{
+  const actions:ActionInput[]=[{type:'CREATE_ZONE',zone:{id:'people',label:'Equipo',bounds:{x:0,y:0,width:100,height:100}}},
+    ...['a','b','c','map'].map((id,i)=>({type:'ADD_NODE' as const,node:node(id,'Una persona con nombre bastante largo '+i,{kind:'note',shape:i===3?'map':'avatar',zoneId:'people'})})),
+    {type:'ADD_EDGE',edge:edge('a','b',{label:'Se encarga de invitar a las familias del barrio y confirmar asistencia'})}];
+  const base=emptyDocument('visible','Personas'),{batch}=tidyBatch(base,{id:'visible',baseRevision:0,actions}),after=applyBatch(base,batch);
+  assert.deepEqual(blocking(after),[]);
+  assert.deepEqual(after.nodes.map(n=>n.id),['a','b','c','map']);
+  assert.ok(after.nodes.every(n=>n.label.startsWith('Una persona con nombre')));
+  assert.deepEqual(tidyBatch(base,{id:'visible',baseRevision:0,actions}).batch,batch);
+  const original=structuredClone(after),again=run(after,{type:'ARRANGE_DOCUMENT'});
+  assert.deepEqual(again.nodes.map(n=>[n.id,n.label,n.size]),original.nodes.map(n=>[n.id,n.label,n.size]));
+});
+
+test('multiline text and a font change get enough height without losing content or moving unrelated pieces',()=>{
+  const base=run(emptyDocument('text','Notas'),{type:'ADD_NODE',node:node('note','Primera línea\nSegunda línea\nTercera línea',{kind:'text',shape:'text',position:{x:0,y:0},size:{width:160,height:50}})},
+    {type:'ADD_NODE',node:node('other','Otra pieza',{position:{x:1000,y:1000}})});
+  const {batch}=tidyBatch(base,{id:'font',baseRevision:base.revision,actions:[{type:'UPDATE_NODE',id:'note',changes:{style:{fontSize:24}}}]}),after=applyBatch(base,batch);
+  const note=after.nodes.find(n=>n.id==='note')!;
+  assert.ok(note.size.height>=3*24);assert.equal(note.label,base.nodes[0].label);assert.deepEqual(after.nodes[1],base.nodes[1]);
+  assert.deepEqual(blocking(after),[]);
+});
+
+test('routing distinguishes diagonals near a node, corner touches and real crossings',async()=>{
+  const {segmentHitsRect}=await import('../src/index.js');
+  const box={x:40,y:70,width:20,height:20};
+  assert.equal(segmentHitsRect({x:0,y:0},{x:100,y:100},box),false,'la caja de una diagonal puede solaparse sin atravesar el nodo');
+  assert.equal(segmentHitsRect({x:0,y:40},{x:100,y:140},box),true);
+  assert.equal(segmentHitsRect({x:0,y:70},{x:100,y:70},box),false,'tocar el borde no atraviesa el interior');
+  assert.equal(segmentHitsRect({x:50,y:0},{x:50,y:100},box),true);
+});

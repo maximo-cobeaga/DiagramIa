@@ -9,11 +9,18 @@ export const shapeOf=(n:Pick<DiagramNode,'kind'|'shape'>):Shape=>n.shape??KIND_S
 const SANS=.56,MONO=.62;
 export const textWidth=(text:string,size:number,mono=false)=>text.length*size*(mono?MONO:SANS);
 
+/** Medidas compartidas por routing, layout, canvas y export: una etiqueta larga no estira todo el diagrama. */
+export function edgeLabelLayout(label:string,size=11){
+  const lineHeight=Math.ceil(size*1.3),lines=wrapLabel(label,180*SANS/MONO,size,12);
+  return {lines,lineHeight,width:Math.max(...lines.map(line=>textWidth(line,size,true)),0)+10,height:size+7+(lines.length-1)*lineHeight};
+}
+
 /** Parte un label en líneas según el ancho disponible; pasado `maxLines`, el resto se abrevia con «…». */
 export function wrapLabel(label:string,width:number,size=15,maxLines=3):string[]{
   const perLine=Math.max(4,Math.floor(width/(size*SANS))),lines:string[]=[];
   let line='';
-  for(const word of label.split(/\s+/).filter(Boolean)){
+  for(const word of label.split(/(\n)|[^\S\n]+/).filter(Boolean)){
+    if(word==='\n'){lines.push(line);line='';continue;}
     if(!line){line=word;continue;}
     if((line+' '+word).length<=perLine){line+=' '+word;continue;}
     lines.push(line);line=word;
@@ -56,7 +63,10 @@ export function fitSize(n:Pick<DiagramNode,'kind'|'shape'|'label'|'subtitle'|'de
   if(shape==='actor')return {width:48,height:72};
   if(shape==='avatar'||shape==='badge')return {width:88,height:88};
   if(shape==='map')return {width:168,height:112};
-  if(shape==='text')return {width:round8(Math.min(360,textWidth(n.label,size))+12),height:round8(lineHeight+8)};
+  if(shape==='text'){
+    const width=round8(Math.max(40,Math.min(360,Math.max(...n.label.split('\n').map(line=>textWidth(line,size)))))+24);
+    return {width,height:round8(wrapLabel(n.label,width-20,size,4).length*lineHeight+16)};
+  }
   const raw=detailLines(n.details);
   if(shape==='class'){
     const extra=raw;
@@ -64,7 +74,7 @@ export function fitSize(n:Pick<DiagramNode,'kind'|'shape'|'label'|'subtitle'|'de
     return {width:round8(widest+28),height:round8(lineHeight+18+(extra.length?extra.length*16+14:0))};
   }
   // Se busca el ancho más chico (hasta 240 de texto) con el que el label entra en tres líneas o menos.
-  let lines=[n.label],inner=Math.min(240,textWidth(n.label,size));
+  let inner=Math.min(240,Math.max(...n.label.split('\n').map(line=>textWidth(line,size)))),lines=wrapLabel(n.label,Math.max(40,inner),size,4);
   if(textWidth(n.label,size)>200){inner=200;lines=wrapLabel(n.label,inner,size,4);inner=Math.max(...lines.map(l=>textWidth(l,size)));}
   const extra=detailBlock(n.details,Math.max(Math.min(DETAIL_WIDTH,textWidth(n.details,12)),inner));
   const textW=Math.max(inner,n.subtitle?textWidth(n.subtitle,10,true):0,...extra.map(l=>textWidth(l,12))),textH=lines.length*lineHeight+(n.subtitle?16:0)+extra.length*16;

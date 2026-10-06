@@ -218,6 +218,63 @@ try{
     await key('0');await sleep(100);
   };
   const screenPoint=point=>js(`(()=>{const c=document.querySelector('.canvas'),r=c.getBoundingClientRect(),v=c.getAttribute('viewBox').split(/\\s+/).map(Number);return {x:r.left+(${point.x}-v[0])*r.width/v[2],y:r.top+(${point.y}-v[1])*r.height/v[3]};})()`);
+  await check('mouse: seleccionar tolera el pulso, arrastrar después de un clic funciona y Esc cancela',async()=>{
+    await loadScene([fixtureNode('jitter','Mi idea',100,220,150,70),fixtureNode('other','Otra idea',440,220,150,70)]);
+    const before=await saved(),at=await center('[data-id="jitter"]');
+    await drag(at,{x:at.x+2,y:at.y+1});expect(JSON.stringify(await saved())===JSON.stringify(before),'un pequeño temblor modificó el contenido');
+    const current=await center('[data-id="jitter"]');await click(current);await drag(current,{x:current.x+64,y:current.y+24});
+    expect(!await center('.inline-editor'),'clic seguido de arrastre abrió la edición');
+    const moved=await saved();expect(moved.nodes[0].position.x!==before.nodes[0].position.x,'el arrastre no movió la pieza');
+    await key('z',CTRL);expect((await saved()).nodes[0].position.x===before.nodes[0].position.x,'undo no devolvió la pieza');
+    await sleep(450);const point=await center('[data-id="jitter"]');await mouse('mousePressed',point.x,point.y);await mouse('mouseMoved',point.x+80,point.y+30);await key('Escape');await mouse('mouseReleased',point.x+80,point.y+30);
+    expect((await saved()).nodes[0].position.x===before.nodes[0].position.x,'Esc guardó el movimiento');
+    await sleep(450);await doubleClick(await center('[data-id="jitter"]'));expect(Boolean(await center('.inline-editor')),'doble clic dejó de editar');await key('Escape');
+    return 'selección sin movimiento accidental, clic + arrastre, undo, Esc y doble clic';
+  });
+  await check('táctil: dos dedos desplazan y acercan sin cambiar contenido ni continuar un dibujo',async()=>{
+    await loadScene([fixtureNode('touch','Mi idea',100,220,150,70),fixtureNode('touch-other','Otra idea',440,220,150,70)]);
+    const before=await saved(),box=await center('.canvas'),a={x:box.left+box.width*.55-50,y:box.top+box.height*.72,id:1},b={x:a.x+100,y:a.y,id:2};
+    const camera=()=>js(`(()=>{const c=document.querySelector('.canvas'),v=c.getAttribute('viewBox').split(/\\s+/).map(Number);return {x:v[0],y:v[1],zoom:c.getBoundingClientRect().width/v[2]};})()`);
+    const old=await camera(),mid={x:(a.x+b.x)/2-box.left,y:a.y-box.top},anchor={x:old.x+mid.x/old.zoom,y:old.y+mid.y/old.zoom};
+    const touch=(type,points)=>send('Input.dispatchTouchEvent',{type,touchPoints:points});
+    await touch('touchStart',[a]);await touch('touchStart',[a,b]);
+    const pa={...a,x:a.x+40,y:a.y+20},pb={...b,x:b.x+40,y:b.y+20};await touch('touchMove',[pa,pb]);await sleep(100);
+    let now=await camera();expect(Math.abs(now.zoom-old.zoom)<.01&&Math.abs(now.x-(old.x-40/old.zoom))<1,'dos dedos no desplazaron la vista');
+    const za={...pa,x:pa.x-50},zb={...pb,x:pb.x+50};await touch('touchMove',[za,zb]);await sleep(100);now=await camera();
+    expect(Math.abs(now.zoom/old.zoom-2)<.02,'el pellizco no acercó al doble');
+    expect(Math.abs(now.x+(mid.x+40)/now.zoom-anchor.x)<1&&Math.abs(now.y+(mid.y+20)/now.zoom-anchor.y)<1,'el zoom perdió su ancla');
+    await shot('56-touch-navigation');await touch('touchEnd',[zb]);await touch('touchMove',[{...zb,x:zb.x+30}]);await touch('touchEnd',[]);
+    expect(JSON.stringify(await saved())===JSON.stringify(before),'navegar cambió contenido/revisión');
+    await clickText('Lápiz','.tool-grid');await touch('touchStart',[a]);await touch('touchMove',[{...a,x:a.x+30}]);await touch('touchStart',[{...a,x:a.x+30},b]);await touch('touchEnd',[]);
+    expect(JSON.stringify(await saved())===JSON.stringify(before),'dos dedos guardaron el borrador del lápiz');
+    await touch('touchStart',[a]);await touch('touchMove',[{...a,x:a.x+45}]);await touch('touchCancel',[]);await touch('touchStart',[b]);await touch('touchMove',[{...b,x:b.x+45}]);await touch('touchEnd',[]);
+    const drawn=await saved();expect(drawn.drawings.length===1,'cancelar dejó punteros o trazos anteriores');await key('Escape');await key('z',CTRL);
+    return 'pan de dos dedos, ancla al zoom, levantar un dedo, cancelación y lápiz sin pérdida de contenido';
+  });
+  await check('los ejemplos cotidianos de DeepSeek se ven legibles y conservan su contenido al darles diseño',async()=>{
+    for(const [name,title] of [['viaje','Viaje a San Pancho'],['tareas','Preparar una mudanza'],['idea','Feria del barrio']]){
+      const file=`examples/everyday-${name}.diagramia.json`;expect(existsSync(file),'falta el resultado real '+name);
+      // saved() espera el guardado pendiente: si no, al recargar el editor lo vuelca y pisa el ejemplo recién cargado.
+      const scene=JSON.parse(readFileSync(file,'utf8'));await saved();await js(`localStorage.setItem(${ACTIVE_KEY},${JSON.stringify(JSON.stringify(scene))})`);await send('Page.reload');await sleep(1100);
+      const before=await saved();expect(before.id===scene.id&&before.title===title&&before.nodes.length===scene.nodes.length&&before.nodes.length>=8,'ejemplo incompleto');
+      expect(await js(`Boolean(document.querySelector('.diagram .node-title'))`),'no se dibujan los títulos');
+      await shot('57-everyday-'+name);await clickText('Darle diseño');await sleep(350);
+      const after=await saved();expect(JSON.stringify(after.nodes.map(n=>[n.id,n.label,n.details]))===JSON.stringify(before.nodes.map(n=>[n.id,n.label,n.details])),'diseñar perdió contenido/IDs');
+      expect(JSON.stringify(after.edges.map(e=>[e.id,e.from,e.to,e.label]))===JSON.stringify(before.edges.map(e=>[e.id,e.from,e.to,e.label])),'diseñar perdió relaciones');
+      await key('z',CTRL);expect(JSON.stringify((await saved()).nodes)===JSON.stringify(before.nodes),'undo no recuperó el ejemplo');
+    }
+    await viewport(390,844,true);await shot('58-everyday-mobile');expect(await js('document.documentElement.scrollWidth<=innerWidth+1'),'hay desborde horizontal');await viewport(1440,900);
+    return 'viaje, mudanza e idea generados por DeepSeek; diseño/undo conservan IDs, texto y relaciones; móvil';
+  });
+  await check('el nombre debajo de un avatar con relleno se lee sobre el lienzo en claro y oscuro',async()=>{
+    await loadScene([{...fixtureNode('persona','Ana, operadora',160,200,88,88),shape:'avatar',style:{fill:'#141619'}},{...fixtureNode('caja','Caja oscura',420,200,150,70),style:{fill:'#141619'}}]);
+    const fills=()=>js(`['persona','caja'].map(id=>getComputedStyle(document.querySelector('[data-id="'+id+'"] .node-title')).fill)`);
+    const light=await fills();expect(light[0]==='rgb(20, 22, 25)'&&light[1]==='rgb(255, 255, 255)','claro: '+light);
+    await js(`document.documentElement.dataset.theme='dark'`);await sleep(120);
+    try{const dark=await fills();expect(dark[0]==='rgb(232, 235, 239)'&&dark[1]==='rgb(255, 255, 255)','oscuro: '+dark);await shot('59-nombre-debajo-oscuro');}
+    finally{await js(`document.documentElement.dataset.theme='light'`);}
+    return 'el nombre usa la tinta del tema; el texto dentro de una figura sigue contrastando con su relleno';
+  });
   await check('la interfaz reduce texto y las preguntas de IA esperan una respuesta antes de proponer cambios',async()=>{
     await loadScene([fixtureNode('one','Primera idea',100,220),fixtureNode('two','Otra idea',400,220)]);
     const configured=await js(`fetch('/api/v1/providers',{headers:{'x-diagramia-client':'editor'}}).then(r=>r.json())`);

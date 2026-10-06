@@ -16,3 +16,5 @@ state/smoke/
 state/usage-ledger.json
 state/backups/
 state/perf/
+state/everyday-ai/
+state/everyday-ai-*-results.json

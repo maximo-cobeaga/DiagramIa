@@ -1,7 +1,7 @@
 import type {DiagramNode,DiagramZone} from './schema.js';
 import {fail} from './errors.js';
-import {inflate,nodeRect,overlaps,segmentsCross,unionRects,type Point,type Rect} from './geometry.js';
-import {textWidth} from './text.js';
+import {inflate,nodeRect,nodeVisualRect,overlaps,segmentsCross,unionRects,type Point,type Rect} from './geometry.js';
+import {edgeLabelLayout,textWidth} from './text.js';
 
 /** Lo mínimo que el layout necesita de un elemento: sirve para nodos y para bloques (una zona con sus nodos). */
 export type LayoutItem={id:string;position:Point;size:{width:number;height:number}};
@@ -247,8 +247,10 @@ function attachLayout(blocks:LayoutItem[],links:BlockLink[],members:Members,gap:
  * (zonas completas y nodos libres) como si fueran nodos. Las zonas quedan separadas entre sí y contienen a sus nodos.
  */
 export function arrangeBlocks(nodes:DiagramNode[],zones:DiagramZone[],edges:Link[],direction:'right'|'down',origin:Point,gap=72):{positions:Map<string,Point>;zoneBounds:Map<string,Rect>}{
+  const offsets=new Map<string,Point>();
+  nodes=nodes.map(n=>{const box=nodeVisualRect(n);offsets.set(n.id,{x:n.position.x-box.x,y:n.position.y-box.y});return {...n,position:{x:box.x,y:box.y},size:{width:box.width,height:box.height}};});
   // Las etiquetas viven sobre las conexiones: reservar su ancho entre capas evita que terminen encima de los nodos.
-  const spacing=Math.max(gap,...edges.map(e=>e.label?textWidth(e.label,e.style?.fontSize??11,true)+32:0));
+  const spacing=Math.max(gap,...edges.map(e=>{if(!e.label)return 0;const label=edgeLabelLayout(e.label,e.style?.fontSize??11);return (direction==='right'?label.width:label.height)+32;}));
   const blocks:LayoutItem[]=[],owner=new Map<string,string>(),local=new Map<string,Point>();
   for(const zone of zones){
     const members=nodes.filter(n=>n.zoneId===zone.id);
@@ -286,5 +288,6 @@ export function arrangeBlocks(nodes:DiagramNode[],zones:DiagramZone[],edges:Link
   const positions=new Map<string,Point>(),zoneBounds=new Map<string,Rect>();
   for(const block of blocks)if(zoneIds.has(block.id))zoneBounds.set(block.id,{...at(block.id),...block.size});
   for(const n of nodes){const inside=local.get(n.id);positions.set(n.id,inside?{x:at(owner.get(n.id)!).x+inside.x,y:at(owner.get(n.id)!).y+inside.y}:at(n.id));}
+  for(const [id,p] of positions){const offset=offsets.get(id)!;positions.set(id,{x:p.x+offset.x,y:p.y+offset.y});}
   return {positions,zoneBounds};
 }

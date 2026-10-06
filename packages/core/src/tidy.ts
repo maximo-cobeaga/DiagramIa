@@ -1,9 +1,9 @@
 import {BatchSchema,type Action,type ActionBatch,type DiagramDocument,type DiagramNode,type DiagramZone} from './schema.js';
 import {applyBatch,findZoneByLabel,validateDocument} from './engine.js';
 import {DiagramError} from './errors.js';
-import {contains,inflate,nodeRect,overlaps,routeAll,unionRects,type Point,type Rect} from './geometry.js';
+import {contains,inflate,nodeRect,nodeVisualRect,overlaps,routeAll,segmentHitsRect,unionRects,type Point,type Rect} from './geometry.js';
 import {arrangeBlocks} from './layout.js';
-import {fitSize,shapeOf,textWidth} from './text.js';
+import {edgeLabelLayout,fitSize,shapeOf,textWidth} from './text.js';
 
 export type IssueType='node-overlap'|'zone-intrusion'|'zone-label'|'zone-overlap'|'text-overflow'|'edge-through-node'|'label-overlap';
 export type Issue={type:IssueType;ids:string[];message:string};
@@ -16,7 +16,7 @@ const BLOCKING:ReadonlySet<IssueType>=new Set(['node-overlap','zone-intrusion','
  * texto que no entra en su nodo, conexiones que atraviesan nodos y etiquetas tapadas. Los frames no cuentan: existen para superponerse.
  */
 export function findOverlaps(d:DiagramDocument):Issue[]{
-  const issues:Issue[]=[],rects=d.nodes.map(n=>({n,r:nodeRect(n)}));
+  const issues:Issue[]=[],rects=d.nodes.map(n=>({n,r:nodeVisualRect(n)}));
   for(let i=0;i<rects.length;i++)for(let j=i+1;j<rects.length;j++)if(overlaps(rects[i].r,rects[j].r))issues.push({type:'node-overlap',ids:[rects[i].n.id,rects[j].n.id],message:`«${rects[i].n.label}» y «${rects[j].n.label}» se superponen.`});
   for(const zone of d.zones)for(const {n,r} of rects){
     // El título ocupa la esquina superior izquierda de la zona, no toda la franja.
@@ -35,10 +35,10 @@ export function findOverlaps(d:DiagramDocument):Issue[]{
   const routes=routeAll(d);
   for(const e of d.edges){
     const routed=routes.get(e.id);if(!routed)continue;
-    const through=rects.filter(({n,r})=>n.id!==e.from&&n.id!==e.to&&shapeOf(n)!=='text'&&routed.points.slice(1).some((p,i)=>{const q=routed.points[i];return Math.max(p.x,q.x)>r.x+1&&Math.min(p.x,q.x)<r.x+r.width-1&&Math.max(p.y,q.y)>r.y+1&&Math.min(p.y,q.y)<r.y+r.height-1;}));
+    const through=rects.filter(({n,r})=>n.id!==e.from&&n.id!==e.to&&shapeOf(n)!=='text'&&routed.points.slice(1).some((p,i)=>segmentHitsRect(routed.points[i],p,{x:r.x+1,y:r.y+1,width:r.width-2,height:r.height-2})));
     if(through.length)issues.push({type:'edge-through-node',ids:[e.id,...through.map(t=>t.n.id)],message:`La conexión ${e.from} → ${e.to} pasa por encima de «${through[0].n.label}».`});
     if(e.label&&routed.label){
-      const width=textWidth(e.label,e.style.fontSize??11,true)+10,height=(e.style.fontSize??11)+7;
+      const {width,height}=edgeLabelLayout(e.label,e.style.fontSize??11);
       const box={x:routed.label.x-width/2,y:routed.label.y-height+3,width,height},hit=rects.find(({r})=>overlaps(r,box));
       if(hit)issues.push({type:'label-overlap',ids:[e.id,hit.n.id],message:`La etiqueta «${e.label}» queda sobre «${hit.n.label}».`});
     }
@@ -47,8 +47,8 @@ export function findOverlaps(d:DiagramDocument):Issue[]{
 }
 
 const interior=(zone:DiagramZone):Rect=>({x:zone.bounds.x+GAP,y:zone.bounds.y+LABEL_STRIP+4,width:zone.bounds.width-GAP*2,height:zone.bounds.height-LABEL_STRIP-4-GAP});
-function conflicts(d:DiagramDocument,n:DiagramNode,rect=nodeRect(n),gap=GAP):boolean{
-  if(d.nodes.some(o=>o.id!==n.id&&overlaps(inflate(rect,gap),nodeRect(o))))return true;
+function conflicts(d:DiagramDocument,n:DiagramNode,rect=nodeVisualRect(n),gap=GAP):boolean{
+  if(d.nodes.some(o=>o.id!==n.id&&overlaps(inflate(rect,gap),nodeVisualRect(o))))return true;
   const zone=n.zoneId?d.zones.find(z=>z.id===n.zoneId):undefined;
   if(zone&&!contains(interior(zone),rect))return true;
   // Una zona que contiene a la zona del nodo (zonas anidadas) no es ajena.
@@ -64,7 +64,7 @@ function freeSpot(d:DiagramDocument,n:DiagramNode):Point|null{
     candidates.sort((p,q)=>Math.abs(p.x)+Math.abs(p.y)-Math.abs(q.x)-Math.abs(q.y)||q.x-p.x||q.y-p.y);
     for(const c of candidates){
       const position={x:origin.x+c.x*step,y:origin.y+c.y*step};
-      if(!conflicts(d,n,{...position,...n.size}))return position;
+      if(!conflicts(d,n,nodeVisualRect({...n,position})))return position;
     }
   }
   return null;
@@ -96,7 +96,7 @@ export function tidyBatch(docInput:unknown,batchInput:unknown):{batch:ActionBatc
   })};
   const after=applyBatch(doc,batch),before=new Map(doc.nodes.map(n=>[n.id,n])),oldZones=new Set(doc.zones.map(z=>z.id));
   for(const [id,zoneId] of wanted)if(!after.zones.some(z=>z.id===zoneId))throw new DiagramError('DANGLING_ZONE',`Zona de ${id} inexistente.`);
-  const added=after.nodes.filter(n=>!before.has(n.id)),touched=after.nodes.filter(n=>{const o=before.get(n.id);return o&&(o.position.x!==n.position.x||o.position.y!==n.position.y||o.size.width!==n.size.width||o.size.height!==n.size.height||o.label!==n.label||o.details!==n.details||o.zoneId!==n.zoneId);});
+  const added=after.nodes.filter(n=>!before.has(n.id)),touched=after.nodes.filter(n=>{const o=before.get(n.id);return o&&(o.position.x!==n.position.x||o.position.y!==n.position.y||o.size.width!==n.size.width||o.size.height!==n.size.height||o.label!==n.label||o.subtitle!==n.subtitle||o.details!==n.details||o.zoneId!==n.zoneId||o.shape!==n.shape||o.icon!==n.icon||o.assetId!==n.assetId||o.style.fontSize!==n.style.fontSize||o.style.iconSize!==n.style.iconSize);});
   const movable=new Set([...added,...touched].map(n=>n.id)),work=structuredClone(after);
   const node=(id:string)=>work.nodes.find(n=>n.id===id)!;
   for(const [id,zoneId] of wanted)node(id).zoneId=zoneId;

@@ -4,7 +4,7 @@ import {useStore} from '../store/createStore';
 import {documentStore,newId,notify,transact} from '../store/documentStore';
 import {kindOf,select,selectionStore} from '../store/selectionStore';
 import {currentAnimation,playbackStore} from '../store/playbackStore';
-import {cancelCameraMove,snap,viewStore,zoomAt,type Camera,type NodeTemplate} from '../store/viewStore';
+import {cancelCameraMove,clampZoom,snap,viewStore,zoomAt,type Camera,type NodeTemplate} from '../store/viewStore';
 import {connectTo,fitAll,moveActions,selectionUnit} from '../commands';
 import {trackThrottled} from '../telemetry';
 import {DiagramLayer,nodeTitleLayout} from './DiagramLayer';
@@ -13,6 +13,7 @@ import {Welcome} from '../shell/Welcome';
 import {SelectionToolbar} from './SelectionToolbar';
 import {PenTools} from './PenTools';
 import {CanvasSearch} from './CanvasSearch';
+import {beginPinch,pinchCamera,type PinchGesture} from './gestures';
 
 type BoxKind='node'|'zone'|'frame';
 type Anchor={x:number;y:number}|null;
@@ -104,7 +105,7 @@ function InlineEditor({target,camera}:{target:Editable;camera:Camera}){
 }
 
 export function Canvas(){
-  const {doc:saved}=useStore(documentStore),{camera,viewport,tool,template,staging,editingId,flash,dragTemplate,connectFromId,connectFromAnchor,searchOpen}=useStore(viewStore),doc=staging?.doc??saved,stagedIds=useMemo(()=>staging?new Set(staging.changed):undefined,[staging]),{ids}=useStore(selectionStore),{animationId,time,scenarioId}=useStore(playbackStore);
+  const {doc:saved,activeId}=useStore(documentStore),{camera,viewport,tool,template,staging,editingId,flash,dragTemplate,connectFromId,connectFromAnchor,searchOpen}=useStore(viewStore),doc=staging?.doc??saved,stagedIds=useMemo(()=>staging?new Set(staging.changed):undefined,[staging]),{ids}=useStore(selectionStore),{animationId,time,scenarioId}=useStore(playbackStore);
   const [gesture,showGesture]=useState<Gesture|null>(null),[spaceHeld,setSpaceHeld]=useState(false),[ghostAt,setGhostAt]=useState<Point|null>(null);
   const [connectHover,setConnectHover]=useState<{point:Point;target:string|null}|null>(null);
   useEffect(()=>setConnectHover(null),[tool,connectFromId]);
@@ -118,7 +119,10 @@ export function Canvas(){
   useEffect(()=>()=>clearTimeout(guideTimer.current),[]);
   useEffect(()=>{clearTimeout(guideTimer.current);guideAt.current=null;gestureRef.current=null;showGesture(null);},[tool]);
   const hostRef=useRef<HTMLDivElement>(null),svgRef=useRef<SVGSVGElement>(null);
-  const pointers=useRef(new Map<number,Point>()),pinch=useRef<{distance:number;zoom:number}|null>(null),lastDown=useRef({id:'',at:0}),fitted=useRef(false),pendingEdit=useRef<string|null>(null);
+  const pointers=useRef(new Map<number,Point>()),pinch=useRef<PinchGesture|null>(null),navigating=useRef(false),lastDown=useRef({id:'',at:0}),fitted=useRef(false),pendingEdit=useRef<string|null>(null);
+  const beforeTouch=useRef<string[]|null>(null);
+  const cancelGesture=()=>{clearGuide();pointers.current.clear();pinch.current=null;navigating.current=false;beforeTouch.current=null;pendingEdit.current=null;lastDown.current={id:'',at:0};setGesture(null);};
+  useEffect(()=>{cancelGesture();},[activeId]);
 
   useEffect(()=>{
     const host=hostRef.current!;
@@ -165,16 +169,20 @@ export function Canvas(){
   const edgeHandles=single==='edge'&&tool==='select'?(()=>{const edge=visible.edges.find(e=>e.id===ids[0]),points=routes.get(ids[0])?.points;return edge&&points&&points.length>1?{edge,points}:null;})():null;
 
   function down(e:React.PointerEvent<SVGSVGElement>){
+    if(e.button!==0&&e.button!==1)return;
     cancelCameraMove();
+    svgRef.current!.setPointerCapture(e.pointerId);
+    if(!pointers.current.size&&e.pointerType==='touch')beforeTouch.current=[...ids];
     pointers.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(pointers.current.size===2){
-      clearGuide();
-      const [a,b]=[...pointers.current.values()];
-      pinch.current={distance:Math.hypot(a.x-b.x,a.y-b.y)||1,zoom:viewStore.get().camera.zoom};setGesture(null);return;
+    if(pointers.current.size>=2){
+      clearGuide();pendingEdit.current=null;lastDown.current={id:'',at:0};navigating.current=true;
+      if(beforeTouch.current)select(beforeTouch.current);
+      const [a,b]=[...pointers.current.values()],box=svgRef.current!.getBoundingClientRect();
+      pinch.current=beginPinch(a,b,viewStore.get().camera,{x:box.left,y:box.top});
+      playbackStore.set({playing:false});setGesture(null);return;
     }
     const world=toWorld(e),target=hit(e.target),handle=e.target instanceof Element?e.target.getAttribute('data-handle'):null;
     const portName=e.target instanceof Element?e.target.closest('[data-connect-port]')?.getAttribute('data-connect-port'):null;
-    svgRef.current!.setPointerCapture(e.pointerId);
     // Con una propuesta en vista previa el canvas es de sólo lectura: cualquier arrastre desplaza la vista.
     if(e.button===1||tool==='pan'||spaceHeld||staging||(e.pointerType==='touch'&&!target&&!handle&&!portName&&tool==='select')){
       e.preventDefault();setGesture({type:'pan',cx:e.clientX,cy:e.clientY,camera:viewStore.get().camera});return;
@@ -217,15 +225,15 @@ export function Canvas(){
     select(next);
     // Doble clic: el texto se edita en el lugar. El editor se abre al soltar: si se abriera al presionar, el navegador
     // le sacaría el foco enseguida para dárselo al elemento presionado.
-    if(double&&target.type!=='drawing'){select([target.id]);pendingEdit.current=target.id;return;}
+    if(double&&target.type!=='drawing'){select([target.id]);lastDown.current={id:'',at:0};pendingEdit.current=target.id;}
     if(next.includes(target.id)&&target.type!=='edge')setGesture({type:'move',start:world,dx:0,dy:0,ids:next,unit,shift:e.shiftKey});
   }
 
   function move(e:React.PointerEvent<SVGSVGElement>){
     if(pointers.current.has(e.pointerId))pointers.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(pinch.current&&pointers.current.size===2){
+    if(pinch.current&&pointers.current.size>=2){
       const [a,b]=[...pointers.current.values()],box=svgRef.current!.getBoundingClientRect();
-      zoomAt((a.x+b.x)/2-box.left,(a.y+b.y)/2-box.top,pinch.current.zoom*Math.hypot(a.x-b.x,a.y-b.y)/pinch.current.distance);return;
+      viewStore.set({camera:pinchCamera(pinch.current,a,b,{x:box.left,y:box.top},clampZoom)});return;
     }
     if(gestureRef.current){
       const old=gestureRef.current,next=advance(old,e);setGesture(next);
@@ -267,6 +275,10 @@ export function Canvas(){
       case 'erase':{const target=hit(document.elementFromPoint(e.clientX,e.clientY));return target?.type==='drawing'&&!g.ids.includes(target.id)?{...g,ids:[...g.ids,target.id]}:g;}
       case 'move':{
         const dx=world.x-g.start.x,dy=world.y-g.start.y;
+        // Tolerancia en píxeles de pantalla: seleccionar con pulso imperfecto no mueve contenido.
+        if(Math.hypot(dx,dy)*viewStore.get().camera.zoom<4&&!g.dx&&!g.dy)return g;
+        pendingEdit.current=null;
+        lastDown.current={id:'',at:0};
         const adjusted=viewStore.get().snap&&!e.altKey?snapSelection(doc,g.ids,dx,dy,6/viewStore.get().camera.zoom):{dx,dy,guides:[]};
         if(viewStore.get().snap&&!e.altKey){if(!adjusted.guides.some(g=>g.axis==='x'))adjusted.dx=snap(dx);if(!adjusted.guides.some(g=>g.axis==='y'))adjusted.dy=snap(dy);}
         return {...g,...adjusted};
@@ -285,8 +297,19 @@ export function Canvas(){
   }
 
   function up(e:React.PointerEvent<SVGSVGElement>){
+    if(!pointers.current.has(e.pointerId))return;
+    if(navigating.current&&gestureRef.current?.type==='pan')advance(gestureRef.current,e);
     clearGuide();
     pointers.current.delete(e.pointerId);
+    if(!pointers.current.size)beforeTouch.current=null;
+    if(navigating.current){
+      pinch.current=null;pendingEdit.current=null;
+      const entries=[...pointers.current.values()],camera=viewStore.get().camera;
+      if(entries.length>=2){const box=svgRef.current!.getBoundingClientRect();pinch.current=beginPinch(entries[0],entries[1],camera,{x:box.left,y:box.top});setGesture(null);}
+      else if(entries.length===1)setGesture({type:'pan',cx:entries[0].x,cy:entries[0].y,camera});
+      else{navigating.current=false;setGesture(null);}
+      return;
+    }
     if(pointers.current.size<2)pinch.current=null;
     const g=gestureRef.current&&advance(gestureRef.current,e);setGesture(null);
     if(pendingEdit.current){viewStore.set({editingId:pendingEdit.current});pendingEdit.current=null;return;}
@@ -404,8 +427,8 @@ export function Canvas(){
     onDragLeave={e=>{if(!hostRef.current?.contains(e.relatedTarget as Node|null))setGhostAt(null);}}>
     <svg ref={svgRef} className={`canvas tool-${tool}`} tabIndex={0} style={{cursor}} role="group" aria-label={`Canvas editable: ${doc.nodes.length} nodos, ${doc.edges.length} conexiones`}
       viewBox={`${camera.x} ${camera.y} ${viewport.width/camera.zoom} ${viewport.height/camera.zoom}`}
-      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setGhostAt(null)} onPointerCancel={e=>{clearGuide();pointers.current.delete(e.pointerId);pinch.current=null;setGesture(null);}}
-      onKeyDown={e=>{if(e.key==='Escape'){clearGuide();setGesture(null);pendingEdit.current=null;return;}const target=hit(e.target);if(target&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();if(viewStore.get().connectFromId&&target.type==='node'&&!staging){connectTo(target.id);return;}const unit=e.altKey?[target.id]:selectionUnit(doc,target.id);select(e.shiftKey?[...ids,...unit]:unit);}}}>
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setGhostAt(null)} onPointerCancel={cancelGesture}
+      onKeyDown={e=>{if(e.key==='Escape'){cancelGesture();return;}const target=hit(e.target);if(target&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();if(viewStore.get().connectFromId&&target.type==='node'&&!staging){connectTo(target.id);return;}const unit=e.altKey?[target.id]:selectionUnit(doc,target.id);select(e.shiftKey?[...ids,...unit]:unit);}}}>
       <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" className="grid-dot"/></pattern><marker id="connection-preview-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M1 1L9 5L1 9Z" fill="var(--blue)"/></marker></defs>
       <rect x={camera.x} y={camera.y} width={viewport.width/camera.zoom} height={viewport.height/camera.zoom} fill="url(#grid)" pointerEvents="none"/>
       <DiagramLayer doc={visible} selected={staging?undefined:selected} staged={stagedIds} interactive showAnnotations editing={editing?.id} states={showing?statesAt(animation!,sampled.index):undefined}

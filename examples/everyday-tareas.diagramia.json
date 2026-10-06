@@ -1,0 +1,757 @@
+{
+  "schemaVersion": "1.8.0",
+  "id": "everyday-tasks",
+  "title": "Preparar una mudanza",
+  "revision": 2,
+  "nodes": [
+    {
+      "id": "plan",
+      "kind": "custom",
+      "label": "Armar el plan",
+      "position": {
+        "x": 48,
+        "y": 924
+      },
+      "size": {
+        "width": 224,
+        "height": 120
+      },
+      "zoneId": "z-antes",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "idea",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Repartir tareas por día y por persona. Empezar por lo que menos se usa."
+    },
+    {
+      "id": "embalar",
+      "kind": "custom",
+      "label": "Embalar",
+      "position": {
+        "x": 439,
+        "y": 944
+      },
+      "size": {
+        "width": 240,
+        "height": 104
+      },
+      "zoneId": "z-antes",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "box",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Ambiente por ambiente. Ropa y libros primero, cocina al final."
+    },
+    {
+      "id": "etiquetar",
+      "kind": "custom",
+      "label": "Etiquetar cajas",
+      "position": {
+        "x": 830,
+        "y": 817
+      },
+      "size": {
+        "width": 216,
+        "height": 104
+      },
+      "zoneId": "z-antes",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "tag",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Ambiente y contenido en cada caja. Marcar las frágiles."
+    },
+    {
+      "id": "coordinar",
+      "kind": "custom",
+      "label": "Coordinar el transporte",
+      "position": {
+        "x": 439,
+        "y": 689
+      },
+      "size": {
+        "width": 240,
+        "height": 104
+      },
+      "zoneId": "z-antes",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "truck",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Confirmar día, horario y tamaño del vehículo."
+    },
+    {
+      "id": "mochila",
+      "kind": "note",
+      "label": "Caja de primera noche",
+      "position": {
+        "x": 32,
+        "y": 693
+      },
+      "size": {
+        "width": 256,
+        "height": 80
+      },
+      "zoneId": "z-antes",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "bag",
+      "link": null,
+      "shape": "sticky",
+      "style": {
+        "fill": "#e5ecff",
+        "stroke": "#245cf6"
+      },
+      "details": "Documentos, ropa, cargadores, toalla y elementos de limpieza."
+    },
+    {
+      "id": "mapa",
+      "kind": "custom",
+      "label": "Nuevo domicilio",
+      "position": {
+        "x": 88,
+        "y": 311
+      },
+      "size": {
+        "width": 168,
+        "height": 112
+      },
+      "zoneId": "z-dia",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "map",
+      "link": null,
+      "shape": "map",
+      "style": {
+        "fill": "#ffe1d6",
+        "stroke": "#e2603a"
+      },
+      "details": "Dirección y recorrido previsto desde el domicilio actual."
+    },
+    {
+      "id": "carga",
+      "kind": "custom",
+      "label": "Cargar el camión",
+      "position": {
+        "x": 56,
+        "y": 56
+      },
+      "size": {
+        "width": 232,
+        "height": 104
+      },
+      "zoneId": "z-dia",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "truck",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Muebles grandes primero, cajas encima y lo frágil al final."
+    },
+    {
+      "id": "traslado",
+      "kind": "custom",
+      "label": "Traslado",
+      "position": {
+        "x": 439,
+        "y": 193
+      },
+      "size": {
+        "width": 240,
+        "height": 120
+      },
+      "zoneId": "z-dia",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "car",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Un solo viaje si entra todo; si no, el segundo viaje con lo liviano."
+    },
+    {
+      "id": "descarga",
+      "kind": "custom",
+      "label": "Descargar y ubicar",
+      "position": {
+        "x": 830,
+        "y": 201
+      },
+      "size": {
+        "width": 216,
+        "height": 104
+      },
+      "zoneId": "z-dia",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "box",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Cada caja va al ambiente que dice su etiqueta."
+    },
+    {
+      "id": "limpieza",
+      "kind": "custom",
+      "label": "Limpiar el hogar",
+      "position": {
+        "x": 1261,
+        "y": 338
+      },
+      "size": {
+        "width": 240,
+        "height": 104
+      },
+      "zoneId": "z-despues",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "sparkle",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Baño y cocina primero; ventilar y revisar rincones."
+    },
+    {
+      "id": "desembalar",
+      "kind": "custom",
+      "label": "Desembalar lo esencial",
+      "position": {
+        "x": 1652,
+        "y": 338
+      },
+      "size": {
+        "width": 232,
+        "height": 104
+      },
+      "zoneId": "z-despues",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "box",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Cocina, baño y dormitorio para la primera noche."
+    },
+    {
+      "id": "servicios",
+      "kind": "custom",
+      "label": "Revisar servicios",
+      "position": {
+        "x": 2035,
+        "y": 330
+      },
+      "size": {
+        "width": 232,
+        "height": 120
+      },
+      "zoneId": "z-despues",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "bolt",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Luz, agua, gas e internet a tu nombre. Dar de baja los del domicilio anterior."
+    },
+    {
+      "id": "cierre",
+      "kind": "custom",
+      "label": "Mudanza cerrada",
+      "position": {
+        "x": 2418,
+        "y": 338
+      },
+      "size": {
+        "width": 240,
+        "height": 104
+      },
+      "zoneId": "z-despues",
+      "groupId": null,
+      "subtitle": "",
+      "assetId": null,
+      "icon": "check",
+      "link": null,
+      "shape": "card",
+      "style": {
+        "iconSize": "large"
+      },
+      "details": "Cajas vacías, servicios andando y pendientes anotados."
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "plan",
+      "to": "embalar",
+      "label": "primero",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {
+        "stroke": "#245cf6",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "edge-2",
+      "from": "embalar",
+      "to": "etiquetar",
+      "label": "cerrar cada caja",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {
+        "stroke": "#245cf6",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "edge-3",
+      "from": "plan",
+      "to": "coordinar",
+      "label": "en paralelo",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {
+        "stroke": "#245cf6",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "edge-4",
+      "from": "coordinar",
+      "to": "mapa",
+      "label": "dirección nueva",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "curved",
+      "style": {
+        "stroke": "#9db6fb",
+        "strokeWidth": 1.5,
+        "dash": "dashed"
+      }
+    },
+    {
+      "id": "edge-5",
+      "from": "etiquetar",
+      "to": "carga",
+      "label": "cajas listas",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "curved",
+      "style": {
+        "stroke": "#9db6fb",
+        "strokeWidth": 1.5,
+        "dash": "dashed"
+      }
+    },
+    {
+      "id": "edge-6",
+      "from": "mochila",
+      "to": "desembalar",
+      "label": "abrir primero",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "curved",
+      "style": {
+        "stroke": "#9db6fb",
+        "strokeWidth": 1.5,
+        "dash": "dashed"
+      }
+    },
+    {
+      "id": "edge-7",
+      "from": "carga",
+      "to": "traslado",
+      "label": "en ruta",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {
+        "stroke": "#e2603a",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "edge-8",
+      "from": "traslado",
+      "to": "descarga",
+      "label": "llegada",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {
+        "stroke": "#e2603a",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "edge-9",
+      "from": "descarga",
+      "to": "limpieza",
+      "label": "dejar libre",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "curved",
+      "style": {
+        "stroke": "#f3b39b",
+        "strokeWidth": 1.5,
+        "dash": "dashed"
+      }
+    },
+    {
+      "id": "edge-10",
+      "from": "limpieza",
+      "to": "desembalar",
+      "label": "ambiente limpio",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {
+        "stroke": "#1f9d5c",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "edge-11",
+      "from": "desembalar",
+      "to": "servicios",
+      "label": "cocina y baño",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {
+        "stroke": "#1f9d5c",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "edge-12",
+      "from": "servicios",
+      "to": "cierre",
+      "label": "todo a tu nombre",
+      "alternative": false,
+      "fromPort": "auto",
+      "toPort": "auto",
+      "fromAnchor": null,
+      "toAnchor": null,
+      "startArrow": "none",
+      "endArrow": "arrow",
+      "line": "orthogonal",
+      "style": {
+        "stroke": "#1f9d5c",
+        "strokeWidth": 2
+      }
+    }
+  ],
+  "zones": [
+    {
+      "id": "z-antes",
+      "label": "Antes: preparativos",
+      "bounds": {
+        "x": 0,
+        "y": 633,
+        "width": 1078,
+        "height": 447
+      },
+      "style": {
+        "fill": "#f5f8ff",
+        "stroke": "#9db6fb",
+        "textColor": "#245cf6",
+        "dash": "solid"
+      }
+    },
+    {
+      "id": "z-dia",
+      "label": "Día de la mudanza",
+      "bounds": {
+        "x": 24,
+        "y": 0,
+        "width": 1054,
+        "height": 481.7
+      },
+      "style": {
+        "fill": "#fff7f3",
+        "stroke": "#f3b39b",
+        "textColor": "#e2603a",
+        "dash": "solid"
+      }
+    },
+    {
+      "id": "z-despues",
+      "label": "Después: instalarse",
+      "bounds": {
+        "x": 1229,
+        "y": 274,
+        "width": 1461,
+        "height": 208
+      },
+      "style": {
+        "fill": "#f4fbf7",
+        "stroke": "#93d3b1",
+        "textColor": "#1f9d5c",
+        "dash": "solid"
+      }
+    }
+  ],
+  "drawings": [],
+  "groups": [],
+  "frames": [],
+  "animations": [
+    {
+      "id": "recorrido",
+      "label": "Recorrido: Preparar una mudanza",
+      "scenarios": [],
+      "steps": [
+        {
+          "id": "recorrido-1",
+          "caption": "Antes: preparativos",
+          "durationMs": 2400,
+          "nodeIds": [
+            "plan",
+            "embalar",
+            "etiquetar",
+            "coordinar",
+            "mochila"
+          ],
+          "edgeIds": [
+            "edge-1",
+            "edge-2",
+            "edge-3"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "close",
+          "transition": "slow"
+        },
+        {
+          "id": "recorrido-2",
+          "caption": "Cargar el camión",
+          "durationMs": 2400,
+          "nodeIds": [
+            "carga"
+          ],
+          "edgeIds": [],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "smooth"
+        },
+        {
+          "id": "recorrido-3",
+          "caption": "Traslado",
+          "durationMs": 2400,
+          "nodeIds": [
+            "traslado"
+          ],
+          "edgeIds": [
+            "edge-7"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "smooth"
+        },
+        {
+          "id": "recorrido-4",
+          "caption": "Descargar y ubicar",
+          "durationMs": 2400,
+          "nodeIds": [
+            "descarga"
+          ],
+          "edgeIds": [
+            "edge-8"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "smooth"
+        },
+        {
+          "id": "recorrido-5",
+          "caption": "Limpiar el hogar",
+          "durationMs": 2400,
+          "nodeIds": [
+            "limpieza"
+          ],
+          "edgeIds": [],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "smooth"
+        },
+        {
+          "id": "recorrido-6",
+          "caption": "Desembalar lo esencial",
+          "durationMs": 2400,
+          "nodeIds": [
+            "desembalar"
+          ],
+          "edgeIds": [
+            "edge-10"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "smooth"
+        },
+        {
+          "id": "recorrido-7",
+          "caption": "Revisar servicios",
+          "durationMs": 2400,
+          "nodeIds": [
+            "servicios"
+          ],
+          "edgeIds": [
+            "edge-11"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "smooth"
+        },
+        {
+          "id": "recorrido-8",
+          "caption": "Mudanza cerrada",
+          "durationMs": 2400,
+          "nodeIds": [
+            "cierre"
+          ],
+          "edgeIds": [
+            "edge-12"
+          ],
+          "tone": "normal",
+          "frameId": null,
+          "scenarioIds": [],
+          "states": [],
+          "focus": "medium",
+          "transition": "smooth"
+        }
+      ],
+      "tracks": []
+    }
+  ],
+  "assets": [],
+  "annotations": [],
+  "appliedBatches": [
+    {
+      "id": "everyday-mutb4dnj-tareas",
+      "signature": "[{\"type\":\"CREATE_ZONE\",\"zone\":{\"bounds\":{\"height\":100,\"width\":100,\"x\":0,\"y\":0},\"id\":\"z-antes\",\"label\":\"Antes: preparativos\",\"style\":{}}},{\"type\":\"CREATE_ZONE\",\"zone\":{\"bounds\":{\"height\":100,\"width\":100,\"x\":0,\"y\":0},\"id\":\"z-dia\",\"label\":\"Día de la mudanza\",\"style\":{}}},{\"type\":\"CREATE_ZONE\",\"zone\":{\"bounds\":{\"height\":100,\"width\":100,\"x\":0,\"y\":0},\"id\":\"z-despues\",\"label\":\"Después: instalarse\",\"style\":{}}},{\"node\":{\"assetId\":null,\"details\":\"Repartir tareas por día y por persona. Empezar por lo que menos se usa.\",\"groupId\":null,\"icon\":\"idea\",\"id\":\"plan\",\"kind\":\"custom\",\"label\":\"Armar el plan\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Ambiente por ambiente. Ropa y libros primero, cocina al final.\",\"groupId\":null,\"icon\":\"box\",\"id\":\"embalar\",\"kind\":\"custom\",\"label\":\"Embalar\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Ambiente y contenido en cada caja. Marcar las frágiles.\",\"groupId\":null,\"icon\":\"tag\",\"id\":\"etiquetar\",\"kind\":\"custom\",\"label\":\"Etiquetar cajas\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Confirmar día, horario y tamaño del vehículo.\",\"groupId\":null,\"icon\":\"truck\",\"id\":\"coordinar\",\"kind\":\"custom\",\"label\":\"Coordinar el transporte\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Documentos, ropa, cargadores, toalla y elementos de limpieza.\",\"groupId\":null,\"icon\":\"bag\",\"id\":\"mochila\",\"kind\":\"note\",\"label\":\"Caja de primera noche\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"sticky\",\"size\":{\"height\":80,\"width\":160},\"style\":{},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Dirección y recorrido previsto desde el domicilio actual.\",\"groupId\":null,\"icon\":\"map\",\"id\":\"mapa\",\"kind\":\"custom\",\"label\":\"Nuevo domicilio\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"map\",\"size\":{\"height\":80,\"width\":160},\"style\":{},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Muebles grandes primero, cajas encima y lo frágil al final.\",\"groupId\":null,\"icon\":\"truck\",\"id\":\"carga\",\"kind\":\"custom\",\"label\":\"Cargar el camión\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Un solo viaje si entra todo; si no, el segundo viaje con lo liviano.\",\"groupId\":null,\"icon\":\"car\",\"id\":\"traslado\",\"kind\":\"custom\",\"label\":\"Traslado\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Cada caja va al ambiente que dice su etiqueta.\",\"groupId\":null,\"icon\":\"box\",\"id\":\"descarga\",\"kind\":\"custom\",\"label\":\"Descargar y ubicar\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Baño y cocina primero; ventilar y revisar rincones.\",\"groupId\":null,\"icon\":\"sparkle\",\"id\":\"limpieza\",\"kind\":\"custom\",\"label\":\"Limpiar el hogar\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Cocina, baño y dormitorio para la primera noche.\",\"groupId\":null,\"icon\":\"box\",\"id\":\"desembalar\",\"kind\":\"custom\",\"label\":\"Desembalar lo esencial\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Luz, agua, gas e internet a tu nombre. Dar de baja los del domicilio anterior.\",\"groupId\":null,\"icon\":\"bolt\",\"id\":\"servicios\",\"kind\":\"custom\",\"label\":\"Revisar servicios\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"node\":{\"assetId\":null,\"details\":\"Cajas vacías, servicios andando y pendientes anotados.\",\"groupId\":null,\"icon\":\"check\",\"id\":\"cierre\",\"kind\":\"custom\",\"label\":\"Mudanza cerrada\",\"link\":null,\"position\":{\"x\":0,\"y\":0},\"shape\":\"card\",\"size\":{\"height\":80,\"width\":160},\"style\":{\"iconSize\":\"large\"},\"subtitle\":\"\",\"zoneId\":null},\"type\":\"ADD_NODE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"plan\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-1\",\"label\":\"primero\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"embalar\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"embalar\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-2\",\"label\":\"cerrar cada caja\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"etiquetar\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"plan\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-3\",\"label\":\"en paralelo\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"coordinar\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"coordinar\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-4\",\"label\":\"dirección nueva\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"mapa\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"etiquetar\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-5\",\"label\":\"cajas listas\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"carga\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"mochila\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-6\",\"label\":\"abrir primero\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"desembalar\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"carga\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-7\",\"label\":\"en ruta\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"traslado\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"traslado\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-8\",\"label\":\"llegada\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"descarga\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"descarga\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-9\",\"label\":\"dejar libre\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"limpieza\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"limpieza\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-10\",\"label\":\"ambiente limpio\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"desembalar\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"desembalar\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-11\",\"label\":\"cocina y baño\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"servicios\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"edge\":{\"alternative\":false,\"endArrow\":\"arrow\",\"from\":\"servicios\",\"fromAnchor\":null,\"fromPort\":\"auto\",\"id\":\"edge-12\",\"label\":\"todo a tu nombre\",\"line\":\"orthogonal\",\"startArrow\":\"none\",\"style\":{},\"to\":\"cierre\",\"toAnchor\":null,\"toPort\":\"auto\"},\"type\":\"ADD_EDGE\"},{\"changes\":{\"style\":{\"dash\":\"solid\",\"fill\":\"#f5f8ff\",\"stroke\":\"#9db6fb\",\"textColor\":\"#245cf6\"}},\"id\":\"z-antes\",\"type\":\"UPDATE_ZONE\"},{\"changes\":{\"style\":{\"dash\":\"solid\",\"fill\":\"#fff7f3\",\"stroke\":\"#f3b39b\",\"textColor\":\"#e2603a\"}},\"id\":\"z-dia\",\"type\":\"UPDATE_ZONE\"},{\"changes\":{\"style\":{\"dash\":\"solid\",\"fill\":\"#f4fbf7\",\"stroke\":\"#93d3b1\",\"textColor\":\"#1f9d5c\"}},\"id\":\"z-despues\",\"type\":\"UPDATE_ZONE\"},{\"changes\":{\"style\":{\"fill\":\"#e5ecff\",\"stroke\":\"#245cf6\"}},\"id\":\"mochila\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"style\":{\"fill\":\"#ffe1d6\",\"stroke\":\"#e2603a\"}},\"id\":\"mapa\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"style\":{\"stroke\":\"#245cf6\",\"strokeWidth\":2}},\"id\":\"edge-1\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"style\":{\"stroke\":\"#245cf6\",\"strokeWidth\":2}},\"id\":\"edge-2\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"style\":{\"stroke\":\"#245cf6\",\"strokeWidth\":2}},\"id\":\"edge-3\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"line\":\"curved\",\"style\":{\"dash\":\"dashed\",\"stroke\":\"#9db6fb\",\"strokeWidth\":1.5}},\"id\":\"edge-4\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"line\":\"curved\",\"style\":{\"dash\":\"dashed\",\"stroke\":\"#9db6fb\",\"strokeWidth\":1.5}},\"id\":\"edge-5\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"line\":\"curved\",\"style\":{\"dash\":\"dashed\",\"stroke\":\"#9db6fb\",\"strokeWidth\":1.5}},\"id\":\"edge-6\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"style\":{\"stroke\":\"#e2603a\",\"strokeWidth\":2}},\"id\":\"edge-7\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"style\":{\"stroke\":\"#e2603a\",\"strokeWidth\":2}},\"id\":\"edge-8\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"line\":\"curved\",\"style\":{\"dash\":\"dashed\",\"stroke\":\"#f3b39b\",\"strokeWidth\":1.5}},\"id\":\"edge-9\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"style\":{\"stroke\":\"#1f9d5c\",\"strokeWidth\":2}},\"id\":\"edge-10\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"style\":{\"stroke\":\"#1f9d5c\",\"strokeWidth\":2}},\"id\":\"edge-11\",\"type\":\"UPDATE_EDGE\"},{\"changes\":{\"style\":{\"stroke\":\"#1f9d5c\",\"strokeWidth\":2}},\"id\":\"edge-12\",\"type\":\"UPDATE_EDGE\"},{\"animation\":{\"id\":\"recorrido\",\"label\":\"Recorrido: Preparar una mudanza\",\"scenarios\":[],\"steps\":[{\"caption\":\"Antes: preparativos\",\"durationMs\":2400,\"edgeIds\":[\"edge-1\",\"edge-2\",\"edge-3\"],\"focus\":\"close\",\"frameId\":null,\"id\":\"recorrido-1\",\"nodeIds\":[\"plan\",\"embalar\",\"etiquetar\",\"coordinar\",\"mochila\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"slow\"},{\"caption\":\"Cargar el camión\",\"durationMs\":2400,\"edgeIds\":[],\"focus\":\"medium\",\"frameId\":null,\"id\":\"recorrido-2\",\"nodeIds\":[\"carga\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"},{\"caption\":\"Traslado\",\"durationMs\":2400,\"edgeIds\":[\"edge-7\"],\"focus\":\"medium\",\"frameId\":null,\"id\":\"recorrido-3\",\"nodeIds\":[\"traslado\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"},{\"caption\":\"Descargar y ubicar\",\"durationMs\":2400,\"edgeIds\":[\"edge-8\"],\"focus\":\"medium\",\"frameId\":null,\"id\":\"recorrido-4\",\"nodeIds\":[\"descarga\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"},{\"caption\":\"Limpiar el hogar\",\"durationMs\":2400,\"edgeIds\":[],\"focus\":\"medium\",\"frameId\":null,\"id\":\"recorrido-5\",\"nodeIds\":[\"limpieza\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"},{\"caption\":\"Desembalar lo esencial\",\"durationMs\":2400,\"edgeIds\":[\"edge-10\"],\"focus\":\"medium\",\"frameId\":null,\"id\":\"recorrido-6\",\"nodeIds\":[\"desembalar\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"},{\"caption\":\"Revisar servicios\",\"durationMs\":2400,\"edgeIds\":[\"edge-11\"],\"focus\":\"medium\",\"frameId\":null,\"id\":\"recorrido-7\",\"nodeIds\":[\"servicios\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"},{\"caption\":\"Mudanza cerrada\",\"durationMs\":2400,\"edgeIds\":[\"edge-12\"],\"focus\":\"medium\",\"frameId\":null,\"id\":\"recorrido-8\",\"nodeIds\":[\"cierre\"],\"scenarioIds\":[],\"states\":[],\"tone\":\"normal\",\"transition\":\"smooth\"}],\"tracks\":[]},\"type\":\"CREATE_ANIMATION\"},{\"id\":\"plan\",\"size\":{\"height\":120,\"width\":224},\"type\":\"RESIZE_NODE\"},{\"id\":\"embalar\",\"size\":{\"height\":104,\"width\":240},\"type\":\"RESIZE_NODE\"},{\"id\":\"etiquetar\",\"size\":{\"height\":104,\"width\":216},\"type\":\"RESIZE_NODE\"},{\"id\":\"coordinar\",\"size\":{\"height\":104,\"width\":240},\"type\":\"RESIZE_NODE\"},{\"id\":\"mochila\",\"size\":{\"height\":80,\"width\":256},\"type\":\"RESIZE_NODE\"},{\"id\":\"mapa\",\"size\":{\"height\":112,\"width\":168},\"type\":\"RESIZE_NODE\"},{\"id\":\"carga\",\"size\":{\"height\":104,\"width\":232},\"type\":\"RESIZE_NODE\"},{\"id\":\"traslado\",\"size\":{\"height\":120,\"width\":240},\"type\":\"RESIZE_NODE\"},{\"id\":\"descarga\",\"size\":{\"height\":104,\"width\":216},\"type\":\"RESIZE_NODE\"},{\"id\":\"limpieza\",\"size\":{\"height\":104,\"width\":240},\"type\":\"RESIZE_NODE\"},{\"id\":\"desembalar\",\"size\":{\"height\":104,\"width\":232},\"type\":\"RESIZE_NODE\"},{\"id\":\"servicios\",\"size\":{\"height\":120,\"width\":232},\"type\":\"RESIZE_NODE\"},{\"id\":\"cierre\",\"size\":{\"height\":104,\"width\":240},\"type\":\"RESIZE_NODE\"},{\"changes\":{\"zoneId\":\"z-antes\"},\"id\":\"plan\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-antes\"},\"id\":\"embalar\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-antes\"},\"id\":\"etiquetar\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-antes\"},\"id\":\"coordinar\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-antes\"},\"id\":\"mochila\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-dia\"},\"id\":\"mapa\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-dia\"},\"id\":\"carga\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-dia\"},\"id\":\"traslado\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-dia\"},\"id\":\"descarga\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-despues\"},\"id\":\"limpieza\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-despues\"},\"id\":\"desembalar\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-despues\"},\"id\":\"servicios\",\"type\":\"UPDATE_NODE\"},{\"changes\":{\"zoneId\":\"z-despues\"},\"id\":\"cierre\",\"type\":\"UPDATE_NODE\"},{\"direction\":\"right\",\"type\":\"ARRANGE_DOCUMENT\"}]"
+    },
+    {
+      "id": "visual-tareas",
+      "signature": "[{\"direction\":\"right\",\"type\":\"ARRANGE_DOCUMENT\"}]"
+    }
+  ]
+}
