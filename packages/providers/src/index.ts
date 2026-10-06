@@ -1,7 +1,7 @@
 import {anthropicProvider} from './anthropic.js';
 import {openAICompatibleProvider} from './openaiCompatible.js';
 import {openAIProvider} from './openai.js';
-import {ProviderError,type Provider,type ProviderRequest} from './types.js';
+import {ProviderError,type Pricing,type Provider,type ProviderRequest} from './types.js';
 
 export * from './types.js';
 export {anthropicProvider} from './anthropic.js';
@@ -37,6 +37,12 @@ export function mockProvider(delayMs=150):Provider{
 }
 
 type Env=Record<string,string|undefined>;
+/** Tarifa en USD por millón de tokens declarada por quien opera el servidor. Sin entrada y salida válidas no hay tarifa: el tope en USD no aplica. */
+function pricingFromEnv(env:Env,prefix:string):Pricing{
+  const read=(name:string)=>{const raw=env[`${prefix}_${name}`]?.trim();if(!raw)return null;const value=Number(raw);return Number.isFinite(value)&&value>=0?value:null;};
+  const input=read('INPUT_USD_PER_MTOK'),output=read('OUTPUT_USD_PER_MTOK'),cached=read('CACHED_INPUT_USD_PER_MTOK');
+  return input===null||output===null?null:{inputPerMTok:input,outputPerMTok:output,...(cached===null?{}:{cachedInputPerMTok:cached})};
+}
 /** Arma los proveedores a partir del entorno del servidor. Ninguna de estas variables debe usar el prefijo VITE_. */
 export function providersFromEnv(env:Env):Provider[]{
   return [
@@ -45,7 +51,7 @@ export function providersFromEnv(env:Env):Provider[]{
     anthropicProvider({apiKey:env.ANTHROPIC_API_KEY,model:env.DIAGRAMIA_ANTHROPIC_MODEL}),
     openAICompatibleProvider({baseURL:env.DIAGRAMIA_LOCAL_BASE_URL,model:env.DIAGRAMIA_LOCAL_MODEL,apiKey:env.DIAGRAMIA_LOCAL_API_KEY}),
     // Segundo servidor compatible con /chat/completions, para un proveedor remoto con su propia clave. Sólo aparece si se configura.
-    ...(env.DIAGRAMIA_COMPAT_BASE_URL||env.DIAGRAMIA_COMPAT_API_KEY?[openAICompatibleProvider({id:'compatible',label:env.DIAGRAMIA_COMPAT_LABEL,envPrefix:'DIAGRAMIA_COMPAT',baseURL:env.DIAGRAMIA_COMPAT_BASE_URL,model:env.DIAGRAMIA_COMPAT_MODEL,apiKey:env.DIAGRAMIA_COMPAT_API_KEY})]:[]),
+    ...(env.DIAGRAMIA_COMPAT_BASE_URL||env.DIAGRAMIA_COMPAT_API_KEY?[openAICompatibleProvider({id:'compatible',label:env.DIAGRAMIA_COMPAT_LABEL,envPrefix:'DIAGRAMIA_COMPAT',baseURL:env.DIAGRAMIA_COMPAT_BASE_URL,model:env.DIAGRAMIA_COMPAT_MODEL,apiKey:env.DIAGRAMIA_COMPAT_API_KEY,pricing:pricingFromEnv(env,'DIAGRAMIA_COMPAT')})]:[]),
     ...(env.DIAGRAMIA_ENABLE_MOCK==='1'?[mockProvider(Number(env.DIAGRAMIA_MOCK_DELAY_MS)||150)]:[])
   ];
 }

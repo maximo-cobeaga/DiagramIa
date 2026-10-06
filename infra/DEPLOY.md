@@ -74,6 +74,15 @@ Las migraciones se validan por checksum. Desde el commit `720e77d`, el checksum 
 
 **No construir versiones anteriores a ese commit desde un checkout de Windows con `core.autocrlf=true`:** sus migraciones quedarían con CRLF y el gateway viejo no arrancaría sobre una base existente. La prueba de vuelta atrás lo detectó y se repitió con un checkout en LF.
 
+## Ensayo local del 05/10/2026
+
+Repetido con el código del commit `1688765`, antes del primer despliegue. La tarifa declarada del proveedor compatible (ADR 087) se agregó después y sólo pasó `npm run check`:
+
+- `compose.prod.yml` como proyecto aparte (`-p diagramia-rehearsal`, puerto 18080, secretos de prueba, sin login ni proveedores reales): las tres imágenes se construyen y los tres servicios quedan sanos.
+- `/api/ready` y `/api/health` responden por nginx con schema 1.8.0; 6 migraciones aplicadas sobre una base nueva; landing y `/privacidad.html` con 200; CSP estricta presente.
+- `npm run smoke` 60/61 contra el contenedor, sin errores de consola. La que falla es la vista previa de enlaces: pide sesión y el ensayo no tenía login, así que el gateway respondió «Token del gateway inválido o ausente». No se probaron Auth0, un proveedor de IA real, TLS ni el reverse proxy del VPS.
+- El proyecto de ensayo, sus volúmenes y sus imágenes se eliminaron al terminar.
+
 ## Evidencia local (02/10/2026)
 
 - Pila completa con `compose.prod.yml` en Docker: tres servicios sanos y migraciones aplicadas.

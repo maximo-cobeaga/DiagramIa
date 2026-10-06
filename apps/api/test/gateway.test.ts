@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import type {AddressInfo} from 'node:net';
 import {applyBatch,emptyDocument,findOverlaps} from '@diagramia/core';
-import {anthropicProvider,openAICompatibleProvider,openAIProvider,mockProvider,ProviderError,type Provider,type ProviderRequest} from '@diagramia/providers';
+import {anthropicProvider,openAICompatibleProvider,openAIProvider,mockProvider,providersFromEnv,ProviderError,type Provider,type ProviderRequest} from '@diagramia/providers';
 import {createApp} from '../src/server.js';
 import {strictSchemaFor} from '../src/assist.js';
 import {UsageLedger} from '../src/usage.js';
@@ -661,5 +661,23 @@ test('a truncated compatible response still charges reported tokens and releases
     const doc=architecture(),before=structuredClone(doc),response=await g.post(g.ask({requestId:'truncated',document:doc})),body=await response.json();
     assert.equal(response.status,502);assert.equal(body.error.code,'TRUNCATED');assert.deepEqual(doc,before);
     const usage=g.ledger.summary();assert.equal(usage.tokens,11000);assert.equal(usage.reservedTokens,0);assert.equal(usage.recent.length,1);assert.equal(usage.recent[0].model,'real-model');assert.equal(usage.recent[0].status,'failed');
+  }finally{await g.close();upstream.closeAllConnections();await new Promise(resolve=>upstream.close(resolve));}
+});
+
+test('a compatible provider only gets a USD cap when its operator declares both rates, and the gateway then stops it by spend',async()=>{
+  const base={DIAGRAMIA_COMPAT_BASE_URL:'https://example.invalid/v1',DIAGRAMIA_COMPAT_MODEL:'m',DIAGRAMIA_COMPAT_API_KEY:'k'};
+  const priceOf=(extra:Record<string,string>)=>providersFromEnv({...base,...extra}).find(p=>p.info().id==='compatible')!.info().pricing;
+  assert.equal(priceOf({}),null);
+  assert.equal(priceOf({DIAGRAMIA_COMPAT_INPUT_USD_PER_MTOK:'0.3'}),null,'una tarifa a medias no estima nada');
+  assert.equal(priceOf({DIAGRAMIA_COMPAT_INPUT_USD_PER_MTOK:'abc',DIAGRAMIA_COMPAT_OUTPUT_USD_PER_MTOK:'-1'}),null);
+  assert.deepEqual(priceOf({DIAGRAMIA_COMPAT_INPUT_USD_PER_MTOK:'0.3',DIAGRAMIA_COMPAT_OUTPUT_USD_PER_MTOK:' 1.2 '}),{inputPerMTok:.3,outputPerMTok:1.2});
+  assert.deepEqual(priceOf({DIAGRAMIA_COMPAT_INPUT_USD_PER_MTOK:'0.3',DIAGRAMIA_COMPAT_OUTPUT_USD_PER_MTOK:'1.2',DIAGRAMIA_COMPAT_CACHED_INPUT_USD_PER_MTOK:'0'}),{inputPerMTok:.3,outputPerMTok:1.2,cachedInputPerMTok:0});
+  // Con tarifa, un pedido cuyo peor caso supera el tope diario en USD se corta antes de llamar al servidor.
+  let hits=0;const upstream=createServer((_req,res)=>{hits++;res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:redis()}}],usage:{prompt_tokens:10,completion_tokens:10}}));});
+  const url=await listen(upstream),env={...base,DIAGRAMIA_COMPAT_BASE_URL:url,DIAGRAMIA_COMPAT_INPUT_USD_PER_MTOK:'1000',DIAGRAMIA_COMPAT_OUTPUT_USD_PER_MTOK:'5000'};
+  const priced=openAICompatibleProvider({id:'fake',baseURL:url,model:'m',kind:'remote',pricing:providersFromEnv(env).find(p=>p.info().id==='compatible')!.info().pricing}),g=await gateway([priced]);
+  try{
+    const response=await g.post(g.ask()),body=await response.json();
+    assert.equal(response.status,402);assert.equal(body.error.code,'BUDGET_EXCEEDED');assert.match(body.error.message,/USD/);assert.equal(hits,0);
   }finally{await g.close();upstream.closeAllConnections();await new Promise(resolve=>upstream.close(resolve));}
 });

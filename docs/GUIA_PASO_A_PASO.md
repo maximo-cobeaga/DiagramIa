@@ -25,7 +25,7 @@ Si algo falla, **copiá el mensaje completo y pasámelo**. No hace falta que lo 
 
 ## Mientras tanto: DeepSeek para probar (ya configurado)
 
-En `.env` hay un bloque `DIAGRAMIA_COMPAT_*` con tu clave de DeepSeek y `DIAGRAMIA_ACCOUNT_PROVIDERS=compatible`. Con eso la IA funciona para probar, incluso con login. El tope en dólares de Diagramia **no** lo controla, porque no conoce la tarifa de DeepSeek: dejá poco saldo cargado en <https://platform.deepseek.com>. Cuando tengas la clave de OpenAI, hacé el paso 1 y borrá las líneas de DeepSeek y la de `DIAGRAMIA_ACCOUNT_PROVIDERS`.
+En `.env` hay un bloque `DIAGRAMIA_COMPAT_*` con tu clave de DeepSeek y `DIAGRAMIA_ACCOUNT_PROVIDERS=compatible`. Con eso la IA funciona para probar, incluso con login. El tope en dólares de Diagramia **no** lo controla mientras no conozca la tarifa de DeepSeek: dejá poco saldo cargado en <https://platform.deepseek.com>. Para que el tope también lo frene, copiá de su página de precios el valor por millón de tokens en `DIAGRAMIA_COMPAT_INPUT_USD_PER_MTOK` y `DIAGRAMIA_COMPAT_OUTPUT_USD_PER_MTOK` (y, si lo publican, `DIAGRAMIA_COMPAT_CACHED_INPUT_USD_PER_MTOK`), y reiniciá `npm run api`. Cuando tengas la clave de OpenAI, hacé el paso 1 y borrá las líneas de DeepSeek y la de `DIAGRAMIA_ACCOUNT_PROVIDERS`.
 
 ---
 
@@ -226,3 +226,37 @@ El detalle técnico, cómo actualizar y cómo volver atrás está en `infra/DEPL
 2. **Aviso de privacidad:** el borrador está en `apps/editor/public/privacidad.html` y describe exactamente lo que hace el sistema. Completá las partes `[COMPLETAR]` (tu nombre o empresa, email de contacto, plazos) y que lo revise un abogado antes de publicar.
 3. **Visitantes de Europa:** si vas a buscar usuarios en la UE, preguntale al abogado si hace falta un aviso de consentimiento para la medición anónima. Si dice que sí, lo agrego.
 4. **Subir los cambios a GitHub:** decime «hacé push» y lo hago. Así también corre la verificación automática (CI) en GitHub.
+
+---
+
+## Paso 8. Suscripciones (plan Pro)
+
+**Estado al 05/10/2026:** el cobro todavía no existe en el código (P4.6 está pendiente). Hoy sólo hay plan Free con sus cuotas fijas. Esta lista es lo que necesito de vos para construirlo y encenderlo. El orden importa: Paddle no aprueba una cuenta sin un sitio publicado, así que **el paso 6 va primero**.
+
+**8.1. Decisiones que son tuyas** (sin esto no puedo programar el plan):
+- **Qué incluye Pro:** cuántos créditos de IA por mes, cuántos diagramas en la nube y cuánto espacio. Free hoy es 20 créditos por mes (6 por día), 3 diagramas y 30 MB.
+- **Precio:** mensual, y si querés también anual. En qué moneda lo mostrás (USD es lo habitual).
+- **Qué pasa al dejar de pagar:** propongo que la cuenta vuelva a Free sin borrar nada; lo que exceda el límite queda en sólo lectura.
+- **Reembolsos:** el plazo y las condiciones. Paddle exige una política publicada.
+- **A nombre de quién se vende:** tu nombre o una empresa. Ese nombre va en los Términos.
+
+Para decidir precio y cuotas hace falta el costo real por pedido. Con DeepSeek la única muestra es la tuya (`docs/USO_DEEPSEEK.md`, unos USD 0,002 por pedido); con GPT-6 Luna todavía no se midió (paso 1).
+
+**8.2. Cuenta de prueba de Paddle (sandbox).** Creala en <https://sandbox-vendors.paddle.com/signup>. Es un entorno aparte del real y no pide aprobación del sitio: con ella construyo y pruebo todo sin mover dinero. Pasame por `.env` (nunca por chat ni en GitHub):
+- una **API key**: Developer Tools → Authentication;
+- un **client-side token**, en la misma pantalla;
+- el **secreto del webhook**: Developer Tools → Notifications → New destination. La dirección te la digo cuando esté el código;
+- el **ID del precio** de Pro, una vez creado el producto en Catalog.
+
+**8.3. Cuenta real de Paddle.** En <https://www.paddle.com> → Sign up. La revisan en tres partes: el sitio, el negocio y tu identidad. Para aprobar el sitio, su documentación pide:
+- una descripción clara del producto y sus funciones;
+- los precios a la vista, sin tener que iniciar sesión;
+- Términos y Condiciones, Política de Reembolso y Política de Privacidad, accesibles desde la navegación del sitio;
+- tu nombre o el de tu empresa dentro de los Términos;
+- el sitio publicado con HTTPS.
+
+Las páginas de precios, términos y reembolsos las preparo yo como borrador; el contenido legal lo tenés que revisar vos, idealmente con un abogado. Argentina no figura en la lista de países no admitidos para vendedores (revisado el 05/10/2026). Antes de cargar los datos de cobro, confirmá en el panel de Paddle las comisiones, el mínimo y el medio de pago hacia Argentina: cambian y no los verifiqué en su documentación.
+
+**8.4. Contador.** Vas a recibir pagos del exterior por un servicio. Preguntale cómo facturarlo y declararlo según tu situación fiscal antes de activar la cuenta real.
+
+**8.5. Lo que hago yo cuando tenga 8.1 y 8.2:** planes y estado de suscripción en la base, cuotas según el plan, recepción firmada y sin duplicados de los avisos de Paddle, botón para suscribirse, pantalla para cancelar o cambiar el medio de pago, y pruebas. Con la cuenta real aprobada (8.3) sólo se cambian las claves en `.env.production`.

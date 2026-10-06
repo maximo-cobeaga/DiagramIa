@@ -2,6 +2,14 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Preparación del primer despliegue y suscripciones (05/10/2026)
+
+- **P8.4, ensayo repetido:** pila de producción con el código actual, sana y con navegador 60/61 (la restante pide sesión). Sin desplegar. Ver `infra/DEPLOY.md`.
+- **P3.5, extensión implementada (ADR 087):** tarifa declarada para el proveedor compatible; el tope en USD también corta a DeepSeek. Check 152/152.
+- **P4.6 sigue pendiente:** no hay cobro. Requiere del usuario las decisiones y claves del paso 8 de `docs/GUIA_PASO_A_PASO.md`, y el sitio publicado antes de pedir la cuenta real de Paddle. Construirlo antes del lanzamiento cambia el orden de ADR 048: registrar la decisión cuando el usuario la confirme.
+- **Pendiente del usuario para desplegar:** dominio, acceso y autorización del VPS, proveedor de IA de lanzamiento, Auth0 de producción, aviso de privacidad, licencia y push.
+- **Pendiente del agente, sin bloqueos:** borradores públicos de precios, términos y reembolsos; mensaje claro de la vista previa de enlaces sin sesión; tira de pestañas en móvil.
+
 ## Cierre de la sesión del 04/10 (05/10/2026)
 
 - **P1.1/P1.4/P3.4/P3.5/P8.1, extensión implementada (ADR 083–086):** navegación con dos dedos y tolerancia al pulso; huella visible de las piezas y etiquetas de conexión en varias líneas; prompt compacto de Crear, IDs sin colisión y consumo contabilizado en respuestas fallidas; nombre debajo de una figura legible en claro y oscuro. Sin schema ni dependencias nuevas.
