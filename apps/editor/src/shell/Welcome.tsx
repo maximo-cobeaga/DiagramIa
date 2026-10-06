@@ -35,8 +35,8 @@ export function Welcome(){
     <h2>{startMode==='examples'?'Una idea para empezar':'¿Qué querés crear hoy?'}</h2>
     <p>{startMode==='examples'?'Elegí un ejemplo y hacelo tuyo. Todo se puede editar.':'No necesitás saber de diagramas. Empezá como te resulte más cómodo.'}</p>
     {startMode==='examples'?<>
-      <div className="start-examples">{[5,6,4].map(index=><ExampleCard index={index} key={index}/>)}</div>
-      <details className="more-examples"><summary>También hay ejemplos de tecnología y procesos</summary><div className="start-examples">{[7,0,1,2,3].map(index=><ExampleCard index={index} key={index}/>)}</div></details>
+      <div className="start-examples">{[4,5,1].map(index=><ExampleCard index={index} key={index}/>)}</div>
+      <details className="more-examples"><summary>También hay ejemplos de tecnología y procesos</summary><div className="start-examples">{[0,2,3].map(index=><ExampleCard index={index} key={index}/>)}</div></details>
       <button className="quiet" onClick={()=>viewStore.set({startMode:'choose'})}>← Volver</button>
     </>:<>
       <div className="start-choices">

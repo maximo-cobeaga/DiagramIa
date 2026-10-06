@@ -114,7 +114,7 @@ try{
     await tap('[aria-label="Abrir ejemplo: Explicar una idea"]');
     const idea=await saved();expect(idea.id==='explain-idea'&&idea.nodes.length===3&&idea.animations[0].steps.length===3,'falta el ejemplo de idea editable y animado');
     expect(await js(`JSON.parse(localStorage.getItem('diagramia.doc.'+${JSON.stringify(old)})).nodes[0].id`)===before.nodes[0].id,'se reemplazó el trabajo anterior');
-    await js(`(()=>{const s=document.querySelector('select[aria-label="Cargar ejemplo"]');s.value='6';s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+    await js(`(()=>{const s=document.querySelector('select[aria-label="Cargar ejemplo"]');s.value='5';s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
     const task=await saved();expect(task.id==='plan-task'&&task.nodes.length===4,'falta el ejemplo de tarea');
     return 'idea de tres pasos y tarea de cuatro pasos; documento previo conservado';
   });
@@ -251,21 +251,6 @@ try{
     const drawn=await saved();expect(drawn.drawings.length===1,'cancelar dejó punteros o trazos anteriores');await key('Escape');await key('z',CTRL);
     return 'pan de dos dedos, ancla al zoom, levantar un dedo, cancelación y lápiz sin pérdida de contenido';
   });
-  await check('los ejemplos cotidianos de DeepSeek se ven legibles y conservan su contenido al darles diseño',async()=>{
-    for(const [name,title] of [['viaje','Viaje a San Pancho'],['tareas','Preparar una mudanza'],['idea','Feria del barrio']]){
-      const file=`examples/everyday-${name}.diagramia.json`;expect(existsSync(file),'falta el resultado real '+name);
-      // saved() espera el guardado pendiente: si no, al recargar el editor lo vuelca y pisa el ejemplo recién cargado.
-      const scene=JSON.parse(readFileSync(file,'utf8'));await saved();await js(`localStorage.setItem(${ACTIVE_KEY},${JSON.stringify(JSON.stringify(scene))})`);await send('Page.reload');await sleep(1100);
-      const before=await saved();expect(before.id===scene.id&&before.title===title&&before.nodes.length===scene.nodes.length&&before.nodes.length>=8,'ejemplo incompleto');
-      expect(await js(`Boolean(document.querySelector('.diagram .node-title'))`),'no se dibujan los títulos');
-      await shot('57-everyday-'+name);await clickText('Darle diseño');await sleep(350);
-      const after=await saved();expect(JSON.stringify(after.nodes.map(n=>[n.id,n.label,n.details]))===JSON.stringify(before.nodes.map(n=>[n.id,n.label,n.details])),'diseñar perdió contenido/IDs');
-      expect(JSON.stringify(after.edges.map(e=>[e.id,e.from,e.to,e.label]))===JSON.stringify(before.edges.map(e=>[e.id,e.from,e.to,e.label])),'diseñar perdió relaciones');
-      await key('z',CTRL);expect(JSON.stringify((await saved()).nodes)===JSON.stringify(before.nodes),'undo no recuperó el ejemplo');
-    }
-    await viewport(390,844,true);await shot('58-everyday-mobile');expect(await js('document.documentElement.scrollWidth<=innerWidth+1'),'hay desborde horizontal');await viewport(1440,900);
-    return 'viaje, mudanza e idea generados por DeepSeek; diseño/undo conservan IDs, texto y relaciones; móvil';
-  });
   await check('el nombre debajo de un avatar con relleno se lee sobre el lienzo en claro y oscuro',async()=>{
     await loadScene([{...fixtureNode('persona','Ana, operadora',160,200,88,88),shape:'avatar',style:{fill:'#141619'}},{...fixtureNode('caja','Caja oscura',420,200,150,70),style:{fill:'#141619'}}]);
     const fills=()=>js(`['persona','caja'].map(id=>getComputedStyle(document.querySelector('[data-id="'+id+'"] .node-title')).fill)`);
@@ -389,12 +374,12 @@ try{
     await tap('.canvas-search-toggle');await tap('.doc-tab-add');expect(await js(`!document.querySelector('.canvas-search')&&!document.querySelector('.navigation-back')`),'otra pestaña conserva navegación del documento anterior');
     await tap('.canvas-search-toggle');expect(await js(`document.querySelector('.canvas-search-summary').textContent.includes('vacío')`),'un documento vacío muestra resultados de otra pestaña');await key('Escape');return '26 resultados accesibles, texto seguro, foco visible, sin clipping y estado aislado por pestaña';
   });
-  await check('Buscar en San Pancho pausa el recorrido y funciona en concentración sin editar el viaje',async()=>{
-    await setValue('select[aria-label="Cargar ejemplo"]','4');await sleep(400);const before=await saved();expect(before.nodes.length===29,'no se abrió el ejemplo complejo del viaje');
+  await check('Buscar en un ejemplo con recorrido lo pausa y funciona en concentración sin editarlo',async()=>{
+    await setValue('select[aria-label="Cargar ejemplo"]','2');await sleep(400);const before=await saved();expect(before.id==='checkout-failure'&&before.nodes.length===15,'no se abrió el ejemplo con recorrido');
     await tap('.play-button');await sleep(100);await tap('.canvas-search-toggle');expect(await js(`document.querySelector('.play-button').dataset.playing`)==='false','buscar no pausa la cámara del recorrido');
-    await setValue('.canvas-search input','sayulita');await key('Enter');await sleep(550);const settled=await js(`document.querySelector('.canvas').getAttribute('viewBox')`);await sleep(550);expect(await js(`document.querySelector('.canvas').getAttribute('viewBox')`)===settled,'la cámara de animación reemplaza el resultado de búsqueda');
-    await tap('.focus-toggle');await tap('.canvas-search-toggle');await setValue('.canvas-search input','hotel');await shot('51-buscar-viaje');expect(await js(`document.querySelectorAll('.canvas-search-result').length`)>1,'no encuentra las distintas referencias al hotel');
-    await key('Escape');await tap('.focus-toggle');expect(JSON.stringify(await saved())===JSON.stringify(before),'la navegación altera el viaje o su animación');return 'ejemplo real de 29 elementos, cámara estable al pausar, concentración y contenido conservado';
+    await setValue('.canvas-search input','liberar');await key('Enter');await sleep(550);const settled=await js(`document.querySelector('.canvas').getAttribute('viewBox')`);await sleep(550);expect(await js(`document.querySelector('.canvas').getAttribute('viewBox')`)===settled,'la cámara de animación reemplaza el resultado de búsqueda');
+    await tap('.focus-toggle');await tap('.canvas-search-toggle');await setValue('.canvas-search input','stock');await shot('51-buscar-recorrido');expect(await js(`document.querySelectorAll('.canvas-search-result').length`)>1,'no encuentra las distintas referencias al stock');
+    await key('Escape');await tap('.focus-toggle');expect(JSON.stringify(await saved())===JSON.stringify(before),'la navegación altera el ejemplo o su animación');return 'ejemplo de 15 elementos con recorrido, cámara estable al pausar, concentración y contenido conservado';
   });
   // El resto de la regresión conserva su fixture de arquitectura y no consume pestañas de las pruebas de inicio.
   await js(`(()=>{localStorage.clear();localStorage.setItem('diagramia.tutorial.seen','1');localStorage.setItem('diagramia.theme','light');})()`);await send('Page.reload');await sleep(1200);
@@ -971,24 +956,6 @@ try{
     const returned=await box('.canvas');await sleep(450);expect(JSON.stringify(await box('.canvas'))===JSON.stringify(returned),'volver reinició el movimiento');
     expect(JSON.stringify(await saved())===before,'reproducir, mover cámara o presentar cambió el contenido');
     await shot('22-camera-editor');return 'enfoque, transición, mantener, corte, pausa, pan manual, reduced-motion, presentación y pestañas';
-  });
-  await check('el viaje a San Pancho compara tres fechas y presenta el presupuesto editable',async()=>{
-    await setValue('select[aria-label="Cargar ejemplo"]','4');await sleep(700);
-    const doc=await saved();expect(doc.id==='san-pancho'&&doc.nodes.length===29&&doc.zones.length===6,'falta el viaje completo');
-    expect(doc.animations[0].scenarios.length===3,'faltan las tres fechas');
-    await setValue('select[aria-label="Recorrido"]','date-feb');await sleep(100);
-    if(!await js(`Boolean(document.querySelector('.motion-editor'))`))await clickText('Editar pasos','.timeline');
-    await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
-    await js(`document.querySelectorAll('.timeline .steps button')[1].click()`);await sleep(80);
-    await key('p');await sleep(150);
-    expect((await js(`document.querySelector('.presentation-caption').textContent`)).includes('9–18 feb 2027'),'la rama no muestra la fecha elegida');
-    await shot('23-san-pancho-fechas');await key('ArrowRight');await key('ArrowRight');await sleep(100);
-    const caption=await js(`document.querySelector('.presentation-caption').textContent`);
-    expect(caption.includes('Presupuesto separado por moneda'),'la cámara no llegó al presupuesto');
-    await shot('24-san-pancho-presupuesto');await key('Escape');await sleep(100);
-    await send('Emulation.setEmulatedMedia',{features:[]});
-    expect((await saved()).revision===doc.revision,'presentar el viaje cambió el contenido');
-    return '29 elementos, 6 zonas, 3 fechas y presupuesto ARS/MXN con recorrido de cámara';
   });
   await check('el ejemplo de login muestra pistas sincronizadas y permite editar una pista',async()=>{
     await setValue('select[aria-label="Cargar ejemplo"]','3');await sleep(700);

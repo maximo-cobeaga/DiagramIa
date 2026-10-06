@@ -118,7 +118,7 @@ test('an edge can attach anywhere on a node border, use straight or curved lines
 });
 
 test('arranging a plan puts side zones next to the steps they point to, and curves go around nodes',()=>{
-  // Como el viaje de evidencias/evi-2: un itinerario de diez días y zonas que se conectan con días sueltos.
+  // Como un viaje armado por la IA: un itinerario de diez días y zonas que se conectan con días sueltos.
   const zone=(id:string,x:number)=>({type:'CREATE_ZONE' as const,zone:{id,label:id,bounds:{x,y:0,width:900,height:900}}});
   const at=(z:string,i:number,x:number)=>({position:{x:x+20,y:60+i*100},zoneId:z,size:{width:180,height:70}});
   const days=Array.from({length:10},(_,i)=>`d${i+1}`);

@@ -74,6 +74,17 @@ Las migraciones se validan por checksum. Desde el commit `720e77d`, el checksum 
 
 **No construir versiones anteriores a ese commit desde un checkout de Windows con `core.autocrlf=true`:** sus migraciones quedarían con CRLF y el gateway viejo no arrancaría sobre una base existente. La prueba de vuelta atrás lo detectó y se repitió con un checkout en LF.
 
+## Ensayo local del 06/10/2026
+
+Repetido con el commit `3a10e6d`, que ya incluye la tarifa declarada (ADR 087) y es el que se desplegaría:
+
+- Mismo montaje que el del 05/10 (`-p diagramia-rehearsal`, puerto 18080, secretos de prueba, sin login ni proveedores reales). Tres servicios sanos; imágenes de 324 MB (`api`) y 96 MB (`web`).
+- `/api/ready` y `/api/health` con schema 1.8.0, 6 migraciones sobre una base nueva, CSP estricta y cabeceras de seguridad presentes, landing con 200 apuntando al editor, gateway sin root y con filesystem de sólo lectura.
+- Gateway a través de nginx: 401 sin token ni sesión, 200 con el token del servidor (proveedores y consumo) y 403 desde un origen ajeno.
+- `npm run smoke` 60/61 contra el contenedor, sin errores de consola. **Lectura correcta de ese número:** 4 de las 60 son comprobaciones de IA que se omiten solas, porque sin login el navegador no llega al gateway; la que falla es la vista previa de enlaces, por el mismo motivo. Vale también para el ensayo del 05/10. La IA y el login detrás de nginx sólo se prueban con Auth0 real, ya desplegado.
+- `npm run check` 152/152. Sin probar: Auth0, un proveedor de IA real, TLS y el reverse proxy del VPS.
+- El proyecto de ensayo, sus volúmenes y sus imágenes se eliminaron al terminar.
+
 ## Ensayo local del 05/10/2026
 
 Repetido con el código del commit `1688765`, antes del primer despliegue. La tarifa declarada del proveedor compatible (ADR 087) se agregó después y sólo pasó `npm run check`:

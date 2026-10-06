@@ -345,3 +345,13 @@ Límites: los toques son simulados por DevTools, no un dispositivo físico. Los 
 37. **Dos dedos y pulso:** en un teléfono o tablet, desplazar y acercar con dos dedos; la vista sigue el punto que está bajo los dedos y nada se mueve ni se dibuja. Probarlo con Lápiz activo y con una pieza seleccionada. Levantar un dedo y seguir con el otro. Con mouse, hacer clic en una pieza con la mano poco firme: se selecciona sin moverse; arrastrar la mueve y Ctrl+Z la devuelve.
 38. **Nombres y etiquetas legibles:** poner un avatar, una insignia o un mapa con relleno oscuro y otro claro; el nombre de abajo se lee en modo claro y oscuro. Escribir una etiqueta larga en una conexión: se parte en renglones y no pisa piezas. «Ordenar todo sin superposiciones» no deja nombres encimados.
 39. **Crear con DeepSeek real:** pedir un diagrama nuevo sobre un lienzo que ya tenga una nota propia. La propuesta la conserva y no repite piezas. En Detalles, el consumo de entrada debería rondar los 2.000 tokens. Si una respuesta se corta, el aviso lo dice, el lienzo no cambia y el consumo del día igual sube.
+
+### Ejemplos personales y de prueba retirados (06/10/2026, ADR 088)
+
+`npm run check` **152/152**. Regresión Chromium **59/59** contra editor 5174 y gateway mock 8788 aislados, sin omitidas, sin errores de consola ni IA paga. Son dos menos que antes: se retiraron «el viaje a San Pancho compara tres fechas…» y «los ejemplos cotidianos de DeepSeek…». «Buscar en un ejemplo con recorrido…» usa ahora «Rechazo y recuperación» (15 elementos). Capturas revisadas y actualizadas: `evidencias/ui-ejemplos-cotidianos.png` y `ui-ejemplos-movil.png` (idea, tarea y compra confirmada).
+
+Dejan de aplicar los recorridos manuales 12, 13, 15, 19 y 36, que dependían de los archivos retirados. El 32 se prueba con cualquier diagrama grande.
+
+Límites: ya no hay una comprobación de navegador con tres escenarios ni con resultados reales de un modelo; las ramas siguen cubiertas con «Rechazo y recuperación» y el diseño automático por las pruebas del core.
+
+40. **Ejemplos:** «Abrir un ejemplo…» lista seis y ninguno personal. En una pestaña nueva, «Elegir un ejemplo» muestra idea, tarea y compra confirmada; los otros tres están en «También hay ejemplos de tecnología y procesos».

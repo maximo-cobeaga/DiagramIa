@@ -2,6 +2,15 @@
 
 ## Último checkpoint
 
+06/10/2026 (verificación previa al despliegue). El usuario volvió a pedir preparar el despliegue y la lista de lo que falta:
+- **Base local caída:** `infra-db-1` había quedado detenido tras un reinicio del equipo (`compose.dev.yml` no tiene política de reinicio). `npm run db:up` lo levantó; Postgres se recuperó solo y `npm run doctor` no marca problemas.
+- **Ensayo de producción repetido con `3a10e6d`** (el commit a desplegar, ya con ADR 087): tres servicios sanos, 6 migraciones, schema 1.8.0, CSP estricta, gateway cerrado sin token y navegador 60/61. De esas 60, 4 son comprobaciones de IA omitidas porque sin login el navegador no llega al gateway; vale también para el ensayo del 05/10. Detalle en `infra/DEPLOY.md`. Proyecto, volúmenes e imágenes eliminados. **No se desplegó nada.**
+- **Revisión antes del push:** `npm run check` 152/152; los 25 commits locales sin subir no traen secretos, emails ni `.env`; `.env.example` sin valores reales.
+- **Bloqueos, sin cambios y todos del usuario:** los del checkpoint del 05/10. El `.env` local sigue sin `OPENAI_API_KEY`, sin tarifa de DeepSeek y sin `DIAGRAMIA_ALERT_WEBHOOK_URL`; no hay `.env.production` ni licencia; el aviso de privacidad conserva sus 9 `[COMPLETAR]`.
+- **Ejemplos personales y de prueba retirados (ADR 088), por pedido del usuario:** fuera San Pancho, NextUp × Microsoft Graph, los tres `everyday-*` de DeepSeek y los `evi-*.json`, con generadores, capturas y `docs/VIAJE_SAN_PANCHO.md`. El editor ofrece seis ejemplos genéricos; la bienvenida muestra idea, tarea y compra confirmada. `npm run check` 152/152 y regresión Chromium 59/59 (dos comprobaciones menos, sin omitidas) contra editor 5174 y gateway mock 8788 aislados. El ensayo de producción de arriba es anterior a este cambio. Siguen en el historial de Git, por decisión del usuario. `graph-diagram.txt` y `state/everyday-qa.mjs` quedan sin versionar. `../marketing/publicidad-01` conserva su propia copia de los ejemplos.
+- **Push autorizado por el usuario:** `main` subido a `maximo-cobeaga/DiagramIa`. Sin despliegue.
+- **Próximo paso inequívoco:** el del 05/10, ya sin el push: dominio, salida del paso 6.3 de la guía y proveedor de IA de lanzamiento. Revisión manual 40 de `VALIDATION.md`.
+
 05/10/2026 (preparación del primer despliegue; ADR 087). El usuario pidió preparar el despliegue y saber qué falta para tener suscripciones:
 - **Ensayo de producción:** `compose.prod.yml` con el commit `1688765` como proyecto Docker aparte. Tres servicios sanos, 6 migraciones, schema 1.8.0, CSP estricta y navegador 60/61 contra el contenedor; la que falla (vista previa de enlaces) pide sesión y el ensayo no tenía login. Proyecto, volúmenes e imágenes eliminados. Detalle en `infra/DEPLOY.md`. **No se desplegó nada.**
 - **Tarifa declarada (ADR 087):** `DIAGRAMIA_COMPAT_INPUT_USD_PER_MTOK` y `DIAGRAMIA_COMPAT_OUTPUT_USD_PER_MTOK` hacen que el tope en USD también corte a DeepSeek. `npm run doctor` avisa si falta. `npm run check` 152/152. El `.env` local todavía no la tiene cargada.

@@ -28,4 +28,4 @@ Fuente: consumo informado por la API en cada respuesta, guardado por `scripts/ev
 
 Total medido: 31.648 tokens de entrada y 16.820 de salida en ocho llamadas; una novena llamada (la truncada) quedó sin medir. Ese hueco motivó contabilizar el consumo de las respuestas fallidas (ADR 085). Con el prompt compacto, una llamada de Crear sin reparación usó entre 1.930 y 2.322 tokens de entrada, contra 15.254 del prompt completo.
 
-Es una muestra de cuatro pedidos, no una tasa de fiabilidad ni un costo por pedido del producto. La regresión de navegador usa los tres resultados guardados en `examples/everyday-*.diagramia.json` y no vuelve a llamar al modelo.
+Es una muestra de cuatro pedidos, no una tasa de fiabilidad ni un costo por pedido del producto. Los tres resultados guardados (`examples/everyday-*.diagramia.json`) se quitaron del repositorio el 06/10 (ADR 088); la regresión de navegador ya no los usa.

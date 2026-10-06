@@ -4,10 +4,11 @@ Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y
 
 ## Preparación del primer despliegue y suscripciones (05/10/2026)
 
-- **P8.4, ensayo repetido:** pila de producción con el código actual, sana y con navegador 60/61 (la restante pide sesión). Sin desplegar. Ver `infra/DEPLOY.md`.
+- **P8.4, ensayo repetido:** pila de producción con el código actual, sana y con navegador 60/61 (la restante pide sesión). Repetido el 06/10 con `3a10e6d`, mismo resultado; 4 de las 60 son comprobaciones de IA omitidas por falta de login. Sin desplegar. Ver `infra/DEPLOY.md`.
 - **P3.5, extensión implementada (ADR 087):** tarifa declarada para el proveedor compatible; el tope en USD también corta a DeepSeek. Check 152/152.
 - **P4.6 sigue pendiente:** no hay cobro. Requiere del usuario las decisiones y claves del paso 8 de `docs/GUIA_PASO_A_PASO.md`, y el sitio publicado antes de pedir la cuenta real de Paddle. Construirlo antes del lanzamiento cambia el orden de ADR 048: registrar la decisión cuando el usuario la confirme.
-- **Pendiente del usuario para desplegar:** dominio, acceso y autorización del VPS, proveedor de IA de lanzamiento, Auth0 de producción, aviso de privacidad, licencia y push.
+- **Ejemplos retirados (06/10, ADR 088):** San Pancho, NextUp × Microsoft Graph, `everyday-*` y `evi-*.json` fuera del producto y del repositorio. Quedan seis ejemplos genéricos. Check 152/152, navegador 59/59. No cambia el estado de ninguna microfase.
+- **Pendiente del usuario para desplegar:** dominio, acceso y autorización del VPS, proveedor de IA de lanzamiento, Auth0 de producción, aviso de privacidad y licencia. El push se hizo el 06/10.
 - **Pendiente del agente, sin bloqueos:** borradores públicos de precios, términos y reembolsos; mensaje claro de la vista previa de enlaces sin sesión; tira de pestañas en móvil.
 
 ## Cierre de la sesión del 04/10 (05/10/2026)
