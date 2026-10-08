@@ -21,9 +21,9 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 </head>
 <body>
 <main>
-<p class="draft"><strong>Borrador.</strong> Este texto describe cómo funciona Diagramia hoy. Los datos marcados [COMPLETAR] y la redacción final están pendientes de revisión legal.</p>
+<p class="draft"><strong>Borrador.</strong> Este texto describe cómo funciona Diagramia hoy. La redacción final está pendiente de revisión legal.</p>
 <h1>Cómo tratamos tus datos</h1>
-<p class="note">Última actualización: [COMPLETAR fecha de publicación]</p>
+<p class="note">Última actualización: 8 de octubre de 2026</p>
 
 <h2>En pocas palabras</h2>
 <ul>
@@ -34,19 +34,20 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 </ul>
 
 <h2>Quién es responsable</h2>
-<p>[COMPLETAR: nombre o razón social, domicilio, CUIT si corresponde y email de contacto para privacidad].</p>
+<p>Maximo Andres Cobeaga, Misiones 134, Mar del Plata, Buenos Aires, Argentina. Contacto para privacidad: <a href="mailto:mcobeaga@diagramia.app">mcobeaga@diagramia.app</a>.</p>
 
 <h2>Qué datos usamos y para qué</h2>
 <div class="table"><table>
   <thead><tr><th>Dato</th><th>Para qué</th><th>Dónde y por cuánto tiempo</th></tr></thead>
   <tbody>
     <tr><td>Tus diagramas sin cuenta</td><td>Que no pierdas tu trabajo</td><td>Sólo en tu navegador (almacenamiento local). No llegan a nuestros servidores salvo que los guardes en la nube o uses la IA.</td></tr>
-    <tr><td>Datos de uso anónimos: herramientas usadas, cantidad de elementos, exportaciones, errores (sin mensajes), tiempos de carga, tipo de dispositivo y navegador, idioma, sitio de origen (sólo el dominio) y campaña</td><td>Entender qué funciona y dónde se traba la gente, para mejorar el producto</td><td>En nuestra base de datos. Se identifican con un código aleatorio guardado en tu navegador, no con tu nombre. [COMPLETAR plazo de conservación]</td></tr>
+    <tr><td>Datos de uso anónimos: herramientas usadas, cantidad de elementos, exportaciones, errores (sin mensajes), tiempos de carga, tipo de dispositivo y navegador, idioma, sitio de origen (sólo el dominio) y campaña</td><td>Entender qué funciona y dónde se traba la gente, para mejorar el producto</td><td>En nuestra base de datos. Se identifican con un código aleatorio guardado en tu navegador, no con tu nombre. Por ahora no tienen un plazo de borrado automático: se conservan mientras el servicio esté activo, salvo que elimines tu cuenta (se desvinculan de vos) o nos pidas borrarlos.</td></tr>
     <tr><td>Cuenta: email, si está verificado, y el identificador que da el servicio de inicio de sesión</td><td>Iniciar sesión, guardar en la nube y usar la IA con su cuota</td><td>Mientras tengas la cuenta.</td></tr>
     <tr><td>Diagramas guardados en la nube y sus versiones</td><td>Que los abras desde cualquier dispositivo y recuperes versiones</td><td>Mientras tengas la cuenta, y en copias de seguridad hasta 14 días después de borrarlos.</td></tr>
     <tr><td>Pedidos a la IA: tu texto y la parte del diagrama necesaria</td><td>Generar la propuesta</td><td>Se envían al proveedor del modelo. Guardamos la respuesta 24 horas para reintentos y, durante 90 días, sólo el registro de créditos usados, sin contenido.</td></tr>
     <tr><td>Un enlace del que pedís la vista previa</td><td>Traer el título y la descripción de esa página</td><td>Sólo cuando tocás «Traer título y descripción». Nuestro servidor visita la página (el sitio ve nuestra dirección, no la tuya) y guarda el resultado en memoria unos 10 minutos. El enlace no queda en registros ni en la base.</td></tr>
     <tr><td>Tu opinión sobre una respuesta (👍/👎 y motivo)</td><td>Mejorar la IA</td><td>Junto con los datos de uso. No incluye texto libre.</td></tr>
+    <tr><td>Suscripción Pro: identificador de la suscripción y del cliente en Paddle, estado, fecha de renovación o cancelación</td><td>Saber si tu cuenta es Pro y mostrarte cuándo se renueva</td><td>Mientras tengas la cuenta. Los datos de pago (tarjeta, facturación, impuestos) los recibe y guarda Paddle, no nosotros.</td></tr>
     <tr><td>Dirección IP</td><td>Limitar abusos (cantidad de pedidos por minuto)</td><td>Sólo en memoria, durante un minuto. No se guarda en la base.</td></tr>
   </tbody>
 </table></div>
@@ -63,8 +64,9 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 <p>Sólo con proveedores que necesitamos para que Diagramia funcione, y sólo lo necesario:</p>
 <ul>
   <li><strong>Auth0 (Okta)</strong>: inicio de sesión. Si entrás con Google, también Google.</li>
-  <li><strong>OpenAI</strong>: genera las propuestas de la IA a partir de tu pedido. [COMPLETAR: revisar y enlazar las condiciones de uso de datos de la API vigentes al publicar]</li>
-  <li><strong>Hostinger</strong>: servidor donde corre Diagramia. [COMPLETAR ubicación del servidor]</li>
+  <li><strong>Proveedor del modelo de IA</strong> (DeepSeek u OpenAI, según el modelo en uso): genera las propuestas a partir de tu pedido. Políticas de privacidad: <a href="https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html">DeepSeek</a> y <a href="https://openai.com/policies/privacy-policy/">OpenAI</a>.</li>
+  <li><strong>Paddle</strong> (Paddle.com Market Limited): procesa los pagos de la suscripción Pro y actúa como vendedor autorizado (Merchant of Record). Recibe los datos de pago que ingresás en su página; <a href="https://www.paddle.com/legal/privacy">su política de privacidad</a>.</li>
+  <li><strong>Hostinger</strong>: servidor donde corre Diagramia. El servidor está en São Paulo, Brasil. <a href="https://www.hostinger.com/legal/privacy-policy">Política de privacidad de Hostinger</a>.</li>
 </ul>
 <p>No vendemos tus datos.</p>
 
@@ -72,14 +74,14 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 <ul>
   <li><strong>Apagar la medición:</strong> en el editor, «Sesión → Privacidad». Si tu navegador pide no ser rastreado (Do Not Track o Global Privacy Control), no medimos nada.</li>
   <li><strong>Eliminar tu cuenta:</strong> en «Sesión → Cuenta y nube → Eliminar mi cuenta». Se borran tu cuenta, tus diagramas en la nube con sus versiones y tus créditos. Los datos de uso que ya enviaste quedan desvinculados de tu cuenta.</li>
-  <li><strong>Acceso, corrección o consultas:</strong> escribinos a [COMPLETAR email]. Podés reclamar ante la autoridad de protección de datos de tu país. En Argentina, la Agencia de Acceso a la Información Pública. [COMPLETAR según la revisión legal]</li>
+  <li><strong>Acceso, corrección o consultas:</strong> escribinos a <a href="mailto:mcobeaga@diagramia.app">mcobeaga@diagramia.app</a>. Podés reclamar ante la autoridad de protección de datos de tu país. En Argentina, la Agencia de Acceso a la Información Pública.</li>
 </ul>
 
 <h2>Seguridad</h2>
 <p>Las conexiones van cifradas (HTTPS). Las claves de los proveedores nunca llegan a tu navegador. Cada cuenta sólo puede ver sus propios diagramas, y hacemos copias de seguridad diarias.</p>
 
 <h2>Menores</h2>
-<p>[COMPLETAR edad mínima para crear una cuenta según la revisión legal].</p>
+<p>Para crear una cuenta tenés que tener al menos 18 años.</p>
 
 <h2>Cambios</h2>
 <p>Si cambiamos algo importante, lo vamos a avisar en esta página y en el editor antes de que aplique.</p>

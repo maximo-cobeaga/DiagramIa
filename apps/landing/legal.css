@@ -1,0 +1,21 @@
+@font-face{font-family:Manrope;src:url('fonts/Manrope.ttf') format('truetype');font-weight:200 800;font-display:swap}
+:root{--ink:#141619;--paper:#f4f6f8;--muted:#606975;--line:#d7dce2;--blue:#245cf6;--card:#fff}
+@media (prefers-color-scheme:dark){:root{--ink:#e8ebef;--paper:#0f1114;--muted:#9aa4b2;--line:#2e343d;--blue:#7d9cff;--card:#171a1f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 Manrope,system-ui,sans-serif}
+header,footer{max-width:960px;margin:0 auto;padding:20px;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;justify-content:space-between}
+header a.brand{font-weight:800;font-size:20px;color:var(--ink);text-decoration:none}
+nav{display:flex;flex-wrap:wrap;gap:6px 18px}nav a,footer a{color:var(--ink);text-decoration:none;font-size:14px}nav a:hover,footer a:hover{color:var(--blue)}
+nav a[aria-current=page]{color:var(--blue);font-weight:700}
+main{max-width:760px;margin:0 auto;padding:24px 20px 72px}
+h1{font-size:34px;line-height:1.15;margin:0 0 8px}h2{font-size:20px;margin:36px 0 8px}
+a{color:var(--blue)}small,.note{color:var(--muted)}
+.draft{border:1px solid var(--line);border-radius:8px;padding:12px 16px;font-size:14px;background:var(--card)}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:24px 0}
+.plan{border:1px solid var(--line);border-radius:12px;padding:24px;background:var(--card)}
+.plan.pro{border-color:var(--blue);border-width:2px}
+.plan h2{margin:0 0 4px}.price{font-size:36px;font-weight:800;margin:4px 0 12px}.price small{font-size:15px;font-weight:500}
+.plan ul{padding-left:20px;margin:0 0 20px}.plan li{margin:4px 0}
+.button{display:inline-block;background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700}
+.button.blue{background:var(--blue);color:#fff}
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:14px}
