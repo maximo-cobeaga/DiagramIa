@@ -33,12 +33,12 @@ jobs:
       - run: docker build -f infra/Dockerfile --target api -t diagramia-api:ci .
       - run: docker build -f infra/Dockerfile --target web --build-arg APP_URL=https://app.example.test/ -t diagramia-web:ci .
 
-  # Despliegue continuo (ADR 089). Sólo corre en un push a main, con `check` y `database` en verde, y sólo si
+  # Despliegue continuo (ADR 089). Sólo corre en un push a main (o a mano con Run workflow sobre main), con `check` y `database` en verde, y sólo si
   # el repositorio lo habilitó: Settings → Secrets and variables → Actions → Variables → DEPLOY_ENABLED=true.
   # Sin eso el workflow termina igual de verde y no toca el VPS. Configuración en infra/DEPLOY.md, «Despliegue automático».
   deploy:
     needs: [check, database]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-24.04
     environment: production
     # Un despliegue a la vez y nunca cortado a la mitad: el siguiente espera al que está corriendo.
