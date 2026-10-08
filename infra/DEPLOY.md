@@ -61,7 +61,7 @@ Configuración, una sola vez:
 3. En GitHub → Settings → Environments → **New environment** llamado `production` (opcional: agregá «Required reviewers» para aprobar cada despliegue a mano).
 4. En GitHub → Settings → Secrets and variables → Actions:
    - **Secrets:** `DEPLOY_SSH_KEY` (el contenido de `diagramia_deploy`, la clave privada) y `DEPLOY_KNOWN_HOSTS` (la línea de `ssh-keyscan`).
-   - **Variables:** `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` (carpeta del checkout en el VPS), `DEPLOY_SITE_URL` (`https://diagramia.app`), `DEPLOY_APP_URL` (`https://app.diagramia.app`) y, por último, `DEPLOY_ENABLED=true`.
+   - **Variables:** `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` (carpeta del checkout en el VPS), `DEPLOY_PORT` (sólo si el SSH no usa el 22), `DEPLOY_SITE_URL` (`https://diagramia.app`), `DEPLOY_APP_URL` (`https://app.diagramia.app`) y, por último, `DEPLOY_ENABLED=true`.
 5. Borrá la clave privada de tu PC cuando esté cargada en GitHub.
 
 Para pausar los despliegues automáticos sin tocar el código: `DEPLOY_ENABLED=false`. Para desplegar a mano: `infra/deploy.sh` en el VPS, como antes.

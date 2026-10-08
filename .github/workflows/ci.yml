@@ -50,6 +50,7 @@ jobs:
       DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER }}
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
       SITE_URL: ${{ vars.DEPLOY_SITE_URL }}
       APP_URL: ${{ vars.DEPLOY_APP_URL }}
     steps:
@@ -71,7 +72,7 @@ jobs:
       - name: Desplegar el commit probado
         run: |
           set -eu
-          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+          ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
             "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && git fetch --quiet origin main && git merge --ff-only '${GITHUB_SHA}' && DIAGRAMIA_SKIP_PULL=1 infra/deploy.sh"
       - name: Comprobar el sitio
         run: |
