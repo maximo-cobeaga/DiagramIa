@@ -1,6 +1,6 @@
 # Despliegue en el VPS (P8.4)
 
-**Estado:** preparado y probado en local. **No se desplegó.** Desplegar requiere la autorización explícita del usuario, acceso al VPS, un dominio y las credenciales reales (Auth0 y OpenAI).
+**Estado:** desplegado por el usuario el 06/10/2026 en `https://diagramia.app` y `https://app.diagramia.app` (commit `4e18fc0`), detrás del nginx en Docker de ReservApp. Detalle en «Despliegue real del 06/10/2026». Cada despliegue requiere la autorización explícita del usuario.
 
 ## Arquitectura
 
@@ -43,10 +43,52 @@ Internet ──TLS──▶ reverse proxy del VPS (ya atiende a ReservApp)
 ## Actualizar
 
 ```sh
-infra/backup.sh                                   # siempre antes: las migraciones sólo avanzan
-git pull && export DIAGRAMIA_RELEASE=$(git rev-parse --short HEAD)
-docker compose --env-file .env.production -f infra/compose.prod.yml up -d --build --wait
+infra/deploy.sh
 ```
+
+Hace, en orden: respaldo (las migraciones sólo avanzan), `git pull --ff-only`, imágenes etiquetadas con el commit, `up -d --build --wait` y, si `DIAGRAMIA_PROXY_NETWORK` está en `.env.production`, la reconexión del contenedor `web` a la red del proxy. Termina con error si `web` no quedó en esa red. `DIAGRAMIA_SKIP_PULL=1` despliega el checkout actual.
+
+## Despliegue automático (CI/CD)
+
+`.github/workflows/ci.yml` corre `check` y `database` en cada push. Con ambos en verde y **sólo en `main`**, el job `deploy` entra al VPS por SSH, trae exactamente el commit probado (`git merge --ff-only $GITHUB_SHA`) y corre `infra/deploy.sh` (respaldo, build, `up --wait` y reconexión a la red del proxy). Después comprueba que `/api/ready` y `/precios.html` respondan; si no, el job falla y el log dice cómo volver atrás. Un despliegue a la vez, nunca cortado a la mitad.
+
+**Está apagado hasta que lo habilites.** Sin la variable `DEPLOY_ENABLED`, el workflow termina en verde sin tocar el VPS.
+
+Configuración, una sola vez:
+
+1. **Usuario y clave dedicados en el VPS** (no uses root ni tu clave personal). En tu PC: `ssh-keygen -t ed25519 -f diagramia_deploy -C "github-actions-diagramia" -N ""`. En el VPS, el usuario necesita permiso de Docker y escritura en el checkout; agregá la clave pública (`diagramia_deploy.pub`) a su `~/.ssh/authorized_keys`. Probá a mano: `ssh -i diagramia_deploy usuario@vps "cd /ruta/del/checkout && git status"`.
+2. **Huella del servidor**, tomada desde una conexión que ya confíes: `ssh-keyscan -t ed25519 <ip-o-host>` y comparála con `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` en el VPS.
+3. En GitHub → Settings → Environments → **New environment** llamado `production` (opcional: agregá «Required reviewers» para aprobar cada despliegue a mano).
+4. En GitHub → Settings → Secrets and variables → Actions:
+   - **Secrets:** `DEPLOY_SSH_KEY` (el contenido de `diagramia_deploy`, la clave privada) y `DEPLOY_KNOWN_HOSTS` (la línea de `ssh-keyscan`).
+   - **Variables:** `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` (carpeta del checkout en el VPS), `DEPLOY_SITE_URL` (`https://diagramia.app`), `DEPLOY_APP_URL` (`https://app.diagramia.app`) y, por último, `DEPLOY_ENABLED=true`.
+5. Borrá la clave privada de tu PC cuando esté cargada en GitHub.
+
+Para pausar los despliegues automáticos sin tocar el código: `DEPLOY_ENABLED=false`. Para desplegar a mano: `infra/deploy.sh` en el VPS, como antes.
+
+**Límites reales:** el job no corre migraciones aparte (las aplica el gateway al arrancar) ni revisa la IA ni el login; sólo que el sitio esté sano. El `.env.production` vive en el VPS y el workflow nunca lo toca. Un fallo después del `up` deja la versión nueva corriendo hasta que la vuelvas atrás.
+
+## Cobro: webhook de Paddle
+
+El gateway recibe los avisos de Paddle en `https://app.<dominio>/api/v1/billing/webhook` (nginx ya lo reenvía junto con el resto de `/api/`). Para activarlo:
+
+1. En Paddle (sandbox o real) → Developer Tools → Notifications → **New destination**: tipo URL, esa dirección y los eventos `subscription.created`, `subscription.activated`, `subscription.updated`, `subscription.canceled`, `subscription.paused`, `subscription.resumed`, `subscription.past_due` y `subscription.trialing`. Copiá el **secreto** del destino.
+2. En `.env.production`: `DIAGRAMIA_PADDLE_ENV`, `DIAGRAMIA_PADDLE_API_KEY`, `DIAGRAMIA_PADDLE_WEBHOOK_SECRET` y `DIAGRAMIA_PADDLE_PRICE_PRO` (las tres últimas juntas o ninguna). `npm run doctor -- --env .env.production` las revisa.
+3. En Paddle → Checkout → Checkout settings: configurá el **default payment link** (`https://app.<dominio>/`). Sin eso, la creación del checkout falla.
+4. Desplegá y probá en el sandbox con una tarjeta de prueba de Paddle. No uses claves reales hasta que Paddle apruebe la cuenta.
+
+## Reverse proxy en Docker
+
+Si el proxy del VPS es un contenedor, `127.0.0.1:8080` no es alcanzable desde adentro. El contenedor `web` se conecta a la red del proxy con un alias propio:
+
+```sh
+docker network connect --alias diagramia-web <red-del-proxy> diagramia-web-1
+```
+
+- **No declarar esa red en Compose.** Compose publica el nombre del servicio como alias en cada red: `web` pasaría a resolver también al contenedor de Diagramia dentro del otro proyecto. Con `docker network connect` sólo existen el alias elegido y el nombre del contenedor (probado: `web` y `db` no resuelven en la red del proxy).
+- La conexión se pierde cuando el contenedor se crea de nuevo; `infra/deploy.sh` la repone.
+- En el proxy, resolver al recibir el pedido (`resolver 127.0.0.11` y `proxy_pass` con variable hacia `http://diagramia-web:80`): si Diagramia no está, el proxy arranca igual y sólo ese sitio responde 502. Pasar `Host` y `X-Forwarded-For $remote_addr`.
+- Los dos contenedores comparten red: `web` alcanza los servicios internos del otro proyecto.
 
 ## Volver atrás
 
@@ -73,6 +115,20 @@ docker compose --env-file .env.production -f infra/compose.prod.yml exec -T db p
 Las migraciones se validan por checksum. Desde el commit `720e77d`, el checksum se calcula sobre el texto con LF y `.gitattributes` fija LF para `*.sql`. Las imágenes se construyen en el VPS (Linux).
 
 **No construir versiones anteriores a ese commit desde un checkout de Windows con `core.autocrlf=true`:** sus migraciones quedarían con CRLF y el gateway viejo no arrancaría sobre una base existente. La prueba de vuelta atrás lo detectó y se repitió con un checkout en LF.
+
+## Despliegue real del 06/10/2026
+
+Lo ejecutó el usuario en su VPS (2 CPU, 7,8 GB, Docker 29.1.3, Compose v2.37.0), con los comandos de este documento:
+
+- **Pila:** tres servicios sanos con el commit `4e18fc0`, `web` en `127.0.0.1:8090`. El primer build se hizo con el dominio de ejemplo y hubo que repetirlo: `DIAGRAMIA_APP_URL` queda grabada en la imagen `web`.
+- **IA:** DeepSeek por el adaptador compatible, con tarifa declarada (ADR 087) y tope de USD 1 por día. `OPENAI_API_KEY` vacía: el doctor de producción marca ese ✖ y no revisa las variables `DIAGRAMIA_COMPAT_*`. Falta que el usuario confirme el cambio respecto de ADR 045/061 para ajustar la regla.
+- **Proxy:** `reservapp-bk-nginx-1` (nginx en Docker, red `reservapp-bk_default`, configuración en `/root/ReservApp-bk/nginx/default.conf`). Dos bloques nuevos para `diagramia.app` y `app.diagramia.app`, como en «Reverse proxy en Docker». Copia previa del archivo en `/root/default.conf.antes-de-diagramia`.
+- **Certificado:** Let's Encrypt por webroot con los volúmenes de ReservApp (`--cert-name diagramia.app`); lo renueva el cron diario de ReservApp, que corre `certbot renew` sobre todo el volumen.
+- **DNS:** Cloudflare en «DNS only». Con su proxy activado, nginx vería la IP de Cloudflare y los límites por IP serían compartidos.
+- **Comprobado desde afuera por el agente:** `/api/ready` con schema 1.8.0; landing 200 desde la IP del VPS; HTTP redirige a HTTPS; CSP estricta y HSTS; `/api/v1/providers` responde 401 sin sesión; el login redirige a Auth0. El usuario informó que el login y el resto funcionan; el agente no probó login, IA ni panel.
+- **Pendiente:** `DIAGRAMIA_PROXY_NETWORK=reservapp-bk_default` en `.env.production` del VPS para usar `infra/deploy.sh`; respaldo por cron; aviso de privacidad publicado con sus `[COMPLETAR]`; claves propias de Google, proveedor de email y dominio propio en Auth0. El cambio en `default.conf` vive en la carpeta de ReservApp y un despliegue suyo puede pisarlo.
+
+**Dominio propio de Auth0:** las cuentas se identifican por emisor y sujeto. Al cambiar `DIAGRAMIA_OIDC_ISSUER` hay que actualizar el emisor de las cuentas existentes en el mismo paso (`UPDATE users SET issuer=…`), o cada persona entra como una cuenta nueva y vacía.
 
 ## Ensayo local del 06/10/2026
 

@@ -2,6 +2,9 @@ name: Diagramia checks
 on:
   push:
   pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   check:
     runs-on: ubuntu-24.04
@@ -29,3 +32,59 @@ jobs:
       - run: npm run smoke:dashboard
       - run: docker build -f infra/Dockerfile --target api -t diagramia-api:ci .
       - run: docker build -f infra/Dockerfile --target web --build-arg APP_URL=https://app.example.test/ -t diagramia-web:ci .
+
+  # Despliegue continuo (ADR 089). Sólo corre en un push a main, con `check` y `database` en verde, y sólo si
+  # el repositorio lo habilitó: Settings → Secrets and variables → Actions → Variables → DEPLOY_ENABLED=true.
+  # Sin eso el workflow termina igual de verde y no toca el VPS. Configuración en infra/DEPLOY.md, «Despliegue automático».
+  deploy:
+    needs: [check, database]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    environment: production
+    # Un despliegue a la vez y nunca cortado a la mitad: el siguiente espera al que está corriendo.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    timeout-minutes: 30
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      SITE_URL: ${{ vars.DEPLOY_SITE_URL }}
+      APP_URL: ${{ vars.DEPLOY_APP_URL }}
+    steps:
+      - name: Preparar SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -eu
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH SITE_URL APP_URL DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS; do
+            eval "value=\${$name:-}"
+            [ -n "$value" ] || { echo "::error::Falta configurar $name (ver infra/DEPLOY.md, «Despliegue automático»)."; exit 1; }
+          done
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # La huella del servidor viene fijada de antemano: no se confía en lo que responda la red durante el despliegue.
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Desplegar el commit probado
+        run: |
+          set -eu
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && git fetch --quiet origin main && git merge --ff-only '${GITHUB_SHA}' && DIAGRAMIA_SKIP_PULL=1 infra/deploy.sh"
+      - name: Comprobar el sitio
+        run: |
+          set -eu
+          check() { # url, texto que debe aparecer
+            for i in 1 2 3 4 5 6; do
+              if curl -fsS --max-time 15 "$1" | grep -q "$2"; then echo "OK $1"; return 0; fi
+              sleep 10
+            done
+            echo "::error::$1 no respondió como se esperaba después del despliegue. Para volver atrás: infra/DEPLOY.md, «Volver atrás»."; return 1
+          }
+          check "${APP_URL%/}/api/ready" '"status":"ready"'
+          check "${SITE_URL%/}/precios.html" 'USD 5'
+      - name: Limpiar la clave
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts
