@@ -1,5 +1,6 @@
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {Pool,type PoolClient} from 'pg';
+import {planForProject,planForUser} from './billing.js';
 
 /** `emailVerified` viene del claim del proveedor; si falta, un email presente cuenta como verificado (sólo se guarda verificado). */
 export type Identity={issuer:string;subject:string;email:string|null;emailVerified?:boolean};
@@ -73,10 +74,11 @@ export class AccountRepository{
   }
 
   async storage(projectId:string){
+    const {plan,limits}=await planForProject(this.pool,projectId);
     const found=await this.pool.query<{documents:string;bytes:string}>(
       `SELECT count(DISTINCT c.document_id)::text AS documents,coalesce(sum(octet_length(v.body::text)),0)::text AS bytes
        FROM cloud_documents c LEFT JOIN document_versions v ON v.document_id=c.document_id WHERE c.project_id=$1`,[projectId]);
-    return {documents:Number(found.rows[0]!.documents),bytes:Number(found.rows[0]!.bytes),maxDocuments:3,maxDocumentBytes:10_000_000,maxBytes:30_000_000};
+    return {plan,documents:Number(found.rows[0]!.documents),bytes:Number(found.rows[0]!.bytes),maxDocuments:limits.maxDocuments,maxDocumentBytes:limits.maxDocumentBytes,maxBytes:limits.maxBytes,maxOwnElements:limits.maxOwnElements};
   }
 
   /** Reserva de créditos bajo lock de usuario; una segunda petición con el mismo ID recupera el recibo durable. */
@@ -93,12 +95,13 @@ export class AccountRepository{
         if(old.status==='committed'){if(old.response===null)throw new CreditError('IDEMPOTENCY_CONFLICT','Ese pedido ya se completó. Enviá uno nuevo.');return {replayed:old.response};}
         if(old.status==='reserved'&&old.expires_at.getTime()>at.getTime())throw new CreditError('CREDIT_IN_PROGRESS','Este pedido de IA todavía se está procesando.');
       }
+      const {plan,limits}=await planForUser(client,userId);
       const usage=await client.query<{daily:string;monthly:string}>(
         `SELECT coalesce(sum(credits) FILTER (WHERE created_at >= $2 AND created_at <= $4),0)::text AS daily,
                 coalesce(sum(credits) FILTER (WHERE created_at >= $3 AND created_at <= $4),0)::text AS monthly
          FROM ai_credit_receipts WHERE user_id=$1 AND status<>'released'`,[userId,day,month,at]);
       const {daily,monthly}=usage.rows[0]!;
-      if(credits>0&&(Number(daily)+credits>6||Number(monthly)+credits>20))throw new CreditError('CREDIT_LIMIT','Se agotaron los créditos de IA: máximo 6 por día y 20 por mes.');
+      if(credits>0&&(Number(daily)+credits>limits.dailyCredits||Number(monthly)+credits>limits.monthlyCredits))throw new CreditError('CREDIT_LIMIT',`Se agotaron los créditos de IA: máximo ${limits.dailyCredits} por día y ${limits.monthlyCredits} por mes.${plan==='free'?' Con el plan Pro tenés más.':''}`);
       if(old)await client.query("UPDATE ai_credit_receipts SET status='reserved',response=NULL,created_at=$3,expires_at=$4 WHERE user_id=$1 AND request_id=$2",[userId,requestId,at,expiresAt]);
       else await client.query("INSERT INTO ai_credit_receipts (user_id,request_id,fingerprint,credits,status,created_at,expires_at) VALUES ($1,$2,$3,$4,'reserved',$5,$6)",[userId,requestId,fingerprint,credits,at,expiresAt]);
       return {replayed:null};
@@ -135,6 +138,7 @@ export class AccountRepository{
         for(const table of ['document_audit','document_receipts','document_versions','documents'])
           await client.query(`DELETE FROM ${table} WHERE ${table==='documents'?'id':'document_id'} = ANY($1)`,[ids]);
       }
+      await client.query('DELETE FROM subscriptions WHERE user_id=$1',[userId]);
       await client.query('DELETE FROM ai_credit_receipts WHERE user_id=$1',[userId]);
       await client.query('DELETE FROM auth_sessions WHERE user_id=$1',[userId]);
       await client.query('DELETE FROM telemetry_identities WHERE user_id=$1',[userId]);
@@ -147,11 +151,11 @@ export class AccountRepository{
   }
 
   async creditUsage(userId:string,at=new Date()){
-    const {day,month}=period(at);
+    const {day,month}=period(at),{limits}=await planForUser(this.pool,userId);
     const found=await this.pool.query<{daily:string;monthly:string}>(
       `SELECT coalesce(sum(credits) FILTER (WHERE created_at >= $2 AND created_at <= $4),0)::text AS daily,
               coalesce(sum(credits) FILTER (WHERE created_at >= $3 AND created_at <= $4),0)::text AS monthly
        FROM ai_credit_receipts WHERE user_id=$1 AND status<>'released'`,[userId,day,month,at]);
-    return {daily:Number(found.rows[0]!.daily),monthly:Number(found.rows[0]!.monthly),dailyLimit:6,monthlyLimit:20};
+    return {daily:Number(found.rows[0]!.daily),monthly:Number(found.rows[0]!.monthly),dailyLimit:limits.dailyCredits,monthlyLimit:limits.monthlyCredits};
   }
 }

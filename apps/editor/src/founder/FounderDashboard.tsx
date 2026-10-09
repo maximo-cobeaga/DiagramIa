@@ -1,4 +1,5 @@
 import {useEffect,useState} from 'react';
+import {ContactInbox} from './ContactInbox';
 
 type Unit='ratio'|'minutes'|'number'|'usd';
 type Indicator={id:string;label:string;unit:Unit;value:number|null;previous:number|null;detail:string};
@@ -32,7 +33,7 @@ export function FounderDashboard(){
         :response.status===503?'El panel necesita el gateway con PostgreSQL y telemetría activa.':`El gateway respondió ${response.status}.`);
     }).catch(()=>setError('No se pudo contactar al gateway.'));
   },[]);
-  if(error)return <main className="founder"><h1>Panel del fundador</h1><p className="inline-note" role="alert">{error}</p><a href="#" onClick={()=>{location.hash='';}}>Volver al editor</a></main>;
+  if(error)return <main className="founder"><h1>Panel del fundador</h1><p className="inline-note" role="alert">{error}</p><a href="#" onClick={()=>{location.hash='';}}>Volver al editor</a><ContactInbox/></main>;
   if(!report)return <main className="founder"><h1>Panel del fundador</h1><p className="inline-note" role="status">Calculando…</p></main>;
   const [north,...rest]=report.indicators;
   return <main className="founder">
@@ -40,6 +41,7 @@ export function FounderDashboard(){
       <div><span className="eyebrow">DIAGRAMIA / MEDICIÓN</span><h1>Panel del fundador</h1></div>
       <p className="mono">Semana {report.window.from} → {report.window.to} (UTC) · WAU {report.wau} (antes {report.previousWau}) · <a href="#" onClick={()=>{location.hash='';}}>Volver al editor</a></p>
     </header>
+    <ContactInbox/>
     <section className="founder-hero" aria-label={north.label}>
       <span className="eyebrow">NORTH STAR</span>
       <strong>{format(north.value,north.unit)}</strong>

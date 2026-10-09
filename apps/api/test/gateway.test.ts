@@ -681,3 +681,34 @@ test('a compatible provider only gets a USD cap when its operator declares both 
     assert.equal(response.status,402);assert.equal(body.error.code,'BUDGET_EXCEEDED');assert.match(body.error.message,/USD/);assert.equal(hits,0);
   }finally{await g.close();upstream.closeAllConnections();await new Promise(resolve=>upstream.close(resolve));}
 });
+
+test('the contact endpoint stores a company inquiry, notifies without the message, ignores bots and limits floods',async()=>{
+  const saved:{input:any;ip:string}[]=[],notices:string[]=[];
+  const repository:any={create:async(input:unknown,ip:string)=>{saved.push({input,ip});return {id:'c1'};}};
+  const ledger=new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null});
+  const base={providers:[],ledger,productPrompt:'p',allowedOrigins:['https://diagramia.app'],token:'gateway-secret',config:{maxOutputTokens:10,maxContextChars:10,maxRepairs:0,timeoutMs:1000}};
+  const server=createApp({...base,contact:{repository,notify:text=>notices.push(text),perHour:8}}),offline=createApp(base);
+  const url=await listen(server),offlineUrl=await listen(offline),headers={'content-type':'application/json','x-diagramia-client':'editor'};
+  const send=(target:string,body:object,extra:Record<string,string>={})=>fetch(target+'/v1/contact',{method:'POST',headers:{...headers,...extra},body:JSON.stringify(body)});
+  const valid={name:'Ana Pérez',email:'ana@empresa.com',company:'Empresa SA',teamSize:'11-50',message:'Queremos usar Diagramia en todo el equipo de operaciones.'};
+  try{
+    assert.equal((await send(url,valid)).status,202);
+    assert.equal(saved.length,1);assert.equal(saved[0].input.company,'Empresa SA');
+    assert.match(notices[0],/Nueva consulta de empresa \(c1\)/);
+    for(const text of Object.values(valid))assert.ok(!notices[0].includes(text),'el aviso no lleva datos de la consulta');
+    assert.equal((await fetch(url+'/v1/admin/contacts',{headers})).status,401,'la bandeja exige sesión');
+    // Un bot completa el campo oculto: responde igual, pero no guarda ni avisa.
+    assert.equal((await send(url,{...valid,website:'http://spam.example'})).status,202);
+    assert.equal(saved.length,1);assert.equal(notices.length,1);
+    // Datos inválidos y campos desconocidos se rechazan.
+    assert.equal((await send(url,{...valid,email:'no-es-un-email'})).status,400);
+    assert.equal((await send(url,{...valid,message:'corto'})).status,400);
+    assert.equal((await send(url,{...valid,extra:1})).status,400);
+    // Sin el header propio no se acepta, y sin repositorio el formulario avisa que no está disponible.
+    assert.equal((await fetch(url+'/v1/contact',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(valid)})).status,400);
+    assert.equal((await send(offlineUrl,valid)).status,503);
+    // Tope por hora (8): ya contaron cinco pedidos; los siguientes llegan al límite.
+    let limited=0;for(let i=0;i<4;i++)if((await send(url,valid)).status===429)limited++;
+    assert.ok(limited>=1,'se limita la frecuencia por conexión');
+  }finally{server.close();offline.close();}
+});

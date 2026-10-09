@@ -14,16 +14,17 @@ import {DIAGRAM_CSS} from './canvas/DiagramLayer';
 import {Palette} from './palette/Palette';
 import {Inspector} from './inspector/Inspector';
 import {Chat} from './assistant/Chat';
-import {ManualChannel} from './assistant/AssistantPanel';
 import {LibraryPanel} from './library/LibraryPanel';
 import {Timeline} from './timeline/Timeline';
 import {Presentation} from './presentation/Presentation';
 import {Tutorial} from './shell/Tutorial';
 import {TEMPLATES,openTemplate} from './shell/templates';
-import {SharedPanel} from './shell/SharedPanel';
+import {AccountPage} from './shell/AccountPage';
+import {UpgradeAction} from './shell/PlanBox';
+import {capturePlanIntent,resolvePlanIntent} from './shell/checkout';
 import {sharedStore} from './store/sharedStore';
 import {accountStore,refreshAccount,signIn} from './store/accountStore';
-import {browserOptOut,setTelemetryEnabled,startTelemetry,telemetryEnabled,track,trackReopened} from './telemetry';
+import {startTelemetry,track,trackReopened} from './telemetry';
 import './styles.css';
 
 // Iconos de 16 × 16 dibujados con trazo.
@@ -41,7 +42,7 @@ const TOOL_HINTS:Record<Tool,string>={
   node:'Hacé clic en el canvas para ubicar la forma elegida.',connect:'Arrastrá de un nodo a otro para crear una conexión.',line:'Arrastrá una línea. Shift la endereza.',arrow:'Arrastrá una flecha. Shift la endereza.',freehand:'Dibujá o escribí libremente. Esc vuelve a seleccionar.',guided:'Dibujá con trazos suaves. Las formas se emprolijan al soltar.',eraser:'Pasá por los trazos para borrarlos. Deshacer los recupera.',
   zone:'Arrastrá para dibujar la zona. Adopta los nodos sin zona que queden adentro.',frame:'Arrastrá para dibujar un encuadre de presentación.'
 };
-const PANELS:[Panel,string][]=[['assistant','IA'],['inspector','Propiedades'],['library','Biblioteca'],['history','Cuenta']];
+const PANELS:[Panel,string][]=[['assistant','IA'],['inspector','Propiedades'],['library','Biblioteca'],['history','Historial']];
 // La landing vive en el dominio principal y el editor en app.<dominio>; en desarrollo la sirve npm run dev:landing.
 const SITE_URL=location.hostname.startsWith('app.')?`${location.protocol}//${location.hostname.slice(4)}/`:'http://127.0.0.1:4173/';
 const SAVE_ICON={saved:'✓',pending:'…',error:'✕',blocked:'⏸'} as const;
@@ -61,6 +62,7 @@ function Header(){
       <select aria-label="Exportar" value="" onChange={e=>void exportDocument(e.target.value as ExportFormat)}>
         <option value="" disabled>Exportar…</option>{EXPORT_FORMATS.map(([key,label])=><option key={key} value={key}>{label}</option>)}
       </select>
+      <UpgradeAction>⚡ Pasar a Pro</UpgradeAction>
       <AccountButton/>
       <button className="icon-button" onClick={()=>setTheme(theme==='dark'?'light':'dark')} aria-label={theme==='dark'?'Cambiar a modo claro':'Cambiar a modo oscuro'} title={theme==='dark'?'Modo claro':'Modo oscuro'}>{theme==='dark'?'☀':'☾'}</button>
       <button className="icon-button" onClick={()=>viewStore.set({tutorial:true})} aria-label="Abrir el tutorial" title="Tutorial">?</button>
@@ -73,7 +75,7 @@ function Header(){
 
 /** Entrada a la cuenta siempre a la vista: invitar a iniciar sesión es parte del recorrido, no un ajuste escondido. */
 function AccountButton(){
-  const {auth,account}=useStore(accountStore),open=()=>viewStore.set({panel:'history',sideOpen:true});
+  const {auth,account}=useStore(accountStore),open=()=>viewStore.set({accountOpen:true,accountSection:'resumen'});
   if(auth==='guest')return <button className="signin" onClick={()=>signIn('menu')}>Iniciar sesión</button>;
   if(auth!=='signed-in'||!account)return <button onClick={open}>Cuenta</button>;
   const email=account.session.email,initial=(email??'?').slice(0,1).toUpperCase();
@@ -155,8 +157,6 @@ function StatusBar(){
 function SessionPanel(){
   const {log,past,future,dropped,doc}=useStore(documentStore);
   return <div className="panel-body">
-    <SharedPanel/>
-    <PrivacySettings/>
     <span className="eyebrow">SESIÓN DE TRABAJO</span>
     <p className="inline-note">Revisión actual r{doc.revision}. {past.length} paso(s) para deshacer, {future.length} para rehacer. El historial vive sólo en esta sesión y guarda hasta {HISTORY_LIMIT} pasos por pestaña.</p>
     {dropped>0&&<p className="inline-note warn">⚠ Se descartaron los {dropped} pasos más antiguos por el límite del historial. Exportá el JSON si necesitás conservar un estado.</p>}
@@ -164,19 +164,7 @@ function SessionPanel(){
     {log.length?<ol className="log">{[...log].reverse().map((line,i)=><li key={log.length-i}>{line}</li>)}</ol>:<p className="inline-note">No hay cambios registrados.</p>}
     <h3>Atajos de teclado</h3>
     <dl className="shortcuts">{SHORTCUTS.map(([keys,action])=><React.Fragment key={keys}><dt>{keys}</dt><dd>{action}</dd></React.Fragment>)}</dl>
-    <h3>Otra IA o MCP</h3>
-    <ManualChannel/>
   </div>;
-}
-
-/** Medición anónima de uso: qué se usa y dónde se traba la gente, nunca el contenido de los diagramas. */
-function PrivacySettings(){
-  const [enabled,setEnabled]=useState(telemetryEnabled()),blocked=browserOptOut();
-  return <section aria-label="Privacidad">
-    <h3>Privacidad</h3>
-    <label className="check"><input type="checkbox" checked={enabled&&!blocked} disabled={blocked} onChange={e=>{setTelemetryEnabled(e.target.checked);setEnabled(e.target.checked);}}/>Enviar datos anónimos de uso</label>
-    <p className="inline-note">{blocked?'Tu navegador pide no ser rastreado (Do Not Track o Global Privacy Control): no se envía nada.':'Sirven para mejorar Diagramia: qué herramientas se usan, errores y tiempos. Nunca se envía el texto de tus diagramas ni tus pedidos a la IA.'} <a href="/privacidad.html" target="_blank" rel="noopener">Cómo tratamos tus datos</a></p>
-  </section>;
 }
 
 function SidePanel(){
@@ -189,14 +177,14 @@ function SidePanel(){
 }
 
 function App(){
-  const {presenting,tutorial,sideOpen,focusMode}=useStore(viewStore);
+  const {presenting,tutorial,sideOpen,focusMode,accountOpen}=useStore(viewStore);
   useShortcuts();usePlaybackClock();useCameraFollow();
   // El inicio vive dentro del lienzo vacío; el tutorial queda disponible en «?».
-  useEffect(()=>{void refreshAccount();},[]);
+  useEffect(()=>{capturePlanIntent();void refreshAccount().then(resolvePlanIntent);},[]);
   return <>
     <style>{DIAGRAM_CSS}</style>
     {/* Mientras se presenta o hay un modal, el editor queda inerte: ni el foco ni los atajos llegan a los controles tapados. */}
-    <div className={'app'+(focusMode?' focus-mode':'')} inert={presenting||tutorial}>
+    <div className={'app'+(focusMode?' focus-mode':'')} inert={presenting||tutorial||accountOpen}>
       <Header/>
       <Tabs/>
       <div className={'workspace'+(sideOpen?'':' side-closed')}>
@@ -207,6 +195,7 @@ function App(){
     </div>
     {presenting&&<Presentation/>}
     {tutorial&&<Tutorial/>}
+    <AccountPage/>
   </>;
 }
 // #fundador abre el panel de métricas (sólo administradores). No se mide: no es uso del producto.

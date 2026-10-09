@@ -12,6 +12,7 @@ import {migrateDocuments} from '../apps/api/dist/repositories/postgres.js';
 import {AccountRepository} from '../apps/api/dist/repositories/accounts.js';
 import {TelemetryRepository} from '../apps/api/dist/repositories/telemetry.js';
 import {FounderDashboard} from '../apps/api/dist/repositories/dashboard.js';
+import {ContactRepository} from '../apps/api/dist/repositories/contact.js';
 import {createApp} from '../apps/api/dist/server.js';
 import {UsageLedger} from '../apps/api/dist/usage.js';
 
@@ -73,8 +74,9 @@ try{
   else{
     const editorPort=5600+Math.floor(Math.random()*300),debugPort=9800+Math.floor(Math.random()*150),origin=`http://127.0.0.1:${editorPort}`;
     const bob=await accounts.signIn({issuer:'https://oidc.example',subject:'bob',email:'bob@example.test'});
+    const contacts=new ContactRepository(pool),inquiry=await contacts.create({name:'Ana Empresa',email:'ana@empresa.test',company:'Equipo de operaciones',message:'<script>window.inquiryExecuted=true</script> Queremos explicar nuestras compras.'});
     server=createApp({providers:[],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null}),productPrompt:'p',token:null,allowedOrigins:[origin],accounts,
-      dashboard,adminEmails:['ANA@example.test'],config:{maxOutputTokens:10,maxContextChars:10,maxRepairs:0,timeoutMs:1000}});
+      dashboard,contact:{repository:contacts},adminEmails:['ANA@example.test'],config:{maxOutputTokens:10,maxContextChars:10,maxRepairs:0,timeoutMs:1000}});
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const api=`http://127.0.0.1:${server.address().port}`,as=token=>({'x-diagramia-client':'editor',cookie:`diagramia_session=${token}`});
     assert.equal((await fetch(api+'/v1/admin/dashboard',{headers:as(bob.token)})).status,403,'una cuenta que no es administradora no ve el panel');
@@ -96,6 +98,12 @@ try{
     assert.equal(tiles,11,'9 indicadores más costo y fricción');
     const hero=await js("document.querySelector('.founder-hero strong').textContent");assert.equal(hero,'0.50');
     const text=await js('document.body.innerText');
+    for(let i=0;i<40&&!await js("!!document.querySelector('.inquiry')");i++)await sleep(100);
+    assert.ok(await js("document.querySelector('.contact-inbox').textContent.includes('Equipo de operaciones')"),'la bandeja muestra las consultas guardadas');
+    assert.equal(await js('window.inquiryExecuted===true'),false,'el mensaje se muestra como texto, sin ejecutar HTML');
+    await js("[...document.querySelectorAll('.contact-inbox button')].find(button=>button.textContent==='Marcar como respondida').click()");
+    for(let i=0;i<40&&(await contacts.list())[0].status!=='answered';i++)await sleep(100);
+    assert.equal((await contacts.list())[0].status,'answered');
     for(const shown of ['50 %','20 min','Sin comparación','▲ 50.0 pp','USD 0.0020'])assert.ok(text.includes(shown),`la vista no muestra «${shown}»`);
     assert.equal(await js('document.documentElement.scrollWidth<=window.innerWidth'),true,'sin desborde horizontal en escritorio');
     await shot('17-founder-dashboard');

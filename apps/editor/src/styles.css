@@ -627,3 +627,32 @@ button.color-dot.chosen{outline:2px solid var(--blue);outline-offset:2px}
 .question-actions button{min-height:40px;font-size:13px}
 .bubble.kind-clarification{border-color:var(--blue);background:var(--blue-soft)}
 .cancelled-question{color:var(--muted)}
+
+/* Sección Cuenta a pantalla completa */
+.account-page{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:var(--paper);color:var(--ink)}
+.account-page{width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0}.account-page::backdrop{background:var(--paper)}
+.account-hero>div{min-width:0}.account-hero h2{overflow-wrap:anywhere}.meter-head{gap:12px;flex-wrap:wrap}.meter-head strong{white-space:nowrap}
+.contact-inbox{margin:24px 0 40px}.contact-inbox .inquiry{margin-top:14px;overflow-wrap:anywhere}.inquiry-heading{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.inquiry-heading h3{margin:0}.inquiry-message{white-space:pre-wrap}
+.account-page>header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--surface)}
+.account-body{flex:1;min-height:0;display:grid;grid-template-columns:230px minmax(0,1fr);overflow:hidden}
+.account-body>nav{display:flex;flex-direction:column;gap:4px;padding:20px 12px;border-right:1px solid var(--line);background:var(--surface)}
+.account-body>nav button{text-align:left;border-color:transparent;background:transparent;padding:10px 12px}
+.account-body>nav button.chosen{background:var(--blue-soft);color:var(--blue);font-weight:650}
+.account-body>main{overflow:auto;padding:32px clamp(20px,5vw,64px);max-width:860px;width:100%}
+.account-body h2{margin:0 0 16px;font-size:24px;letter-spacing:-.02em}
+.account-hero{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.avatar.big{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--blue);color:#fff;font-weight:700;font-size:24px}
+.plan-badge{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-size:12px;font-weight:650;color:var(--muted)}
+.plan-badge.pro{background:var(--lime);border-color:#b9d62f;color:#141619}
+.meter{margin:14px 0}.meter-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.meter-bar{height:8px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.meter-bar i{display:block;height:100%;background:var(--blue);border-radius:99px;transition:width .3s}.meter-bar i.high{background:#d98b1d}.meter-bar i.full{background:var(--danger)}
+.upgrade-card{margin:28px 0;padding:24px;border:2px solid var(--ink);border-radius:14px;background:var(--surface);box-shadow:6px 6px 0 var(--lime);display:grid;gap:14px}
+.upgrade-card h3{margin:6px 0 0;font-size:22px;letter-spacing:-.02em}.upgrade-card .price{margin:6px 0 0;color:var(--muted)}.upgrade-card .price strong{font-size:28px;color:var(--ink)}
+.benefits{list-style:none;margin:0;padding:0;display:grid;gap:8px}.benefits li{padding-left:22px;position:relative;font-size:14px}.benefits li::before{content:"✓";position:absolute;left:0;color:var(--blue);font-weight:700}
+.benefits li.soon{color:var(--muted)}.benefits li.soon::before{content:"○";color:var(--muted)}.benefits em{font-style:normal;font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line)}
+button.big{padding:14px 22px;font-size:16px}
+.shared-documents.big{margin-top:16px}.empty-state{margin-top:24px;padding:28px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center}
+.account-pitch{max-width:520px;margin:8vh auto 0;display:grid;gap:16px}
+@media(max-width:760px){.account-body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.account-body>nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px}.account-body>nav button{white-space:nowrap}}
+@media(max-width:760px){.account-body>nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}.account-body>nav button{white-space:normal;min-height:44px;text-align:center}}

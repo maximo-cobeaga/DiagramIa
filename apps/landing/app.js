@@ -1,25 +1,44 @@
 'use strict';
 const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-let lang='es',phase=0,scenario='success',playing=false,time=0,lastFrame=0;
-const phases={es:[['Empezá con<br>una idea.','Una frase alcanza para abrir el canvas. Vos elegís el rumbo.','IDEA','Interpretando tu idea…','Tu idea empieza acá'],['Dale una<br>estructura.','Elementos, zonas y conexiones. Cada pieza tiene un significado.','ESTRUCTURA','4 componentes conectados. Backend delimitado.','Elementos editables'],['Mostrá qué<br>sucede.','Los datos recorren el sistema. Los estados cuentan la historia.','MOVIMIENTO','Recorrido creado. Ahora podés seguir cada paso.','Animación vinculada al documento'],['Conservá<br>el control.','La misma idea existe como un documento estructurado que tu IA puede entender.','DOCUMENTO','Estructura lista para leer, editar y transformar.','Visual por fuera. Estructurado por dentro.']],en:[['Start with<br>an idea.','One sentence opens the canvas. You choose the direction.','IDEA','Interpreting your idea…','Your idea starts here'],['Give it<br>structure.','Elements, zones and connections. Every piece has meaning.','STRUCTURE','4 components connected. Backend defined.','Editable elements'],['Show what<br>happens.','Data travels through the system. States tell the story.','MOTION','Flow created. Follow every step.','Animation linked to the document'],['Stay<br>in control.','The same idea exists as a structured document your AI can understand.','DOCUMENT','Structure ready to read, edit and transform.','Visual outside. Structured underneath.']]};
+let lang='es',phase=0,scenario='campaign',playing=false,time=0,lastFrame=0;
+const phases={es:[['Empezá con<br>una idea.','Una frase alcanza para abrir el canvas. Vos elegís el rumbo.','IDEA','Interpretando tu idea…','Tu idea empieza acá'],['Dale una<br>estructura.','Elementos, zonas y conexiones. Cada pieza tiene un significado.','ESTRUCTURA','4 piezas conectadas. Un área bien delimitada.','Elementos editables'],['Mostrá qué<br>sucede.','Los datos recorren el sistema. Los estados cuentan la historia.','MOVIMIENTO','Recorrido creado. Ahora podés seguir cada paso.','Animación vinculada al documento'],['Conservá<br>el control.','La misma idea existe como un documento estructurado que tu IA puede entender.','DOCUMENTO','Estructura lista para leer, editar y transformar.','Visual por fuera. Estructurado por dentro.']],en:[['Start with<br>an idea.','One sentence opens the canvas. You choose the direction.','IDEA','Interpreting your idea…','Your idea starts here'],['Give it<br>structure.','Elements, zones and connections. Every piece has meaning.','STRUCTURE','4 pieces connected. One clearly bounded area.','Editable elements'],['Show what<br>happens.','Data travels through the system. States tell the story.','MOTION','Flow created. Follow every step.','Animation linked to the document'],['Stay<br>in control.','The same idea exists as a structured document your AI can understand.','DOCUMENT','Structure ready to read, edit and transform.','Visual outside. Structured underneath.']]};
 let playerExplored=false;
 const clamp=(n,a=0,b=1)=>Math.max(a,Math.min(b,n));
 const currentFlow=()=>FLOW_SCENARIOS[scenario];
 const escapeText=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function renderFlow(){
+const compactFlow=matchMedia('(max-width:760px)');
+function flowLayout(){
   const flow=currentFlow();
+  if(!compactFlow.matches)return flow;
+  const places=[[30,100],[240,100],[240,260],[30,260]],nodes=flow.nodes.map((node,i)=>({...node,x:places[i][0],y:places[i][1]}));
+  const edges=flow.edges.map(edge=>{
+    const from=nodes.find(node=>node.id===edge.from),to=nodes.find(node=>node.id===edge.to);
+    const fx=from.x+from.w/2,fy=from.y+from.h/2,tx=to.x+to.w/2,ty=to.y+to.h/2;
+    if(edge.id==='back')return {...edge,d:`M${from.x+from.w} ${fy}H390V${ty}H${to.x+to.w}`,x:270,y:217};
+    if(edge.id==='small')return {...edge,d:`M${from.x} ${fy}H190V${ty}H${to.x+to.w}`,x:103,y:217};
+    if(from.y===to.y){const right=to.x>from.x;return {...edge,d:`M${right?from.x+from.w:from.x} ${fy}H${right?to.x:to.x+to.w}`,x:(fx+tx)/2,y:fy-10};}
+    return {...edge,d:`M${fx} ${from.y+from.h+(from.kind==='decision'?7:0)}V${to.y-(to.kind==='decision'?7:0)}`,x:fx+20,y:(fy+ty)/2};
+  });
+  return {...flow,width:400,height:390,nodes,edges};
+}
+function renderFlow(){
+  const flow=flowLayout();
   const label=n=>escapeText(n[lang]);
   const nodeMarkup=flow.nodes.map((n,i)=>{
     const cx=n.x+n.w/2,cy=n.y+n.h/2;
     const shape=n.kind==='decision'?`<path class="p-shape" d="M${cx} ${n.y-7}L${n.x+n.w} ${cy}L${cx} ${n.y+n.h+7}L${n.x} ${cy}Z"/>`:`<rect class="p-shape" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="11"/>`;
-    const sub=n.sub?`<text class="p-subtitle" x="${cx}" y="${n.y+65}">${escapeText(n.sub)}</text>`:'';
-    return `<g class="p-node ${n.kind}" data-flow-node="${n.id}" style="--node-order:${i}">${shape}<text class="p-number" x="${cx}" y="${n.y+20}">${String(i+1).padStart(2,'0')}</text><text class="p-title" x="${cx}" y="${n.y+46}">${label(n)}</text>${sub}</g>`;
+    const lines=[];
+    if(compactFlow.matches){for(const word of n[lang].split(' ')){const last=lines.length-1;if(last>=0&&(lines[last]+' '+word).length<=12)lines[last]+=' '+word;else lines.push(word);}}
+    else lines.push(n[lang]);
+    const title=lines.map((text,i)=>`<tspan x="${cx}" y="${n.y+(lines.length>1?38+i*20:46)}">${escapeText(text)}</tspan>`).join('');
+    const sub=n.sub?`<text class="p-subtitle" x="${cx}" y="${n.y+(lines.length>1?76:65)}">${escapeText(n.sub)}</text>`:'';
+    return `<g class="p-node ${n.kind}" data-flow-node="${n.id}" style="--node-order:${i}">${shape}<text class="p-number" x="${cx}" y="${n.y+20}">${String(i+1).padStart(2,'0')}</text><text class="p-title" x="${cx}">${title}</text>${sub}</g>`;
   }).join('');
   const edgeMarkup=flow.edges.map(e=>`<g class="p-connection${e.alternative?' alternative':''}" data-flow-edge="${e.id}"><path id="p-edge-${e.id}" d="${e.d}" pathLength="1"/>${e[lang]?`<text class="edge-label" x="${e.x}" y="${e.y}">${label(e)}</text>`:''}</g>`).join('');
-  $('#player-graph').setAttribute('viewBox',`0 0 1180 ${flow.height}`);
+  $('#player-graph').setAttribute('viewBox',`0 0 ${flow.width} ${flow.height}`);
   $('#player-graph').setAttribute('aria-label',flow.description[lang]);
-  $('#player-graph').innerHTML=`<defs><marker id="arrow-player" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 8 4 0 8" fill="context-stroke"/></marker><pattern id="flow-grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#48505d"/></pattern></defs><rect class="flow-grid" width="1180" height="${flow.height}" fill="url(#flow-grid)"/><rect class="flow-zone" x="182" y="65" width="756" height="${flow.height-86}" rx="18"/><text class="flow-zone-title" x="202" y="86">SERVICES / ${scenario==='success'?'CHECKOUT':'RECOVERY'}</text>${edgeMarkup}${nodeMarkup}<g id="flow-particles">${Array.from({length:3},(_,i)=>`<circle class="player-particle" data-particle="${i}" r="6" opacity="0"/>`).join('')}</g>`;
+  $('#player-graph').innerHTML=`<defs><marker id="arrow-player" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 8 4 0 8" fill="context-stroke"/></marker><pattern id="flow-grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#48505d"/></pattern></defs><rect class="flow-grid" width="${flow.width}" height="${flow.height}" fill="url(#flow-grid)"/><rect class="flow-zone" x="10" y="52" width="${flow.width-20}" height="${flow.height-70}" rx="18"/><text class="flow-zone-title" x="28" y="76">${escapeText(flow.zone)}</text>${edgeMarkup}${nodeMarkup}<g id="flow-particles">${Array.from({length:3},(_,i)=>`<circle class="player-particle" data-particle="${i}" r="6" opacity="0"/>`).join('')}</g>`;
   $('.player').dataset.scenario=scenario;
   $('#flow-description').textContent=flow.description[lang];
   $('#flow-metadata').textContent=`${flow.nodes.length} ${lang==='es'?'NODOS':'NODES'} / ${flow.edges.length} ${lang==='es'?'CONEXIONES':'CONNECTIONS'}`;
@@ -83,3 +102,4 @@ const dialog=$('#mcp-dialog');$('#show-mcp').addEventListener('click',()=>dialog
 if(!reduced.matches&&'IntersectionObserver'in window){document.body.classList.add('js-motion');const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}}),{threshold:.12});$$('.reveal,.motion-principles p').forEach(el=>observer.observe(el));}
 applyPhase(0);renderFlow();onScroll();requestAnimationFrame(frame);
 reduced.addEventListener('change',onScroll);
+compactFlow.addEventListener('change',renderFlow);

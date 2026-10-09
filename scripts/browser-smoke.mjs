@@ -431,13 +431,13 @@ try{
     await key('Escape');await key('1');await clickText('IA','.tabs');return 'color, texto, IDs nuevos, dos formas de conectar, cancelar y undo';
   });
   await check('concentración amplía el lienzo y conserva documento, paneles y reproducción',async()=>{
-    await clickText('Editar pasos','.timeline');await clickText('Cuenta','.tabs');await sleep(100);
+    await clickText('Editar pasos','.timeline');await clickText('Historial','.tabs');await sleep(100);
     const doc=JSON.stringify(await saved()),normal=await center('.canvas-host');await tap('.focus-toggle');await sleep(100);
     const focused=await center('.canvas-host');
     expect(focused.width>normal.width+400&&focused.height>normal.height+120,'no recuperó espacio para el lienzo');
     expect(await js(`getComputedStyle(document.querySelector('.tools')).display==='none'&&getComputedStyle(document.querySelector('.side')).display==='none'`),'quedaron paneles visibles');
     await shot('29-modo-concentracion');await clickText('Reproducir','.timeline');await sleep(180);await clickText('Pausar','.timeline');await key('Escape');await sleep(100);
-    expect(await js(`document.querySelector('.tabs [aria-selected="true"]').textContent`)==='Cuenta'&&await js(`Boolean(document.querySelector('.motion-editor'))`),'no recuperó panel y edición previos');
+    expect(await js(`document.querySelector('.tabs [aria-selected="true"]').textContent`)==='Historial'&&await js(`Boolean(document.querySelector('.motion-editor'))`),'no recuperó panel y edición previos');
     expect(JSON.stringify(await saved())===doc,'el modo concentración modificó el documento');
     await tap('[aria-controls="side-panel"]');await key('f',SHIFT);await key('Escape');
     expect(!await js(`Boolean(document.querySelector('.side'))`),'se abrió un panel que antes estaba cerrado');
@@ -489,21 +489,14 @@ try{
     expect(after.size.width>before.size.width&&after.size.height>before.size.height,JSON.stringify(after.size));
     return `${before.size.width}×${before.size.height} → ${after.size.width}×${after.size.height}`;
   });
-  await check('una propuesta se valida, muestra el diff y se aplica sólo al aceptar',async()=>{
-    await key('Escape');
-    const api=await center('[data-id="api"]');await click(api);
-    expect(await clickText('Cuenta','.tabs'),'no está la pestaña Cuenta');await sleep(80);
-    const revision=(await saved()).revision;
-    await js(`document.querySelector('details.manual').open=true`);
-    expect(await clickText('Ejemplo: agregar Redis'),'falta el ejemplo');await sleep(60);
-    expect(await clickText('Validar y ver cambios'),'falta validar');await sleep(80);
-    const diff=await js(`document.querySelector('.diff')?.textContent`);expect(diff&&diff.includes('redis'),`diff: ${diff}`);
-    expect((await saved()).revision===revision,'el preview modificó el documento');
-    expect(await clickText('Aceptar y aplicar'),'falta aceptar');
-    const doc=await saved(),redis=doc.nodes.find(n=>n.id==='redis');
-    expect(redis&&redis.zoneId==='backend'&&doc.revision===revision+1,'Redis no quedó dentro de Backend');
-    await shot('02-desktop-proposal-applied');
-    return `redis en ${JSON.stringify(redis.position)}`;
+  await check('Cuenta abre desde la cabecera sin herramientas locales y conserva el canvas',async()=>{
+    await key('Escape');const before=JSON.stringify(await saved());
+    expect(!await js(`Boolean(document.querySelector('details.manual,.shared-panel'))`),'siguen ofrecidas herramientas locales');
+    expect(await clickText('Cuenta','header'),'no aparece Cuenta');await sleep(200);
+    expect(await js(`Boolean(document.querySelector('.account-page[open]'))&&document.querySelector('.app').inert`),'Cuenta no aísla el canvas');
+    await key('Escape');expect(!await js(`Boolean(document.querySelector('.account-page'))`),'Escape no cerró Cuenta');
+    expect(JSON.stringify(await saved())===before,'Cuenta modificó el diagrama');
+    return 'entrada en cabecera, modal accesible, canvas conservado; propuestas por chat se comprueban más adelante';
   });
   await check('la reproducción avanza y deshacer no reinicia el playhead',async()=>{
     if(!await js(`Boolean(document.querySelector('.motion-editor'))`))await clickText('Editar pasos','.timeline');
@@ -1030,12 +1023,12 @@ try{
       return [...controls,...images];
     })()`);
     const found=new Set();
-    for(const tab of ['IA','Propiedades','Biblioteca','Cuenta']){
+    for(const tab of ['IA','Propiedades','Biblioteca','Historial']){
       await js(`[...document.querySelectorAll('.tabs button')].find(b=>b.textContent.trim()===${JSON.stringify(tab)})?.click()`);await sleep(250);
       for(const item of await unnamed())found.add(`${tab}: ${item}`);
     }
     expect(!found.size,`sin nombre accesible: ${[...found].slice(0,12).join(' · ')}`);
-    return 'IA, Propiedades, Biblioteca y Cuenta revisados';
+    return 'IA, Propiedades, Biblioteca e Historial revisados';
   });
   for(const [width,height,label] of [[1024,768,'tablet'],[390,844,'mobile']]){
     await check(`layout ${label} ${width}×${height} sin desborde horizontal`,async()=>{

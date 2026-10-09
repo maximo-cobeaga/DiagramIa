@@ -7,11 +7,12 @@ import {fit,focusOn,viewStore} from '../store/viewStore';
 import {saveFile} from '../ui';
 import {FEEDBACK_REASONS} from '@diagramia/core';
 import {track,trackAiApplied} from '../telemetry';
-import {ReauthButton} from '../shell/SharedPanel';
+import {ReauthButton} from '../shell/AccountPage';
 import {accountStore,signIn} from '../store/accountStore';
 import {Markdown} from './Markdown';
 import {playTour,saveTour,type TourStep} from './tour';
 import {conversationWindow} from './conversation';
+import {UpgradeAction} from '../shell/PlanBox';
 
 // El gateway se alcanza por el proxy del servidor de desarrollo: el navegador nunca ve claves de proveedores.
 const API='/api';
@@ -76,7 +77,7 @@ export function Chat(){
       const response=await fetch(API+'/v1/providers',{headers:HEADERS});
       if(response.status===401){setAuthRequired(true);setOffline(false);setProviders(null);return;}
       if(!response.ok)throw new Error(String(response.status));
-      const body=await response.json(),list=body.providers as ProviderInfo[];
+      const body=await response.json(),list=(body.providers as ProviderInfo[]).filter(p=>p.kind!=='local');
       setProviders(list);setOffline(false);setAuthRequired(false);
       setProviderId(current=>list.some(p=>p.id===current&&p.configured)?current:list.find(p=>p.configured&&p.kind!=='mock')?.id??list.find(p=>p.configured)?.id??'');
     }catch{setProviders(null);setOffline(true);}
@@ -250,7 +251,7 @@ export function Chat(){
       {turns.map(turn=><div key={turn.id} className="exchange">
         <div className={'bubble user'+(turn.shown?' derived':'')}>{turn.shown??turn.prompt}</div>
         {turn.status==='sending'&&<div className="bubble assistant typing" role="status"><span/><span/><span/><em>Pensando…</em></div>}
-        {turn.status==='error'&&<div className="bubble assistant error" role="alert">✕ {turn.error!.message} {turn.error!.retryable&&turn===last&&<button className="quiet" onClick={()=>void send(turn)}>Reintentar</button>}{turn.error!.code==='EMAIL_NOT_VERIFIED'&&<ReauthButton/>}</div>}
+        {turn.status==='error'&&<div className="bubble assistant error" role="alert">✕ {turn.error!.message} {turn.error!.retryable&&turn===last&&<button className="quiet" onClick={()=>void send(turn)}>Reintentar</button>}{turn.error!.code==='EMAIL_NOT_VERIFIED'&&<ReauthButton/>}{turn.error!.code==='CREDIT_LIMIT'&&<UpgradeAction>Pasar a Pro · 400 créditos al mes</UpgradeAction>}</div>}
         {turn.status==='done'&&<div className={'bubble assistant kind-'+turn.result!.kind}>
           {answer(turn)}{footer(turn)}
           <details className="usage"><summary>Detalles</summary><span className="bubble-meta">{usageLine(turn.result!)}</span></details>

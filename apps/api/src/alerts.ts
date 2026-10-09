@@ -24,3 +24,18 @@ export async function sendAlert(url:string,alert:SpendAlert,timeoutMs=5000):Prom
   try{const response=await fetch(url,{...request,signal:AbortSignal.timeout(timeoutMs)});return response.ok;}
   catch{return false;}
 }
+
+/** Pedido HTTP de un aviso de texto libre (por ejemplo, una consulta de empresa) según el destino. Mismos destinos que las alertas de gasto. */
+export function noticeRequest(url:string,title:string,text:string):RequestInit|null{
+  let host='';
+  try{host=new URL(url).hostname;}catch{return null;}
+  if(host.includes('ntfy'))return {method:'POST',headers:{'content-type':'text/plain; charset=utf-8',title,tags:'briefcase'},body:text};
+  if(host.endsWith('discord.com'))return {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({content:`**${title}**\n${text}`})};
+  return {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:`${title}: ${text}`})};
+}
+/** Envía el aviso. Nunca lanza: si el webhook está caído la consulta igual queda guardada en la base. */
+export async function sendNotice(url:string,title:string,text:string,timeoutMs=5000):Promise<boolean>{
+  const request=noticeRequest(url,title,text);if(!request)return false;
+  try{const response=await fetch(url,{...request,signal:AbortSignal.timeout(timeoutMs)});return response.ok;}
+  catch{return false;}
+}

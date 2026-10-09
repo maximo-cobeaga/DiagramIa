@@ -117,6 +117,23 @@ ok(`Tope de gasto de IA: USD ${daily} por día y USD ${monthly} por mes (estimad
 if(get('DIAGRAMIA_ALERT_WEBHOOK_URL'))ok('Las alertas de gasto se envían a un webhook');else (production?warn:ok)(production?'Las alertas de gasto sólo quedan en el log.':'Alertas de gasto en el log (opcional: DIAGRAMIA_ALERT_WEBHOOK_URL)',production?'Seguí docs/GUIA_PASO_A_PASO.md, paso 5, para recibirlas en el celular.':undefined);
 if(get('DIAGRAMIA_ADMIN_EMAILS'))ok(`Panel del fundador para: ${get('DIAGRAMIA_ADMIN_EMAILS')}`);else warn('Nadie puede ver el panel del fundador.','Poné tu email en DIAGRAMIA_ADMIN_EMAILS (el mismo con el que entrás).');
 
+section('Cobro de la suscripción Pro (Paddle)');
+{
+  const names=['DIAGRAMIA_PADDLE_API_KEY','DIAGRAMIA_PADDLE_WEBHOOK_SECRET','DIAGRAMIA_PADDLE_PRICE_PRO'],filledPaddle=names.filter(name=>get(name));
+  if(!filledPaddle.length)warn('El cobro está apagado: nadie puede pasar a Pro.','Cuando tengas la cuenta de Paddle, completá DIAGRAMIA_PADDLE_* (docs/GUIA_PASO_A_PASO.md, paso 8).');
+  else if(filledPaddle.length!==names.length)bad(`Cobro incompleto: faltan ${names.filter(name=>!get(name)).join(', ')}.`,'Las tres variables van juntas; el gateway no arranca con alguna sola.');
+  else{
+    const live=get('DIAGRAMIA_PADDLE_ENV')==='live',key=get('DIAGRAMIA_PADDLE_API_KEY');
+    ok(`Paddle en modo ${live?'REAL (live)':'pruebas (sandbox)'}: clave ${secret('DIAGRAMIA_PADDLE_API_KEY')}`);
+    if(live&&key.startsWith('pdl_sdbx_'))bad('Modo live con una clave de sandbox.','Una clave de sandbox sólo sirve contra el sandbox: creá una clave live en Paddle.');
+    if(!live&&!key.startsWith('pdl_sdbx_'))bad('Modo sandbox con una clave que no es de sandbox.','Poné DIAGRAMIA_PADDLE_ENV=live o usá una clave pdl_sdbx_.');
+    if(production&&!live)warn('Producción cobrando en modo de pruebas: nadie paga de verdad.','Está bien hasta que Paddle apruebe la cuenta real; después, DIAGRAMIA_PADDLE_ENV=live.');
+    if(!/^pri_[a-z0-9]{20,}$/.test(get('DIAGRAMIA_PADDLE_PRICE_PRO')))bad('DIAGRAMIA_PADDLE_PRICE_PRO no parece un ID de precio (pri_…).','Copialo desde Catalog → Prices en el panel de Paddle.');
+    if(get('DIAGRAMIA_PADDLE_WEBHOOK_SECRET').length<16)bad('DIAGRAMIA_PADDLE_WEBHOOK_SECRET es demasiado corto.','Copialo entero desde Developer Tools → Notifications.');
+    if(!get('DIAGRAMIA_DATABASE_URL')&&!production)bad('El cobro necesita base de datos y login.');
+  }
+}
+
 if(production){
   section('6. Producción');
   for(const name of ['DIAGRAMIA_APP_URL','DIAGRAMIA_APP_HOST','DIAGRAMIA_SITE_HOST','DIAGRAMIA_APP_ORIGIN','DIAGRAMIA_ALLOWED_ORIGINS'])get(name)?ok(`${name}=${get(name)}`):bad(`Falta ${name}.`,'Mirá infra/env.production.example.');

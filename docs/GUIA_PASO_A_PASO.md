@@ -231,7 +231,11 @@ El detalle técnico, cómo actualizar y cómo volver atrás está en `infra/DEPL
 
 ## Paso 8. Suscripciones (plan Pro)
 
-**Estado al 05/10/2026:** el cobro todavía no existe en el código (P4.6 está pendiente). Hoy sólo hay plan Free con sus cuotas fijas. Esta lista es lo que necesito de vos para construirlo y encenderlo. El orden importa: Paddle no aprueba una cuenta sin un sitio publicado, así que **el paso 6 va primero**.
+**Estado al 08/10/2026:** el cobro está construido (ADR 089) y apagado. Plan Pro de USD 5 por mes: 400 créditos de IA, 100 diagramas, 1 GB y 200 elementos propios. Reembolso en las primeras 48 horas. Faltan las claves de Paddle en el servidor y probarlo de punta a punta en el sandbox. El orden importa: Paddle no aprueba una cuenta real sin un sitio publicado con precios, términos y reembolsos, así que **el paso 6 va primero**.
+
+**Para encender el cobro en el sandbox** (después de desplegar): creá el destino de webhook y el default payment link como dice `infra/DEPLOY.md`, «Cobro: webhook de Paddle», cargá las cuatro variables `DIAGRAMIA_PADDLE_*` en `.env.production` y corré `infra/deploy.sh`. El producto y el precio ya existen en el sandbox.
+
+Lo que sigue más abajo es la lista original de decisiones y cuentas; las decisiones 8.1 ya están tomadas salvo lo indicado en el informe del 08/10.
 
 **8.1. Decisiones que son tuyas** (sin esto no puedo programar el plan):
 - **Qué incluye Pro:** cuántos créditos de IA por mes, cuántos diagramas en la nube y cuánto espacio. Free hoy es 20 créditos por mes (6 por día), 3 diagramas y 30 MB.

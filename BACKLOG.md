@@ -2,11 +2,28 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Landing, Cuenta y Empresas (08/10/2026; ADR 090–091)
+
+- **Publicación autorizada:** el usuario pidió push a main tras aprobar el resultado local. CI y posible deploy se verifican después; archivos personales y templates de Auth0 permanecen fuera del commit.
+- **Alcance pedido en Claude, implementado:** landing para seis públicos; planes visibles; recorridos de movimiento de cuatro piezas y layout compacto móvil; Cuenta con resumen/diagramas/plan/configuración, foco y errores de nube; herramientas/modelos locales fuera de la UI SaaS.
+- **Contacto comercial funcional:** formulario guarda en PostgreSQL (migración 008), confirma sólo tras persistir y permite reintentar sin perder datos. Bandeja privada del fundador con autenticación de administrador verificado, correo mediante cliente y estado respondida persistido; consultas incluidas en backup/restore y separadas de telemetría. Aviso opcional sin datos comerciales.
+- **Evidencia:** check 157/157; editor Chromium 59/59; landing 10/10; repository/dashboard/shared con PostgreSQL real aprobados. Capturas y revisión manual 41–43 en `VALIDATION.md`. Sin schema, dependencias ni IA paga en QA.
+- **Microfases:** extensión de P8.1 implementada, fase global parcial por usuarios/dispositivos/accesibilidad asistida; extensión de P7.3 implementada, faltan revisión humana y datos reales. P4.6 sigue parcial: checkout real/sandbox completo, BYOK, Paddle real y revisión legal pendientes.
+- **Próximo paso:** revisar landing/formulario/Cuenta en localhost:4173/5173; publicación requiere autorización. Tras publicar, verificar migración 008 y acceso comercial en producción, luego pago sandbox. Sin push ni despliegue en esta continuación. Base local de preview aislada en 5440; no usar la base MindDesk de 5433.
+
+## Suscripción Pro y despliegue automático (08/10/2026)
+
+- **P4.6 pasa a parcial (ADR 089):** plan Pro de USD 5 por mes, planes y cuotas en una sola fuente, migración 007, webhook de Paddle firmado/deduplicado/fuera de orden, checkout creado en el servidor, bloque de plan en la cuenta del editor (pasar a Pro, cambiar medio de pago, cancelar), bajada a Free sin borrar (sólo lectura del excedente) y eliminación de cuenta bloqueada con Pro. Check 156/156 y `smoke:repository` con PostgreSQL real.
+- **Páginas públicas:** `precios.html`, `terminos.html` y `reembolsos.html` en la landing, enlazadas en el pie; aviso de privacidad con Paddle y los datos de contacto. Borradores: hace falta revisión legal.
+- **CI/CD:** job `deploy` en `ci.yml`, apagado hasta configurar `DEPLOY_ENABLED` y los secretos (`infra/DEPLOY.md`, «Despliegue automático»).
+- **Pendiente:** desplegar, cargar las variables `DIAGRAMIA_PADDLE_*`, crear el destino de webhook y el default payment link en el sandbox, probar un pago completo, pedir la cuenta real de Paddle, revisión legal (incluido el plazo de 48 h frente a la recomendación de 30 días de Paddle y los 14 días de la UE/Reino Unido), BYOK.
+
 ## Preparación del primer despliegue y suscripciones (05/10/2026)
 
 - **P8.4, ensayo repetido:** pila de producción con el código actual, sana y con navegador 60/61 (la restante pide sesión). Repetido el 06/10 con `3a10e6d`, mismo resultado; 4 de las 60 son comprobaciones de IA omitidas por falta de login. Sin desplegar. Ver `infra/DEPLOY.md`.
 - **P3.5, extensión implementada (ADR 087):** tarifa declarada para el proveedor compatible; el tope en USD también corta a DeepSeek. Check 152/152.
 - **P4.6 sigue pendiente:** no hay cobro. Requiere del usuario las decisiones y claves del paso 8 de `docs/GUIA_PASO_A_PASO.md`, y el sitio publicado antes de pedir la cuenta real de Paddle. Construirlo antes del lanzamiento cambia el orden de ADR 048: registrar la decisión cuando el usuario la confirme.
+- **P8.4, desplegado por el usuario el 06/10** en `diagramia.app` y `app.diagramia.app` (`4e18fc0`), detrás del nginx en Docker de ReservApp. `infra/deploy.sh` nuevo, probado en local, sin commit. Pendiente: decisión sobre DeepSeek frente a ADR 045/061, respaldo por cron, Auth0 (dominio propio, Google, email) y aviso de privacidad. Ver `infra/DEPLOY.md`.
 - **Ejemplos retirados (06/10, ADR 088):** San Pancho, NextUp × Microsoft Graph, `everyday-*` y `evi-*.json` fuera del producto y del repositorio. Quedan seis ejemplos genéricos. Check 152/152, navegador 59/59. No cambia el estado de ninguna microfase.
 - **Pendiente del usuario para desplegar:** dominio, acceso y autorización del VPS, proveedor de IA de lanzamiento, Auth0 de producción, aviso de privacidad y licencia. El push se hizo el 06/10.
 - **Pendiente del agente, sin bloqueos:** borradores públicos de precios, términos y reembolsos; mensaje claro de la vista previa de enlaces sin sesión; tira de pestañas en móvil.
@@ -107,7 +124,7 @@ Estados: **verificada** = criterio de salida comprobado; **implementada** = alca
 | P4.3 | Assets en almacenamiento (post-lanzamiento) | pendiente |
 | P4.4 | Free, cuotas y antiabuso | parcial |
 | P4.5 | Operación local y CI | verificada |
-| P4.6 | Billing y planes pagos (post-lanzamiento) | pendiente |
+| P4.6 | Billing y planes pagos | parcial |
 | P4.7 | Biblioteca de la comunidad (post-lanzamiento) | pendiente |
 | P5.1 | Unificar canal de cambios | implementada |
 | P5.2 | Transporte remoto y permisos | implementada |

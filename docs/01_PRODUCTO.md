@@ -4,7 +4,7 @@
 
 Diagramia es un canvas AI-native para crear, entender, transformar, revisar y animar diagramas. El humano edita visualmente; la IA opera sobre el mismo documento estructurado. «Dale movimiento a tus ideas» / «Ideas in motion».
 
-Mercado inicial: desarrolladores, arquitectos de software/cloud y docentes técnicos. El primer recorrido debe resolver arquitectura y explicación de sistemas. La visión incluye diagramación libre, procesos y presentaciones; no intentar cubrir toda la superficie de Draw.io/Miro antes de validar el núcleo.
+Mercado inicial: desarrolladores, arquitectos de software/cloud y docentes técnicos. Por pedido del usuario (08/10, ADR 090), la presentación también muestra usos en marketing, personas, operaciones, educación y ventas: el producto no requiere conocimientos de ingeniería. Los recorridos técnicos siguen disponibles. La visión incluye diagramación libre, procesos y presentaciones; no intentar cubrir toda la superficie de Draw.io/Miro antes de validar el núcleo.
 
 ## Diferenciación que debemos demostrar
 
@@ -46,7 +46,7 @@ No prometemos round-trip perfecto en formatos cuyo modelo no representa nuestras
 
 ## IA gratuita
 
-La IA no es gratuita de producir. Free significa un presupuesto financiado y limitado: modelo económico, tamaño de contexto limitado, límites de uso, timeout y corte de gasto. Pro puede ampliar presupuesto y funciones. BYOK y modelos locales son alternativas, no una garantía de compatibilidad universal. Implementar cada adapter con pruebas reales y matriz de capacidades; facturación/precios se definen con datos de uso, no con cifras inventadas.
+La IA no es gratuita de producir. Free significa un presupuesto financiado y limitado: modelo económico, tamaño de contexto limitado, límites de uso, timeout y corte de gasto. Pro puede ampliar presupuesto y funciones. BYOK sigue pendiente; los modelos locales quedan como infraestructura de desarrollo y no se ofrecen en la interfaz SaaS (ADR 090). Implementar cada adapter con pruebas reales y matriz de capacidades; facturación/precios se definen con datos de uso, no con cifras inventadas.
 
 ## Futuro, separado de V1
 

@@ -29,7 +29,7 @@ export function useShortcuts(){
     const onKey=(e:KeyboardEvent)=>{
       // En presentación manda su propio manejador; al escribir en un campo, el campo. Con una propuesta en vista previa el canvas es de sólo lectura.
       if(viewStore.get().presenting||viewStore.get().staging||typing(e.target))return;
-      if(viewStore.get().tutorial||viewStore.get().searchOpen)return;
+      if(viewStore.get().tutorial||viewStore.get().searchOpen||viewStore.get().accountOpen)return;
       const key=e.key.length===1?e.key.toLowerCase():e.key,mod=e.ctrlKey||e.metaKey,doc=documentStore.get().doc;
       const run=(action:()=>void)=>{e.preventDefault();action();};
       if(mod){

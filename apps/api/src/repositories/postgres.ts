@@ -1,16 +1,17 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {Pool,type PoolClient} from 'pg';
+import {isReadOnlyDocument,planForProject} from './billing.js';
 import {BatchSchema,Id,DiagramError,applyBatch,canonical,emptyDocument,openDocument,validateDocument,type ActionBatch,type DiagramDocument} from '@diagramia/core';
 
-const migrationUrls=[new URL('../../migrations/001_documents.sql',import.meta.url),new URL('../../migrations/002_accounts.sql',import.meta.url),new URL('../../migrations/003_telemetry.sql',import.meta.url),new URL('../../migrations/004_email_verified.sql',import.meta.url),new URL('../../migrations/005_telemetry_daily.sql',import.meta.url),new URL('../../migrations/006_admin_ai_receipts.sql',import.meta.url)];
+const migrationUrls=[new URL('../../migrations/001_documents.sql',import.meta.url),new URL('../../migrations/002_accounts.sql',import.meta.url),new URL('../../migrations/003_telemetry.sql',import.meta.url),new URL('../../migrations/004_email_verified.sql',import.meta.url),new URL('../../migrations/005_telemetry_daily.sql',import.meta.url),new URL('../../migrations/006_admin_ai_receipts.sql',import.meta.url),new URL('../../migrations/007_billing.sql',import.meta.url),new URL('../../migrations/008_contact_requests.sql',import.meta.url)];
 const checksum=(value:string)=>createHash('sha256').update(value).digest('hex');
 const fingerprint=(value:unknown)=>checksum(canonical(value));
 /** Checksum de una migración independiente del fin de línea: el mismo archivo en Windows (CRLF) y Linux (LF) es la misma migración. */
 export const migrationChecksum=(sql:string)=>checksum(sql.replace(/\r\n/g,'\n'));
 
 export class RepositoryError extends Error{
-  constructor(public readonly code:'NOT_FOUND'|'ALREADY_EXISTS'|'REVISION_CONFLICT'|'IDEMPOTENCY_CONFLICT'|'CORRUPT_DOCUMENT',message:string){super(message);this.name='RepositoryError';}
+  constructor(public readonly code:'NOT_FOUND'|'ALREADY_EXISTS'|'REVISION_CONFLICT'|'IDEMPOTENCY_CONFLICT'|'CORRUPT_DOCUMENT'|'PLAN_READ_ONLY',message:string){super(message);this.name='RepositoryError';}
 }
 
 export async function migrateDocuments(pool:Pool):Promise<void>{
@@ -85,11 +86,12 @@ export class PostgresDocumentRepository{
         const project=await client.query('SELECT id FROM projects WHERE id=$1 FOR UPDATE',[projectId]);
         if(!project.rows.length)throw new RepositoryError('NOT_FOUND','No existe el proyecto.');
         const count=await client.query<{total:string}>('SELECT count(*)::text AS total FROM cloud_documents WHERE project_id=$1',[projectId]);
-        if(Number(count.rows[0]!.total)>=3)throw new RepositoryError('REVISION_CONFLICT','El plan gratuito admite hasta 3 diagramas en la nube.');
+        const {plan,limits}=await planForProject(client,projectId);
+        if(Number(count.rows[0]!.total)>=limits.maxDocuments)throw new RepositoryError('REVISION_CONFLICT',plan==='pro'?`El plan Pro admite hasta ${limits.maxDocuments} diagramas en la nube.`:`El plan gratuito admite hasta ${limits.maxDocuments} diagramas en la nube. Pasá a Pro para guardar más.`);
         const size=Buffer.byteLength(JSON.stringify(doc));
-        if(size>10_000_000)throw new RepositoryError('REVISION_CONFLICT','El documento supera 10 MB.');
+        if(size>limits.maxDocumentBytes)throw new RepositoryError('REVISION_CONFLICT','El documento supera 10 MB.');
         const total=await client.query<{size:string}>('SELECT coalesce(sum(octet_length(v.body::text)),0)::text AS size FROM document_versions v JOIN cloud_documents c ON c.document_id=v.document_id WHERE c.project_id=$1',[projectId]);
-        if(Number(total.rows[0]!.size)+size>30_000_000)throw new RepositoryError('REVISION_CONFLICT','La cuenta alcanzó el límite de 30 MB.');
+        if(Number(total.rows[0]!.size)+size>limits.maxBytes)throw new RepositoryError('REVISION_CONFLICT',`La cuenta alcanzó el límite de ${limits.maxBytes/1_000_000>=1000?'1 GB':limits.maxBytes/1_000_000+' MB'}.`);
       }
       if(projectId){
         const duplicate=await client.query('SELECT 1 FROM cloud_documents WHERE project_id=$1 AND public_id=$2',[projectId,doc.id]);
@@ -174,11 +176,14 @@ export class PostgresDocumentRepository{
   }
 
   private async checkCloudQuota(client:PoolClient,id:string,projectId:string,next:DiagramDocument){
+    const {limits}=await planForProject(client,projectId);
+    // Al bajar a Free, los diagramas que exceden el plan se pueden leer y exportar, no editar (ADR 089).
+    if(await isReadOnlyDocument(client,projectId,id,limits))throw new RepositoryError('PLAN_READ_ONLY','Este diagrama excede tu plan actual y quedó en sólo lectura. Pasá a Pro o borrá otros diagramas para editarlo.');
     const nextBytes=Buffer.byteLength(JSON.stringify(next));
     const perDoc=await client.query<{size:string}>('SELECT coalesce(sum(octet_length(v.body::text)),0)::text AS size FROM document_versions v WHERE v.document_id=$1',[id]);
     const total=await client.query<{size:string}>('SELECT coalesce(sum(octet_length(v.body::text)),0)::text AS size FROM document_versions v JOIN cloud_documents c ON c.document_id=v.document_id WHERE c.project_id=$1',[projectId]);
-    if(Number(perDoc.rows[0]!.size)+nextBytes>10_000_000)throw new RepositoryError('REVISION_CONFLICT','El diagrama alcanzó el límite de 10 MB incluyendo versiones. Exportá o borrá versiones antes de seguir.');
-    if(Number(total.rows[0]!.size)+nextBytes>30_000_000)throw new RepositoryError('REVISION_CONFLICT','La cuenta alcanzó el límite de 30 MB de versiones.');
+    if(Number(perDoc.rows[0]!.size)+nextBytes>limits.maxDocumentBytes)throw new RepositoryError('REVISION_CONFLICT','El diagrama alcanzó el límite de 10 MB incluyendo versiones. Exportá o borrá versiones antes de seguir.');
+    if(Number(total.rows[0]!.size)+nextBytes>limits.maxBytes)throw new RepositoryError('REVISION_CONFLICT',`La cuenta alcanzó el límite de ${limits.maxBytes/1_000_000>=1000?'1 GB':limits.maxBytes/1_000_000+' MB'} de versiones.`);
   }
 
   async restore(id:string,sourceRevision:number,baseRevision:number,operationId:string,actorId:string|null=null,projectId:string|null=null):Promise<{document:DiagramDocument;appliedRevision:number;replayed:boolean}>{

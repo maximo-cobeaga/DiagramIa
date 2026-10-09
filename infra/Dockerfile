@@ -54,5 +54,5 @@ RUN rm -f /etc/nginx/conf.d/default.conf
 COPY infra/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/apps/editor/dist /srv/app
 COPY apps/landing /srv/landing
-RUN sed -i "s#<meta name=\"diagramia-app\" content=\"[^\"]*\">#<meta name=\"diagramia-app\" content=\"${APP_URL}\">#; s#<meta name=\"diagramia-events\" content=\"[^\"]*\">#<meta name=\"diagramia-events\" content=\"${APP_URL}api/v1/events\">#" /srv/landing/index.html \
+RUN sed -i "s#<meta name=\"diagramia-app\" content=\"[^\"]*\">#<meta name=\"diagramia-app\" content=\"${APP_URL}\">#; s#<meta name=\"diagramia-events\" content=\"[^\"]*\">#<meta name=\"diagramia-events\" content=\"${APP_URL}api/v1/events\">#" /srv/landing/index.html /srv/landing/empresas.html \
  && grep -q "content=\"${APP_URL}api/v1/events\"" /srv/landing/index.html

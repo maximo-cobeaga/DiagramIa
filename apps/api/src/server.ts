@@ -8,17 +8,24 @@ import {resolveAutoMode} from './intent.js';
 import {UsageError,UsageLedger} from './usage.js';
 import {PostgresDocumentRepository,RepositoryError} from './repositories/postgres.js';
 import {AccountRepository,CreditError} from './repositories/accounts.js';
+import {BillingRepository} from './repositories/billing.js';
+import {ContactRepository,ContactSchema} from './repositories/contact.js';
+import {BillingError,createCheckout,translate,verifySignature,type PaddleConfig} from './billing/paddle.js';
 import {OidcAuthenticator} from './auth/oidc.js';
 import {RemoteMcpService} from './mcp.js';
 import {RateLimiter,TelemetryRepository} from './repositories/telemetry.js';
 import {FounderDashboard} from './repositories/dashboard.js';
 import {LinkPreviewCache,LinkPreviewError,checkUrl,fetchLinkPreview,type LinkPreview} from './linkPreview.js';
 
-export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistConfig;productPrompt:string;allowedOrigins:string[];token:string|null;documents?:PostgresDocumentRepository;documentToken?:string;localWorkspace?:boolean;accounts?:AccountRepository;oidc?:OidcAuthenticator;remoteMcp?:RemoteMcpService;
+/** Cobro de la suscripción Pro (ADR 089). Sin esta configuración, la cuenta sigue funcionando con el plan Free y el editor no ofrece el botón. */
+export type BillingOptions={repository:BillingRepository;paddle:PaddleConfig};
+export type AppOptions={billing?:BillingOptions;providers:Provider[];ledger:UsageLedger;config:AssistConfig;productPrompt:string;allowedOrigins:string[];token:string|null;documents?:PostgresDocumentRepository;documentToken?:string;localWorkspace?:boolean;accounts?:AccountRepository;oidc?:OidcAuthenticator;remoteMcp?:RemoteMcpService;
   /** IDs de proveedor que puede usar una cuenta (plan Free). Sin lista, todos los configurados. */
   accountProviders?:string[];
   /** Telemetría propia (P7.1). Sin repositorio, /v1/events responde 503 y el editor deja de enviar. */
   telemetry?:TelemetryRepository;eventsPerMinute?:number;
+  /** Consultas del plan Empresas (formulario de la landing). Sin repositorio, /v1/contact responde 503. `notify` avisa al equipo y nunca debe romper el pedido. */
+  contact?:{repository:ContactRepository;notify?:(text:string)=>void;perHour?:number};
   /** Detrás de un reverse proxy propio: la IP del cliente es la última de X-Forwarded-For. */
   trustProxy?:boolean;
   /** Antiabuso de la IA incluida (P4.4). Por defecto exige email verificado y limita 20 pedidos/min por IP y 6 por cuenta. */
@@ -30,6 +37,7 @@ export type AppOptions={providers:Provider[];ledger:UsageLedger;config:AssistCon
 const MAX_BODY=4_000_000;
 const MAX_DOCUMENT_BODY=10_500_000;
 const MAX_EVENTS_BODY=64_000;
+const MAX_WEBHOOK_BODY=256_000;
 const USAGE_STATUS={RATE_LIMITED:429,BUDGET_EXCEEDED:402,IN_PROGRESS:409,IDEMPOTENCY_CONFLICT:409} as const;
 
 async function readJson(req:IncomingMessage,maxBytes=MAX_BODY):Promise<unknown>{
@@ -43,6 +51,11 @@ async function readJson(req:IncomingMessage,maxBytes=MAX_BODY):Promise<unknown>{
 }
 const sameToken=(given:string,expected:string)=>given.length===expected.length&&timingSafeEqual(Buffer.from(given),Buffer.from(expected));
 const loopback=(address:string|undefined)=>address==='127.0.0.1'||address==='::1'||address==='::ffff:127.0.0.1';
+async function readRaw(req:IncomingMessage,maxBytes:number):Promise<Buffer>{
+  const chunks:Buffer[]=[];let size=0;
+  for await(const chunk of req){size+=(chunk as Buffer).length;if(size>maxBytes)throw new AssistError('PAYLOAD_TOO_LARGE','El aviso es demasiado grande.',413);chunks.push(chunk as Buffer);}
+  return Buffer.concat(chunks);
+}
 function cookie(req:IncomingMessage,name:string){
   const value=String(req.headers.cookie??'').split(';').map(part=>part.trim()).find(part=>part.startsWith(name+'='));
   if(!value)return undefined;
@@ -62,7 +75,7 @@ const flowCookie=(token:string,secure:boolean,maxAge:number)=>`diagramia_oidc_fl
  * Con OIDC configurado, las rutas de cuenta aíslan documentos por proyecto.
  */
 export function createApp(options:AppOptions):Server{
-  const system=systemPrompt(options.productPrompt),createSystem=systemPrompt(options.productPrompt,true),eventLimiter=new RateLimiter(options.eventsPerMinute??60,60_000);
+  const system=systemPrompt(options.productPrompt),createSystem=systemPrompt(options.productPrompt,true),eventLimiter=new RateLimiter(options.eventsPerMinute??60,60_000),contactLimiter=new RateLimiter(options.contact?.perHour??5,3_600_000);
   const aiPerIp=new RateLimiter(options.aiPerIpPerMinute??20,60_000),aiPerUser=new RateLimiter(options.aiPerUserPerMinute??6,60_000);
   const previewPerIp=new RateLimiter(20,60_000),previewPerUser=new RateLimiter(10,60_000),previews=new LinkPreviewCache();
   // La telemetría nunca rompe el producto: un fallo al registrar queda en el log sin datos del pedido.
@@ -115,6 +128,16 @@ export function createApp(options:AppOptions):Server{
         const secure=options.oidc.redirectUri.protocol==='https:';
         res.writeHead(302,{location:options.oidc.homeUrl.href,'set-cookie':[flowCookie('',secure,0),sessionCookie(token,secure,30*86_400)],'cache-control':'no-store'});return void res.end();
       }
+      if(path==='/v1/billing/webhook'&&req.method==='POST'){
+        // Antes del header propio: Paddle no puede mandarlo. Sin sesión ni origen, lo autentica la firma del proveedor sobre el cuerpo exacto.
+        if(!options.billing)return fail(503,'BILLING_UNAVAILABLE','El cobro no está configurado.');
+        const raw=await readRaw(req,MAX_WEBHOOK_BODY);
+        if(!verifySignature(raw,String(req.headers['paddle-signature']??''),options.billing.paddle.webhookSecret))return fail(400,'BAD_SIGNATURE','Firma inválida.');
+        const change=translate(raw,options.billing.paddle.priceId);
+        if(!change)return send(200,{received:true,ignored:true});
+        const result=await options.billing.repository.apply(change,(JSON.parse(raw.toString('utf8')) as {event_type:string}).event_type);
+        return send(200,{received:true,result});
+      }
       // El header propio obliga a un preflight CORS: una página ajena no puede disparar pedidos «simples» contra el gateway local.
       if(req.headers['x-diagramia-client']!=='editor')return fail(400,'MISSING_CLIENT_HEADER','Falta el header x-diagramia-client.');
       if(path==='/v1/events'&&req.method==='POST'){
@@ -124,21 +147,43 @@ export function createApp(options:AppOptions):Server{
         const session=options.accounts?await options.accounts.readSession(cookie(req,'diagramia_session')):null;
         return send(202,await options.telemetry.ingest(batch,session?.userId??null));
       }
+      if(path==='/v1/contact'&&req.method==='POST'){
+        if(!options.contact)return fail(503,'CONTACT_UNAVAILABLE','El formulario no está disponible en este momento. Escribinos por email.');
+        const ip=clientIp(req,options.trustProxy);
+        if(!contactLimiter.allow(ip))return fail(429,'RATE_LIMITED','Ya recibimos varias consultas desde tu conexión. Probá de nuevo más tarde o escribinos por email.');
+        const input=ContactSchema.parse(await readJson(req,MAX_EVENTS_BODY));
+        // Trampa para bots: se responde igual que a una persona, pero no se guarda ni se avisa.
+        if(input.website)return send(202,{received:true});
+        const {id}=await options.contact.repository.create(input);
+        try{options.contact.notify?.(`Nueva consulta de empresa (${id}). Revisá la bandeja en el panel del fundador.`);}catch{/* el aviso no debe romper la consulta */}
+        return send(202,{received:true});
+      }
       if(path==='/v1/auth/status'&&req.method==='GET')return send(200,{configured:!!options.oidc&&!!options.accounts});
       if(path==='/v1/auth/me'&&req.method==='GET'){
         const session=await options.accounts?.readSession(cookie(req,'diagramia_session'));
         if(!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para usar la nube.');
-        return send(200,{session,storage:await options.accounts!.storage(session.projectId),credits:await options.accounts!.creditUsage(session.userId)});
+        const billing=options.billing?{available:true,...await options.billing.repository.view(session.userId)}:{available:false,plan:'free' as const};
+        return send(200,{session,storage:await options.accounts!.storage(session.projectId),credits:await options.accounts!.creditUsage(session.userId),billing});
       }
       if(path==='/v1/auth/delete-account'&&req.method==='POST'){
         const session=await options.accounts?.readSession(cookie(req,'diagramia_session'));
         if(!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para eliminar tu cuenta.');
+        // Con Pro activo hay un cobro recurrente: eliminar la cuenta no lo cancelaría y seguiría cobrando.
+        if(options.billing&&(await options.billing.repository.view(session.userId)).plan==='pro')return fail(409,'ACTIVE_SUBSCRIPTION','Cancelá tu suscripción Pro antes de eliminar la cuenta. Se cancela desde «Cancelar suscripción» en tu cuenta.');
         // Confirmación explícita en el cuerpo: un clic accidental o un pedido reenviado sin ella no borra nada.
         const input=z.strictObject({confirm:z.literal('ELIMINAR')}).safeParse(await readJson(req));
         if(!input.success)return fail(400,'CONFIRMATION_REQUIRED','Para eliminar la cuenta, confirmá escribiendo ELIMINAR.');
         const result=await options.accounts!.deleteAccount(session.userId);
         res.setHeader('set-cookie',sessionCookie('',options.oidc?.redirectUri.protocol==='https:',0));
         return send(200,{deleted:true,documents:result.documents});
+      }
+      if(path==='/v1/billing/checkout'&&req.method==='POST'){
+        if(!options.billing)return fail(503,'BILLING_UNAVAILABLE','El cobro todavía no está disponible.');
+        const session=await options.accounts?.readSession(cookie(req,'diagramia_session'));
+        if(!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para pasar a Pro.');
+        if(!session.emailVerified)return fail(403,'EMAIL_NOT_VERIFIED','Verificá tu email antes de suscribirte.');
+        if((await options.billing.repository.view(session.userId)).plan==='pro')return fail(409,'ALREADY_SUBSCRIBED','Ya tenés el plan Pro.');
+        return send(200,{url:await createCheckout(options.billing.paddle,session.userId)});
       }
       if(path==='/v1/auth/logout'&&req.method==='POST'){
         await options.accounts?.endSession(cookie(req,'diagramia_session'));
@@ -212,6 +257,18 @@ export function createApp(options:AppOptions):Server{
       // Administradores: email verificado incluido en adminEmails. Ven el dashboard y usan la IA sin límites por cuenta.
       const admin=Boolean(session?.emailVerified&&session.email&&(options.adminEmails??[]).some(email=>email.toLowerCase()===session.email!.toLowerCase()));
       if(options.token&&!session&&!sameToken(String(req.headers.authorization??''),`Bearer ${options.token}`))return fail(401,'UNAUTHORIZED','Token del gateway inválido o ausente.');
+      if(path==='/v1/admin/contacts'&&req.method==='GET'){
+        if(!admin)return fail(403,'ADMIN_ONLY','Las consultas son sólo para administradores.');
+        if(!options.contact)return fail(503,'CONTACT_UNAVAILABLE','La bandeja necesita PostgreSQL.');
+        return send(200,{contacts:await options.contact.repository.list()});
+      }
+      if(path==='/v1/admin/contacts'&&req.method==='PATCH'){
+        if(!admin)return fail(403,'ADMIN_ONLY','Las consultas son sólo para administradores.');
+        if(!options.contact)return fail(503,'CONTACT_UNAVAILABLE','La bandeja necesita PostgreSQL.');
+        const input=z.strictObject({id:z.string().uuid(),status:z.literal('answered')}).parse(await readJson(req,1024));
+        if(!await options.contact.repository.markAnswered(input.id))return fail(404,'NOT_FOUND','La consulta no existe.');
+        return send(200,{updated:true});
+      }
       if(path==='/v1/admin/dashboard'&&req.method==='GET'){
         if(!options.dashboard)return fail(503,'DASHBOARD_UNAVAILABLE','El dashboard necesita PostgreSQL con telemetría.');
         if(!admin)return fail(403,'ADMIN_ONLY','El dashboard es sólo para administradores.');
@@ -291,6 +348,7 @@ export function createApp(options:AppOptions):Server{
     }catch(error){
       if(error instanceof AssistError)return fail(error.status,error.code,error.message);
       if(error instanceof UsageError)return fail(USAGE_STATUS[error.code],error.code,error.message);
+      if(error instanceof BillingError)return fail(error.code==='PROVIDER_ERROR'?502:400,error.code,error.message);
       if(error instanceof CreditError)return fail(error.code==='CREDIT_LIMIT'?429:409,error.code,error.message);
       if(error instanceof RepositoryError)return fail(error.code==='NOT_FOUND'?404:error.code==='CORRUPT_DOCUMENT'?500:409,error.code,error.message);
       if(error instanceof z.ZodError||error instanceof DiagramError)return fail(400,error instanceof DiagramError?error.code:'INVALID_REQUEST',describeError(error));

@@ -93,10 +93,6 @@
       "bytes": 165,
       "sha256": "24badd98dcefb9120a255fa84d0a2105483374c5ad5104e8019c8505edbb30bd"
     },
-    "apps/landing/Manual_de_marca_Diagramia.pdf": {
-      "bytes": 42874,
-      "sha256": "7e20aab76a62e45197beb8236f95211572dec3d4cfe01e7761ac3749f32a7887"
-    },
     "apps/landing/app.js": {
       "bytes": 12916,
       "sha256": "f9293e002c9a77ad2ff4afd87f1d2f75a030bcfdcf937868335679fb50965b74"

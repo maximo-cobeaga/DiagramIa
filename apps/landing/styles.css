@@ -17,3 +17,41 @@
 @media(prefers-reduced-motion:reduce){.hero-grid h1,.scroll-lines>span,.terminal-log p,.p-node,.p-connection{transform:none!important;opacity:1!important}.p-connection path{stroke-dashoffset:0!important}}
 .p-node.completed.active .p-shape{stroke:#d4f246}.p-node.completed.active.failed .p-shape{stroke:#f19b86}.p-connection.completed.active path{stroke:#d4f246;stroke-width:3}.p-connection.completed.active.failed path{stroke:#f19b86}
 @media(prefers-reduced-motion:reduce){.js-motion .motion-principles p{opacity:1;transform:none}}
+
+.pricing{padding:110px 0;border-top:1px solid var(--line)}
+.price-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:48px;max-width:880px}
+.price-card{position:relative;display:flex;flex-direction:column;padding:32px;border:1px solid var(--line);border-radius:12px;background:var(--white)}
+.price-card.pro{border-color:var(--ink);box-shadow:8px 8px 0 var(--lime)}
+.price-card h3{font-size:20px;letter-spacing:-.02em}
+.price-tag{margin:10px 0 22px;font-size:44px;font-weight:700;letter-spacing:-.05em}.price-tag small{font-size:15px;font-weight:500;color:var(--muted);letter-spacing:0}
+.price-card ul{list-style:none;padding:0;margin:0 0 28px;display:grid;gap:12px;flex:1}
+.price-card li{padding-left:22px;position:relative;font-size:15px;line-height:1.4}.price-card li::before{content:"✓";position:absolute;left:0;color:var(--blue);font-weight:700}
+.price-flag{position:absolute;top:-12px;right:24px;padding:4px 10px;border-radius:999px;background:var(--lime);color:var(--ink);font-size:11px;font-weight:700;letter-spacing:.08em}
+.price-foot{margin-top:28px;font-size:13px;color:var(--muted)}.price-foot a{border-bottom:1px solid currentColor}
+@media(max-width:760px){.pricing{padding:72px 0}.price-grid{grid-template-columns:1fr}}
+
+/* Everyday examples and plans share the visual language of the canvas. */
+.teams{padding:96px 0 32px}.teams .section-header h2{max-width:740px;font-size:clamp(32px,3.5vw,52px)}
+.team-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.team-card{padding:26px;border:1px solid var(--line);border-radius:12px;background:var(--white)}
+.team-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:#edf1ff;color:var(--blue);font-size:27px}
+.team-card:nth-child(2n) .team-icon{background:var(--lime);color:var(--ink)}
+.team-card h3{font-size:18px;margin:20px 0 8px;letter-spacing:-.025em}.team-card p{font-size:14px;color:var(--muted);margin:0}
+.price-grid{grid-template-columns:repeat(3,minmax(0,1fr));max-width:none}.price-card{padding:28px}.price-card.business{background:#edf1ff}.price-card.business .price-tag{font-size:36px}
+.player{max-width:1040px;margin-inline:auto}.graph-viewport{max-width:800px;margin-inline:auto}.graph-viewport svg{min-width:0;max-width:100%}
+.player-header{flex-wrap:wrap;gap:16px}.player-header .segmented{flex-wrap:wrap}.player-header .segmented button{font-size:12px}
+.contact-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,480px);gap:clamp(32px,6vw,96px);padding-block:80px}
+.contact-pitch h1{font-size:clamp(42px,4.5vw,66px);letter-spacing:-.055em;margin:24px 0}.contact-pitch .lead{font-size:18px;color:var(--muted);max-width:520px}
+.benefits{list-style:none;padding:0;margin:28px 0;display:grid;gap:14px}.benefits li{position:relative;padding-left:26px;font-size:15px}.benefits li::before{content:"✓";position:absolute;left:0;color:var(--blue);font-weight:700}
+.contact-alt{font-size:14px;color:var(--muted)}.contact-alt a,.contact-legal a{color:var(--blue);text-decoration:underline;text-underline-offset:3px}
+.contact-card{align-self:start;border:1px solid var(--line);border-radius:16px;background:var(--white);padding:32px;box-shadow:8px 8px 0 var(--lime)}
+.contact-card h2{font-size:30px;margin-bottom:24px}.contact-card form{display:grid;gap:18px}.contact-card label{display:grid;gap:7px;font-size:14px;font-weight:650}
+.contact-card input,.contact-card select,.contact-card textarea{width:100%;min-width:0;min-height:46px;border:1px solid #a6afbb;border-radius:7px;padding:10px 12px;background:var(--paper);color:var(--ink);font:16px/1.5 Manrope,Arial,sans-serif}
+.contact-card textarea{resize:vertical}.contact-card :is(input,select,textarea):focus-visible{outline:3px solid var(--blue);outline-offset:2px}.contact-card [aria-invalid=true]{border-color:#a33026}
+.contact-card button:disabled{cursor:wait;opacity:.65}.contact-legal{font-size:12px;color:var(--muted);margin:0}#contact-status{font-size:14px;margin:0;overflow-wrap:anywhere}#contact-status:empty{display:none}#contact-status[data-tone=error]{color:#a33026}#contact-status[data-tone=ok]{color:#24622b}
+.contact-card .hp{display:none}
+@media(max-width:1050px){.nav nav{gap:16px;font-size:13px}.price-card{padding:24px}.price-tag{font-size:36px}.contact-layout{grid-template-columns:1fr 1fr;gap:32px}.contact-card{padding:24px}}
+@media(max-width:760px){.teams{padding:64px 0 24px}.team-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.team-card{padding:18px}.team-card h3{font-size:16px}.team-card p{font-size:13px}.price-grid{grid-template-columns:1fr}.player-header .segmented{display:grid;grid-template-columns:1fr;width:100%}.player-header .segmented button{min-height:44px}.graph-viewport svg{width:100%;min-width:0}.graph-pan-hint{display:none}.flow-summary{gap:8px}.flow-legend>span:last-child{flex-basis:100%}.contact-layout{grid-template-columns:1fr;padding-block:48px}.contact-pitch h1{font-size:42px}.contact-pitch .lead{font-size:16px}.contact-card{margin-bottom:16px}.contact-page .nav nav{display:flex}.contact-page .nav-end{display:none}.contact-page footer{padding-bottom:32px}.contact-alt{overflow-wrap:anywhere}}
+@media(max-width:380px){.team-grid{grid-template-columns:1fr}.contact-page .brand{font-size:21px}.contact-page .nav nav{gap:12px}}
+@media(max-width:760px){.p-node .p-title{font-size:20px}.edge-label{font-size:14px}}
+@media(max-width:760px){.player-header .segmented{grid-template-columns:repeat(3,minmax(0,1fr))}.player-header .segmented button{padding:8px 6px}.player-state{min-height:64px}.flow-legend{gap:8px 16px}}

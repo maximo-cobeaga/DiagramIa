@@ -4,6 +4,14 @@
 
 ## Arquitectura
 
+### Formulario de empresas (08/10/2026, ADR 091)
+
+`empresas.html` recibe el mismo `APP_URL` que la landing durante el build. El formulario manda `POST /api/v1/contact` al gateway de la app. PostgreSQL aplica automáticamente la migración `008_contact_requests.sql`: no hace falta un servicio de formularios ni una clave adicional. La allowlist de `DIAGRAMIA_ALLOWED_ORIGINS` debe incluir el origen exacto de la landing; se conserva la CSP existente.
+
+Las consultas se leen en `https://app.<dominio>/#fundador`, «Consultas de empresas», iniciando sesión con un email verificado incluido en `DIAGRAMIA_ADMIN_EMAILS`. «Responder por email» abre el cliente de correo; «Marcar como respondida» guarda el estado, sin enviar mensajes automáticamente. Si `DIAGRAMIA_ALERT_WEBHOOK_URL` está configurado, llega un aviso sin datos personales. Sin ese webhook, la bandeja sigue funcionando. Los respaldos existentes incluyen las consultas; no hay eliminación automática.
+
+Verificación local aislada: `npm run smoke:landing`, `npm run smoke:repository` y `npm run smoke:dashboard`. No enviar consultas de prueba al sitio público sin querer contactarse realmente.
+
 ```text
 Internet ──TLS──▶ reverse proxy del VPS (ya atiende a ReservApp)
                     ├── diagramia.<tld>      ─┐

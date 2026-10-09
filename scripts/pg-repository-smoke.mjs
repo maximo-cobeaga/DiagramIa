@@ -1,7 +1,7 @@
 // Prueba integración y recuperación real sobre dos proyectos Docker efímeros. No toca la base de desarrollo.
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {randomUUID} from 'node:crypto';
+import {createHmac,randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import pg from 'pg';
 import {migrateDocuments,PostgresDocumentRepository} from '../apps/api/dist/repositories/postgres.js';
@@ -11,6 +11,8 @@ import {emptyDocument,applyBatch} from '../packages/core/dist/index.js';
 import {remoteDocumentBackend} from '../apps/mcp/dist/remote.js';
 import {AccountRepository} from '../apps/api/dist/repositories/accounts.js';
 import {TelemetryRepository} from '../apps/api/dist/repositories/telemetry.js';
+import {BillingRepository} from '../apps/api/dist/repositories/billing.js';
+import {ContactRepository} from '../apps/api/dist/repositories/contact.js';
 import {mockProvider} from '../packages/providers/dist/index.js';
 
 const compose=fileURLToPath(new URL('../infra/compose.dev.yml',import.meta.url));
@@ -73,6 +75,8 @@ try{
   assert.notEqual(alice.session.projectId,bob.session.projectId);
   const server=createApp({providers:[mockProvider(1)],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:100,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:['http://127.0.0.1:5173'],documents:reopened,documentToken:'private-test-token',localWorkspace:true,accounts,telemetry:new TelemetryRepository(sourcePool),
     // Este recorrido prueba créditos e idempotencia con pedidos seguidos; los límites por minuto tienen su propia prueba en gateway.test.ts.
+    billing:{repository:new BillingRepository(sourcePool),paddle:{env:'sandbox',apiKey:'pdl_sdbx_smoke',webhookSecret:'smoke-webhook-secret',priceId:'pri_smoke_pro'}},
+    contact:{repository:new ContactRepository(sourcePool)},
     adminEmails:['admin@example.test'],aiPerUserPerMinute:100,aiPerIpPerMinute:100,config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   try{
@@ -131,6 +135,23 @@ try{
     assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(alice.token),body:JSON.stringify({...aiBody(0),prompt:'Otro pedido'})})).status,409,'ID reutilizado con contenido distinto');
     assert.equal((await(await fetch(`${origin}/v1/auth/me`,{headers:as(alice.token)})).json()).credits.daily,6);
     const admin=await accounts.signIn({issuer:'https://oidc.example',subject:'admin',email:'admin@example.test',emailVerified:true});
+    // El formulario es público; los datos comerciales sólo se leen con una sesión admin verificada.
+    const inquiry={name:'Ana de pruebas',email:'ana@empresa.test',company:'Equipo de pruebas',teamSize:'11-50',message:'Queremos explicar nuestro proceso de compras. <script>no ejecutar</script>'};
+    const contactUrl=`${origin}/v1/contact`,inboxUrl=`${origin}/v1/admin/contacts`;
+    assert.equal((await fetch(contactUrl,{method:'OPTIONS',headers:{origin:browserHeaders.origin,'access-control-request-method':'POST','access-control-request-headers':'content-type,x-diagramia-client'}})).status,204,'el formulario admite preflight desde la landing permitida');
+    assert.equal((await fetch(contactUrl,{method:'POST',headers:{...browserHeaders,origin:'https://evil.test'},body:JSON.stringify(inquiry)})).status,403,'un origen ajeno no guarda consultas');
+    assert.equal((await fetch(contactUrl,{method:'POST',headers:browserHeaders,body:JSON.stringify(inquiry)})).status,202,'la consulta se guarda sin exigir login');
+    assert.equal((await fetch(inboxUrl,{headers:browserHeaders})).status,403,'un visitante no lee datos comerciales');
+    assert.equal((await fetch(inboxUrl,{headers:as(alice.token)})).status,403,'una cuenta normal tampoco');
+    const unverifiedAdmin=await accounts.signIn({issuer:'https://oidc.example',subject:'unverified-admin',email:'admin@example.test',emailVerified:false});
+    assert.equal((await fetch(inboxUrl,{headers:as(unverifiedAdmin.token)})).status,403,'el email del admin debe estar verificado');
+    const inbox=await(await fetch(inboxUrl,{headers:as(admin.token)})).json(),contact=inbox.contacts[0];
+    assert.equal(contact.company,inquiry.company);assert.equal(contact.message,inquiry.message);assert.equal(contact.status,'new');
+    assert.equal((await fetch(inboxUrl,{method:'PATCH',headers:as(alice.token),body:JSON.stringify({id:contact.id,status:'answered'})})).status,403);
+    assert.equal((await fetch(inboxUrl,{method:'PATCH',headers:as(admin.token),body:JSON.stringify({id:randomUUID(),status:'answered'})})).status,404);
+    assert.equal((await fetch(inboxUrl,{method:'PATCH',headers:as(admin.token),body:JSON.stringify({id:contact.id,status:'answered'})})).status,200);
+    assert.equal((await new ContactRepository(sourcePool).list())[0].status,'answered');
+    assert.equal((await sourcePool.query('SELECT count(*)::int AS n FROM telemetry_events WHERE props::text LIKE $1',['%Equipo de pruebas%'])).rows[0].n,0,'las consultas no son telemetría');
     for(let i=0;i<8;i++)assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(admin.token),body:JSON.stringify(aiBody(i))})).status,200,'un admin supera la cuota Free');
     assert.equal((await accounts.creditUsage(admin.session.userId)).daily,0,'los recibos admin no consumen créditos');
     const adminReceipts=await sourcePool.query('SELECT request_id,fingerprint,credits FROM ai_credit_receipts WHERE user_id=$1',[admin.session.userId]);
@@ -155,6 +176,41 @@ try{
     const nextDay=new Date(Date.UTC(year,month,24,12));
     assert.equal((await accounts.creditUsage(charlie.session.userId,nextDay)).monthly,20);
     await assert.rejects(accounts.reserveCredits(charlie.session.userId,'monthly-20','fingerprint-20',1,nextDay),{code:'CREDIT_LIMIT'});
+    // Suscripción Pro (ADR 089): avisos firmados, sin duplicados ni desorden, y límites que suben y bajan sin borrar nada.
+    const subEvent=(eventId,type,status,occurredAt,extra={})=>JSON.stringify({event_id:eventId,event_type:type,occurred_at:occurredAt,data:{id:'sub_smoke_alice',status,customer_id:'ctm_smoke',
+      custom_data:{diagramia_user_id:alice.session.userId},items:[{price:{id:'pri_smoke_pro'},quantity:1}],current_billing_period:{ends_at:new Date(Date.now()+30*864e5).toISOString()},
+      scheduled_change:null,management_urls:{update_payment_method:'https://pay.example/update',cancel:'https://pay.example/cancel'},...extra}});
+    const hook=(body,secret='smoke-webhook-secret')=>{const ts=Math.floor(Date.now()/1000);return fetch(`${origin}/v1/billing/webhook`,{method:'POST',headers:{'content-type':'application/json','paddle-signature':`ts=${ts};h1=${createHmac('sha256',secret).update(`${ts}:${body}`).digest('hex')}`},body});};
+    const me=async()=>(await fetch(`${origin}/v1/auth/me`,{headers:as(alice.token)})).json();
+    assert.equal((await me()).billing.plan,'free');assert.equal((await me()).storage.maxDocuments,3);
+    assert.equal((await fetch(`${origin}/v1/billing/checkout`,{method:'POST',headers:browserHeaders})).status,401,'el pago exige cuenta');
+    const t0=new Date(Date.now()-60_000).toISOString(),t1=new Date(Date.now()-30_000).toISOString(),t2=new Date(Date.now()-10_000).toISOString();
+    assert.equal((await hook(subEvent('evt-bad','subscription.activated','active',t0),'otro-secreto')).status,400,'firma inválida');
+    assert.equal((await me()).billing.plan,'free','un aviso sin firma válida no concede Pro');
+    {const r=await hook(subEvent('evt-1','subscription.activated','active',t1));const b=await r.json();assert.equal(b.result,'applied',r.status+' '+JSON.stringify(b));}
+    assert.equal((await(await hook(subEvent('evt-1','subscription.activated','active',t1))).json()).result,'duplicate','el reenvío no cambia nada');
+    const pro=await me();
+    assert.equal(pro.billing.plan,'pro');assert.equal(pro.billing.cancelUrl,'https://pay.example/cancel');assert.equal(pro.storage.maxDocuments,100);assert.equal(pro.credits.dailyLimit,40);assert.equal(pro.credits.monthlyLimit,400);
+    assert.equal((await fetch(`${origin}/v1/billing/checkout`,{method:'POST',headers:as(alice.token)})).status,409,'quien ya es Pro no paga dos veces');
+    assert.equal((await fetch(`${origin}/v1/auth/delete-account`,{method:'POST',headers:as(alice.token),body:JSON.stringify({confirm:'ELIMINAR'})})).status,409,'no se elimina una cuenta con cobro activo');
+    assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(alice.token),body:JSON.stringify(aiBody(6))})).status,200,'con Pro, el séptimo crédito del día pasa');
+    const fourth=`cloud-${suffix}-4`;
+    assert.equal((await fetch(cloud,{method:'POST',headers:as(alice.token),body:JSON.stringify(emptyDocument(fourth,'Cuarto, sólo con Pro'))})).status,201,'con Pro se guarda el cuarto diagrama');
+    assert.equal((await(await hook(subEvent('evt-old','subscription.canceled','canceled',t0))).json()).result,'stale','un aviso viejo que llega tarde no pisa al nuevo');
+    assert.equal((await me()).billing.plan,'pro');
+    assert.equal((await(await hook(subEvent('evt-ghost','subscription.activated','active',t1,{custom_data:{diagramia_user_id:'user-que-no-existe'}}))).json()).result,'unknown-user');
+    assert.equal((await(await hook(subEvent('evt-other','subscription.activated','active',t1,{items:[{price:{id:'pri_otro'}}]}))).json()).ignored,true,'otro producto no concede nada');
+    assert.equal((await(await hook(subEvent('evt-2','subscription.canceled','canceled',t2))).json()).result,'applied');
+    const free=await me();
+    assert.equal(free.billing.plan,'free');assert.equal(free.storage.maxDocuments,3);assert.equal(free.storage.documents,4,'al bajar a Free no se borra nada');
+    const edit=(id,n)=>fetch(`${cloud}/${id}/batches`,{method:'POST',headers:as(alice.token),body:JSON.stringify({id:n,baseRevision:0,actions:[{type:'UPDATE_DOCUMENT',changes:{title:'Editado'}}]})});
+    assert.equal((await fetch(`${cloud}/${fourth}`,{headers:as(alice.token)})).status,200,'el diagrama excedente se puede leer');
+    const blocked=await edit(fourth,'ro-edit');
+    assert.equal(blocked.status,409);assert.equal((await blocked.json()).error.code,'PLAN_READ_ONLY','el diagrama excedente queda en sólo lectura');
+    assert.equal((await edit(cloudId,'ok-edit')).status,200,'los tres primeros siguen editables');
+    assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(alice.token),body:JSON.stringify(aiBody(7))})).status,429,'de vuelta en Free rige el tope diario');
+    assert.equal((await fetch(cloud,{method:'POST',headers:as(alice.token),body:JSON.stringify(emptyDocument(`cloud-${suffix}-5`,'Quinto'))})).status,409);
+    console.log('  suscripción Pro: firma, duplicados, desorden, subida y bajada de límites OK');
     // Telemetría (P7.1): ingesta idempotente, vínculo anónimo → cuenta, reloj desfasado y pedidos de IA medidos sin su texto.
     const anonymousId=randomUUID(),eventId=n=>`${suffix.padEnd(8,'0').slice(0,8)}-0000-4000-8000-${String(n).padStart(12,'0')}`;
     const telemetryBatch=events=>({v:1,anonymousId,sessionId:randomUUID(),context:{app:'editor',appVersion:'smoke',utmSource:'smoke',utmMedium:null,utmCampaign:null,referrerHost:null,landingPath:'/',device:'desktop',browser:'chrome',os:'linux',language:'es',viewport:{width:1280,height:800}},events});
@@ -218,11 +274,13 @@ try{
   assert.equal((await recovered.get(id)).revision,104);
   assert.equal((await recovered.get(`api-${suffix}`)).revision,1);
   assert.equal((await recovered.get(`shared-${suffix}`)).revision,3);
-  assert.equal((await new AccountRepository(targetPool).listDocuments(alice.session.projectId)).length,3);
+  assert.equal((await new AccountRepository(targetPool).listDocuments(alice.session.projectId)).length,4,'los cuatro diagramas de Alice, incluido el que excede el plan Free, sobreviven al respaldo');
   assert.equal((await recovered.getVersion(id,2)).nodes.length,2);
   assert.equal((await recovered.versions(id)).length,105);
   assert.equal((await recovered.audit(id)).length,105);
   assert.ok((await targetPool.query('SELECT count(*)::int AS n FROM telemetry_events')).rows[0].n>=10,'la telemetría viaja en el respaldo');
+  const recoveredInquiry=(await new ContactRepository(targetPool).list())[0];
+  assert.equal(recoveredInquiry.company,'Equipo de pruebas');assert.equal(recoveredInquiry.status,'answered','la bandeja y su estado sobreviven al respaldo');
   assert.equal((await recovered.apply(id,winner)).replayed,true);
   assert.equal((await recovered.restore(id,0,2,'restore-empty')).replayed,true);
   assert.equal((await recovered.get(id)).revision,104,'los reintentos no alteran el documento recuperado');

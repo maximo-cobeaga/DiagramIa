@@ -52,7 +52,7 @@ export async function createSharedDocument(mode:SharedMode='local'){
   const editor=documentStore.get(),tabId=editor.activeId,doc=editor.doc;
   if(queue.length){notify('Primero resolvé los cambios pendientes del espacio compartido.','warn');return;}
   if(sharedStore.get().tabId)detachSharedDocument();
-  sharedStore.set({tabId:null,docId:null,phase:'connecting',message:'Enviando documento al espacio local…'});
+  sharedStore.set({tabId:null,docId:null,mode,phase:'connecting',message:mode==='cloud'?'Guardando el diagrama en tu cuenta…':'Enviando documento al espacio local…'});
   try{
     const answer=await request(endpoint(mode),'POST',doc);
     if(documentStore.get().activeId!==tabId||documentStore.get().doc!==doc){sharedStore.set({phase:'off',message:'El documento cambió durante la conexión. Volvé a conectarlo.'});return;}
@@ -64,8 +64,8 @@ export async function createSharedDocument(mode:SharedMode='local'){
   }catch(error){sharedStore.set({phase:'off',message:problem(error)});notify(problem(error),'error');}
 }
 
-export async function listSharedDocuments(mode:SharedMode='local'):Promise<{id:string;title:string;revision:number}[]>{
-  try{return (await request(endpoint(mode))).documents;}catch{return [];}
+export async function listSharedDocuments(mode:SharedMode='local',options:{throwOnError?:boolean}={}):Promise<{id:string;title:string;revision:number}[]>{
+  try{return (await request(endpoint(mode))).documents;}catch(error){if(options.throwOnError)throw error;return [];}
 }
 
 export async function openSharedDocument(id:string,mode:SharedMode='local'){

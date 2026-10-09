@@ -22,6 +22,7 @@
     "postinstall": "npm run build -w @diagramia/core && npm run build -w @diagramia/interop && npm run build -w @diagramia/providers",
     "api": "npm run dev -w @diagramia/api",
     "smoke": "node scripts/browser-smoke.mjs",
+    "smoke:landing": "npm run build -w @diagramia/api && node scripts/landing-smoke.mjs",
     "smoke:ai": "node scripts/ai-smoke.mjs",
     "db:up": "docker compose -f infra/compose.dev.yml up -d --wait db",
     "db:down": "docker compose -f infra/compose.dev.yml down",

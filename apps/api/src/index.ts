@@ -4,12 +4,14 @@ import {providersFromEnv} from '@diagramia/providers';
 import {Pool} from 'pg';
 import {createApp} from './server.js';
 import {UsageLedger} from './usage.js';
-import {sendAlert} from './alerts.js';
+import {sendAlert,sendNotice} from './alerts.js';
 import {migrateDocuments,PostgresDocumentRepository} from './repositories/postgres.js';
 import {AccountRepository} from './repositories/accounts.js';
+import {BillingRepository} from './repositories/billing.js';
 import {OidcAuthenticator} from './auth/oidc.js';
 import {RemoteMcpService} from './mcp.js';
 import {TelemetryRepository} from './repositories/telemetry.js';
+import {ContactRepository} from './repositories/contact.js';
 import {FounderDashboard} from './repositories/dashboard.js';
 
 const root=fileURLToPath(new URL('../../../',import.meta.url));
@@ -34,7 +36,8 @@ const ledger=new UsageLedger({
     if(env.DIAGRAMIA_ALERT_WEBHOOK_URL)void sendAlert(env.DIAGRAMIA_ALERT_WEBHOOK_URL,alert).then(sent=>{if(!sent)console.warn('No se pudo enviar la alerta de gasto al webhook.');});
   }
 });
-const providers=providersFromEnv(env);
+// Servicio en la nube: los modelos locales (Ollama, LM Studio) ya no se ofrecen aunque el entorno los configure.
+const providers=providersFromEnv(env).filter(provider=>provider.info().kind!=='local');
 async function start(){
   if(env.DIAGRAMIA_DATABASE_URL&&!env.DIAGRAMIA_DOCUMENTS_TOKEN)throw new Error('DIAGRAMIA_DOCUMENTS_TOKEN es obligatorio al habilitar la base de documentos.');
   const oidcNames=['DIAGRAMIA_OIDC_ISSUER','DIAGRAMIA_OIDC_CLIENT_ID','DIAGRAMIA_OIDC_CLIENT_SECRET','DIAGRAMIA_OIDC_REDIRECT_URI','DIAGRAMIA_OIDC_HOME_URL'] as const;
@@ -53,14 +56,22 @@ async function start(){
       const purge=()=>accounts.purgeExpired().catch(error=>console.error('No se pudo purgar datos vencidos:',error instanceof Error?error.message:String(error)));
       await purge();setInterval(()=>void purge(),6*3_600_000).unref();
     }
+    // Cobro (ADR 089): todo o nada. Sin las cuatro variables, el plan Pro no se ofrece.
+    const paddleNames=['DIAGRAMIA_PADDLE_API_KEY','DIAGRAMIA_PADDLE_WEBHOOK_SECRET','DIAGRAMIA_PADDLE_PRICE_PRO'] as const,paddleConfigured=paddleNames.filter(name=>!!env[name]);
+    if(paddleConfigured.length&&paddleConfigured.length!==paddleNames.length)throw new Error(`Cobro incompleto: configurar ${paddleNames.filter(name=>!env[name]).join(', ')}.`);
+    if(paddleConfigured.length&&!accounts)throw new Error('El cobro requiere OIDC y PostgreSQL configurados.');
+    const paddleEnv=env.DIAGRAMIA_PADDLE_ENV==='live'?'live':'sandbox';
+    const billing=paddleConfigured.length&&pool?{repository:new BillingRepository(pool),paddle:{env:paddleEnv as 'live'|'sandbox',apiKey:env.DIAGRAMIA_PADDLE_API_KEY!,webhookSecret:env.DIAGRAMIA_PADDLE_WEBHOOK_SECRET!,priceId:env.DIAGRAMIA_PADDLE_PRICE_PRO!}}:undefined;
     const remoteMcp=mcpConfigured.length&&documents&&accounts?new RemoteMcpService({resourceUrl:env.DIAGRAMIA_MCP_RESOURCE_URL!,issuer:env.DIAGRAMIA_OIDC_ISSUER!,jwksUrl:env.DIAGRAMIA_MCP_JWKS_URL!},accounts,documents):undefined;
     const server=createApp({
       providers,ledger,productPrompt,token,documents,
       documentToken:pool?env.DIAGRAMIA_DOCUMENTS_TOKEN:undefined,
       localWorkspace:env.DIAGRAMIA_LOCAL_WORKSPACE==='1'&&['127.0.0.1','localhost','::1'].includes(host),
-      accounts,remoteMcp,
+      accounts,remoteMcp,billing,
       // Telemetría propia (ADR 046): requiere PostgreSQL; DIAGRAMIA_TELEMETRY=0 la apaga.
       telemetry:pool&&env.DIAGRAMIA_TELEMETRY!=='0'?new TelemetryRepository(pool):undefined,
+      // Plan Empresas: los datos quedan en la bandeja privada; el webhook sólo recibe un aviso sin datos personales.
+      contact:pool?{repository:new ContactRepository(pool),notify:text=>{if(env.DIAGRAMIA_ALERT_WEBHOOK_URL)void sendNotice(env.DIAGRAMIA_ALERT_WEBHOOK_URL,'Diagramia: consulta de empresa',text);}}:undefined,
       dashboard:pool&&env.DIAGRAMIA_TELEMETRY!=='0'?new FounderDashboard(pool):undefined,
       adminEmails:(env.DIAGRAMIA_ADMIN_EMAILS??'').split(',').map(email=>email.trim()).filter(Boolean),
       eventsPerMinute:number('DIAGRAMIA_EVENTS_PER_MINUTE',60),trustProxy:env.DIAGRAMIA_TRUST_PROXY==='1',

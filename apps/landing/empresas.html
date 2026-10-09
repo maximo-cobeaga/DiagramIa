@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f4f6f8">
+  <meta name="description" content="Diagramia para empresas: llevá los diagramas animados y la IA a todo tu equipo, con créditos, almacenamiento y condiciones a medida. Contanos qué necesitás.">
+  <title>Diagramia para empresas</title>
+  <meta name="diagramia-app" content="http://127.0.0.1:5173/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="contact.js" defer></script>
+</head>
+<body class="contact-page">
+  <a class="skip" href="#main">Ir al contenido</a>
+  <header class="nav">
+    <a class="brand" href="./" aria-label="Diagramia inicio"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M9 8h12c8 0 12 5 12 12s-4 12-12 12H9V8Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M10 20h14" fill="none" stroke="currentColor" stroke-width="3"/><rect x="21" y="16" width="8" height="8" rx="2" fill="#245cf6"/></svg><span>diagramia</span></a>
+    <nav aria-label="Principal"><a href="./#equipos">Equipos</a><a href="./#precios">Precios</a></nav>
+    <div class="nav-end"><a class="button small dark" href="./#precios">Ver planes</a></div>
+  </header>
+  <main id="main" class="wrap contact-layout">
+    <section class="contact-pitch">
+      <span class="eyebrow">PARA EMPRESAS</span>
+      <h1>Llevá Diagramia a todo tu equipo.</h1>
+      <p class="lead">Contanos qué proceso querés explicar y cuántas personas lo van a usar. Te respondemos por email con una propuesta.</p>
+      <ul class="benefits">
+        <li>Créditos de IA y almacenamiento acordados con vos</li>
+        <li>Te ayudamos a empezar con los diagramas de tu equipo</li>
+        <li>Facturación y condiciones a medida</li>
+        <li>Sirve para cualquier área: personas, marketing, operaciones, educación y más</li>
+      </ul>
+      <p class="contact-alt">¿Preferís escribirnos directo? <a href="mailto:mcobeaga@diagramia.app">mcobeaga@diagramia.app</a></p>
+    </section>
+    <section class="contact-card" aria-labelledby="form-title">
+      <h2 id="form-title">Hablemos</h2>
+      <form id="contact-form">
+        <label>Tu nombre<input name="name" type="text" autocomplete="name" required minlength="2" maxlength="100"></label>
+        <label>Email de trabajo<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+        <label>Empresa<input name="company" type="text" autocomplete="organization" required minlength="2" maxlength="120"></label>
+        <label>Tamaño del equipo
+          <select name="teamSize"><option value="">Elegí una opción</option><option value="1-10">1 a 10 personas</option><option value="11-50">11 a 50 personas</option><option value="51-200">51 a 200 personas</option><option value="201+">Más de 200</option></select>
+        </label>
+        <label>¿Qué te gustaría resolver?<textarea name="message" rows="5" required minlength="10" maxlength="2000"></textarea></label>
+        <!-- Trampa para bots: las personas no lo ven. -->
+        <div class="hp" aria-hidden="true"><label>No completar este campo<input name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
+        <button class="button dark" type="submit" id="contact-submit">Enviar consulta</button>
+        <p id="contact-status" role="status" aria-live="polite"></p>
+        <p class="contact-legal">Usamos tus datos sólo para responderte. Más en el <a id="contact-privacy" href="https://app.diagramia.app/privacidad.html">aviso de privacidad</a>.</p>
+        <noscript>Para enviar el formulario, activá JavaScript o escribinos a <a href="mailto:mcobeaga@diagramia.app">mcobeaga@diagramia.app</a>.</noscript>
+      </form>
+    </section>
+  </main>
+  <footer class="wrap"><a class="brand" href="./"><span>diagramia</span></a><a href="precios.html">Precios</a><a href="terminos.html">Términos</a><a href="reembolsos.html">Reembolsos</a><span class="mono">© 2026 DIAGRAMIA</span></footer>
+</body>
+</html>
