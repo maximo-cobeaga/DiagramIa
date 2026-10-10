@@ -2,6 +2,18 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Seguridad, solidez, precios y panel con gráficas (09/10/2026; ADR 093–094)
+
+- **Implementado, local:** Pro USD 10/mes, oferta 50% × 3 meses y anual USD 40 (P4.6); página de pago propia con Paddle.js, frenos por ruta y degradación (P4.6/P8.3); límite de errores del editor y enlaces robustos en la landing (P8.1/P8.2); recorrido y tendencias de 28 días en el panel del fundador (P7.3).
+- **Evidencia:** check 169/169, navegador 59/59, landing 10/10, shared/repository/dashboard con PostgreSQL real, sondas con Chrome real. Detalle en `VALIDATION.md` y `docs/SEGURIDAD.md`.
+- **Pendiente del usuario:** default payment link y webhook en Paddle; variables `DIAGRAMIA_PADDLE_*` y `DIAGRAMIA_OFFER_*` en el servidor; autorización para publicar. P4.6 y P8.3 siguen parciales: falta un pago completo en sandbox, Paddle real, revisión legal y revisión externa.
+
+## Preguntas con opciones, Pro directo, oferta, animaciones y medición (09/10/2026; ADR 092)
+
+- **Implementado, local:** opciones y «Otro» en las preguntas de la IA (P3.4/P8.1); Pro directo al pago (P4.6); oferta por tiempo limitado con descuento de Paddle (P4.6); cinco estilos de animación y editor de pasos simple (P2.1/P8.1); eventos de uso, monetización y landing más tarjetas en el panel del fundador (P7.1/P7.3).
+- **Evidencia:** check 167/167, navegador 59/59, landing 10/10, dashboard/repository/shared con PostgreSQL real. Detalle en `VALIDATION.md`.
+- **Pendiente:** descuento y variables `DIAGRAMIA_OFFER_*` en Paddle/producción, prueba del pago con oferta, revisión manual 44–46, decidir porcentaje, meses y vencimiento. P4.6 sigue parcial por checkout/webhook sandbox completos, Paddle real, BYOK y revisión legal.
+
 ## Landing, Cuenta y Empresas (08/10/2026; ADR 090–091)
 
 - **Publicación autorizada:** el usuario pidió push a main tras aprobar el resultado local. CI y posible deploy se verifican después; archivos personales y templates de Auth0 permanecen fuera del commit.

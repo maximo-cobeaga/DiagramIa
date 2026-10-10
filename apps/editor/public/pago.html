@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Pago seguro · Diagramia</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <!-- Página de pago (ADR 094). Es la única del editor que carga un script de terceros (Paddle.js); por eso vive aparte,
+       con su propia política de seguridad, y el resto del editor conserva la suya sin excepciones. -->
+  <style>
+    :root{color-scheme:light dark;--ink:#141619;--paper:#f4f6f8;--surface:#fff;--line:#d7dce2;--muted:#606975;--blue:#245cf6;--warn:#8a5300}
+    @media(prefers-color-scheme:dark){:root{--ink:#e8ebef;--paper:#0f1114;--surface:#171a1f;--line:#2e343d;--muted:#9aa4b2;--blue:#7d9eff;--warn:#f0b65a}}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--paper);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{width:min(100%,460px);padding:32px;border:1px solid var(--line);border-radius:14px;background:var(--surface);text-align:center}
+    h1{margin:0 0 8px;font-size:22px;letter-spacing:-.01em}
+    p{margin:0 0 16px;color:var(--muted)}
+    #status{min-height:48px;color:var(--ink)}
+    #status[data-tone=warn]{color:var(--warn)}
+    a.button{display:inline-block;min-height:44px;padding:10px 18px;border-radius:10px;border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600}
+    a.button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+    small{display:block;margin-top:16px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Pago seguro de Diagramia Pro</h1>
+    <p id="status" role="status" aria-live="polite">Preparando el pago…</p>
+    <a class="button" id="back" href="/">Volver a Diagramia sin pagar</a>
+    <small>El cobro lo procesa Paddle. Diagramia nunca ve los datos de tu tarjeta.</small>
+    <noscript><p>Para pagar hace falta JavaScript activado.</p></noscript>
+  </main>
+  <script src="/pago.js"></script>
+</body>
+</html>

@@ -201,6 +201,19 @@ test('explain returns text, review returns findings bound to existing IDs, ambig
   }finally{await g.close();}
 });
 
+test('a question carries 2 to 4 clean answer options; «Otro» and duplicates are dropped and one option alone is not offered',async()=>{
+  const withOptions=JSON.stringify({summary:'',clarification:'¿Qué tipo de viaje?',options:['Playa','  Montaña ','playa','Otro','Otra cosa',42,'Ciudad','Campo','Desierto'],actions:[]});
+  const single=JSON.stringify({summary:'',clarification:'¿Y el presupuesto?',options:['Sólo uno','otro'],actions:[]});
+  const {provider}=scripted([withOptions,single]),g=await gateway([provider]);
+  try{
+    const doc=architecture();
+    const first=await(await g.post(g.ask({requestId:'options-1',mode:'edit',document:doc,prompt:'Agregá algo',selectedIds:[]}))).json();
+    assert.equal(first.kind,'clarification');assert.deepEqual(first.options,['Playa','Montaña','Ciudad','Campo']);
+    const second=await(await g.post(g.ask({requestId:'options-2',mode:'edit',document:doc,prompt:'Agregá otra cosa',selectedIds:[]}))).json();
+    assert.equal(second.kind,'clarification');assert.deepEqual(second.options,[]);
+  }finally{await g.close();}
+});
+
 test('an explicit question wins over invalid drafts in every mode, without staging, repair or duplicate spending',async()=>{
   const question=JSON.stringify({summary:42,clarification:'  ¿Horizontal o vertical?  ',actions:[{type:'INVALID'}],nodes:[{kind:'inventado'}],findings:[{targetId:'missing'}],tour:[{nodeIds:['missing']}]});
   const {provider,calls}=scripted([question]),g=await gateway([provider]);
@@ -712,3 +725,38 @@ test('the contact endpoint stores a company inquiry, notifies without the messag
     assert.ok(limited>=1,'se limita la frecuencia por conexión');
   }finally{server.close();offline.close();}
 });
+
+// ---- Endurecimiento (ADR 094) ----
+const bareApp=(extra:Partial<Parameters<typeof createApp>[0]>={})=>createApp({providers:[],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null}),productPrompt:'p',
+  allowedOrigins:['http://127.0.0.1:5173'],token:null,config:{maxOutputTokens:10,maxContextChars:10,maxRepairs:0,timeoutMs:1000},...extra});
+const closeApp=(server:Server)=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);});
+const client={'x-diagramia-client':'editor'};
+
+test('billing config exposes only the public Paddle.js token, and no payment is offered without it',async()=>{
+  const paddle={env:'sandbox' as const,apiKey:'pdl_sdbx_clave_secreta',webhookSecret:'secreto-del-webhook',priceId:'pri_x'};
+  const without=bareApp({billing:{repository:{} as never,paddle}}),a=await listen(without);
+  const withToken=bareApp({billing:{repository:{} as never,paddle:{...paddle,clientToken:'test_0123456789abcdef0123456789'}}}),b=await listen(withToken);
+  try{
+    assert.equal((await fetch(a+'/v1/billing/config',{headers:client})).status,503,'sin token público no hay página de pago');
+    assert.deepEqual(await(await fetch(a+'/v1/offer',{headers:client})).json(),{available:false,offer:null});
+    assert.equal((await fetch(a+'/v1/billing/checkout',{method:'POST',headers:client})).status,503,'ni se intenta crear un pago que no se podría abrir');
+    const response=await fetch(b+'/v1/billing/config',{headers:client}),text=await response.text();
+    assert.equal(response.status,200);assert.deepEqual(JSON.parse(text),{env:'sandbox',clientToken:'test_0123456789abcdef0123456789'});
+    assert.ok(!text.includes('pdl_sdbx')&&!text.includes('secreto-del-webhook'),'la clave de API y el secreto del webhook nunca salen del servidor');
+    assert.equal((await fetch(b+'/v1/billing/config')).status,400,'sin el header propio no responde (una página ajena no puede leerlo sin preflight)');
+  }finally{await closeApp(without);await closeApp(withToken);}
+});
+
+test('the general per-IP brake works behind a trusted proxy and never throttles a shared private address',async()=>{
+  const proxied=bareApp({trustProxy:true,requestsPerIpPerMinute:3}),a=await listen(proxied);
+  const direct=bareApp({requestsPerIpPerMinute:3}),b=await listen(direct);
+  try{
+    const from=(ip:string)=>fetch(a+'/v1/auth/status',{headers:{...client,'x-forwarded-for':ip}}).then(r=>r.status);
+    assert.deepEqual([await from('203.0.113.9'),await from('203.0.113.9'),await from('203.0.113.9'),await from('203.0.113.9')],[200,200,200,429]);
+    assert.equal(await from('198.51.100.7'),200,'otra conexión no paga por la primera');
+    assert.equal((await fetch(a+'/health',{headers:{'x-forwarded-for':'203.0.113.9'}})).status,200,'las comprobaciones de salud no cuentan');
+    // Sin IP real, todos comparten la del proxy o la de loopback: frenar ahí sería frenar a todos.
+    for(let i=0;i<6;i++)assert.equal((await fetch(b+'/v1/auth/status',{headers:client})).status,200);
+  }finally{await closeApp(proxied);await closeApp(direct);}
+});
+

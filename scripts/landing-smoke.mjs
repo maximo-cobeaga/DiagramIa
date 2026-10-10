@@ -24,7 +24,10 @@ try{
   const port=Number(docker(['port','db','5432']).toString().trim().match(/:(\d+)$/)[1]);
   pool=new pg.Pool({host:'127.0.0.1',port,user:'diagramia',database:'diagramia',password});await migrateDocuments(pool);
   const repository=new ContactRepository(pool),allowedOrigins=[];
-  api=createApp({providers:[],productPrompt:'Prueba',token:'gateway-test',allowedOrigins,ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null}),config:{maxOutputTokens:100,maxContextChars:100,maxRepairs:0,timeoutMs:1000},contact:{repository:{create:async(...args)=>{if(failWrites)throw new Error('Fallo de almacenamiento de prueba');return repository.create(...args);}},perHour:50}});
+  api=createApp({providers:[],productPrompt:'Prueba',token:'gateway-test',allowedOrigins,ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null}),config:{maxOutputTokens:100,maxContextChars:100,maxRepairs:0,timeoutMs:1000},billing:{repository:{},paddle:{env:'sandbox',apiKey:'pdl_sdbx_landing',webhookSecret:'landing',priceId:'pri_landing',clientToken:'test_0123456789abcdef0123456789'},
+      // Oferta de campaña vigente: la landing la muestra con su vencimiento real (ADR 092).
+      offer:{discountId:'dsc_01landinglandinglanding01',percent:50,months:3,regularUsd:10,endsAt:new Date(Date.now()+3*3_600_000+30_000),welcomeHours:0}},
+    contact:{repository:{create:async(...args)=>{if(failWrites)throw new Error('Fallo de almacenamiento de prueba');return repository.create(...args);}},perHour:50}});
   // Simula sólo el prefijo /api del proxy; el gateway y el repositorio son reales.
   api.prependListener('request',req=>{req.url=req.url.replace(/^\/api(?=\/)/,'');});const apiOrigin=await listen(api);
   site=createServer((req,res)=>{
@@ -58,6 +61,9 @@ try{
     assert.equal(await js('document.querySelectorAll(".price-card").length'),3);
     assert.ok(!(await js('document.body.textContent')).includes('manual de marca'));
     const pro=await js('document.querySelector(".price-card.pro a").href');assert.ok(pro.includes('?plan=pro'));
+    await until(()=>js("!document.getElementById('offer-tag').hidden"),'oferta visible');
+    const offerText=await js("document.getElementById('offer-tag').textContent");
+    assert.ok(/50% menos/.test(offerText)&&/USD 5 por mes/.test(offerText)&&/USD 10 por mes/.test(offerText)&&/primeros 3 meses/.test(offerText)&&/Termina en 0[23]:\d\d:\d\d/.test(offerText),'la oferta muestra porcentaje, precio, meses y cuenta regresiva: '+offerText);
     for(const scenario of ['campaign','hiring','purchase']){
       await js(`document.querySelector('[data-scenario="${scenario}"]').click()`);
       assert.equal(await js('document.querySelectorAll(".p-node").length'),4);

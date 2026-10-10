@@ -268,21 +268,26 @@ try{
     expect(await js(`document.querySelector('.tool-grid button').title.includes('Arrastrá para mover')`),'se perdió la ayuda de la herramienta');
     const before=await saved();
     // Respuestas guionadas sólo para probar UI. El gateway y su contrato se prueban por separado.
-    await js(`(()=>{window.__questionFetch=window.fetch;window.__questionBodies=[];window.__questionAgain=false;window.fetch=async(url,init)=>{if(String(url).includes('/v1/assist')){const body=JSON.parse(init.body);window.__questionBodies.push(body);const n=window.__questionBodies.length;if(n<=2||window.__questionAgain){window.__questionAgain=false;return new Response(JSON.stringify({requestId:body.requestId,mode:'transform',provider:'mock',providerKind:'mock',model:'mock',baseRevision:body.document.revision,contextTruncated:false,repairs:0,replayed:false,usage:{inputTokens:0,outputTokens:0,calls:0,estimatedCostUsd:null,costBasis:'none'},kind:'clarification',summary:'',clarification:n===1?'¿Horizontal o vertical?':'¿Todas las ideas o sólo la elegida?'}),{headers:{'content-type':'application/json'}});}}return window.__questionFetch(url,init);};})()`);
+    await js(`(()=>{window.__questionFetch=window.fetch;window.__questionBodies=[];window.__questionAgain=false;window.fetch=async(url,init)=>{if(String(url).includes('/v1/assist')){const body=JSON.parse(init.body);window.__questionBodies.push(body);const n=window.__questionBodies.length;if(n<=2||window.__questionAgain){window.__questionAgain=false;return new Response(JSON.stringify({requestId:body.requestId,mode:'transform',provider:'mock',providerKind:'mock',model:'mock',baseRevision:body.document.revision,contextTruncated:false,repairs:0,replayed:false,usage:{inputTokens:0,outputTokens:0,calls:0,estimatedCostUsd:null,costBasis:'none'},kind:'clarification',summary:'',clarification:n===1?'¿Horizontal o vertical?':'¿Todas las ideas o sólo la elegida?',options:n===1?['Horizontal','Vertical']:n>2?['Todas','Sólo la elegida']:[]}),{headers:{'content-type':'application/json'}});}}return window.__questionFetch(url,init);};})()`);
     try{
       await setValue('#chat-prompt','Reorganizá estas ideas, preguntame primero si falta algo');await sendChat();await sleep(200);
       expect(await js(`Boolean(document.querySelector('.assistant-question'))&&!document.querySelector('.staged')&&!document.querySelector('.canvas-banner')&&document.querySelector('#chat-prompt').placeholder==='Respondé acá…'`),'la pregunta no espera o muestra una propuesta');
       expect(JSON.stringify(await saved())===JSON.stringify(before),'preguntar cambió el documento');await shot('52-ia-pregunta');
-      expect(await clickText('Responder','.assistant-question'),'falta Responder');expect(await js(`document.activeElement.id==='chat-prompt'`),'Responder no enfoca el cuadro');
+      expect(await js(`[...document.querySelectorAll('.question-choices .choice-option')].map(b=>b.textContent.replace(/^[0-9+]/,'')).join('|')==='Horizontal|Vertical|Otro…'&&![...document.querySelectorAll('.question-actions button')].some(b=>b.textContent==='Responder')`),'la pregunta no ofrece sus opciones más «Otro»');await shot('52b-ia-pregunta-opciones');
       // El usuario sigue editando y elige otra pieza antes de contestar: se usa la revisión/selección actual.
       await click(await center('[data-id="two"]'));await key('ArrowRight');const current=await saved();
-      await setValue('#chat-prompt','Horizontal');await sendChat();await sleep(200);
+      expect(await js(`(()=>{const b=[...document.querySelectorAll('.question-choices .choice-option')].find(b=>b.textContent.includes('Horizontal'));b.click();return true;})()`),'no se pudo elegir la opción');await sleep(200);
+      expect(await js(`window.__questionBodies[1].prompt==='Horizontal'`),'elegir una opción no envía su texto como respuesta');
       expect(await js(`window.__questionBodies[1].mode==='transform'&&window.__questionBodies[1].document.revision===${current.revision}&&window.__questionBodies[1].selectedIds.includes('two')`),'la respuesta corta cambia de intención o usa contexto viejo');
       await setValue('#chat-prompt','Sólo la elegida');await sendChat();await sleep(1200);
       expect(await js(`window.__questionBodies[2].mode==='transform'&&window.__questionBodies[2].history[0].content.includes('Reorganizá estas ideas')`),'la segunda respuesta pierde el pedido original');
-      expect((await saved()).revision===current.revision,'la respuesta aplicó cambios sin aceptar');expect(await clickText('Aceptar y aplicar','.chat'),'responder no permite continuar con una propuesta válida');
+      expect((await saved()).revision===current.revision,'la respuesta aplicó cambios sin aceptar');{const accepted=await clickText('Aceptar y aplicar','.chat');expect(accepted,'responder no permite continuar con una propuesta válida: '+await js(`document.querySelector('.chat-thread').innerText.slice(-500)`));}
       const applied=await saved();expect(applied.nodes.length===before.nodes.length+1,'la propuesta no se aplicó al aceptar');await shot('53-ui-texto-reducido');
-      await clickText('Nueva conversación','.chat');await js(`window.__questionAgain=true`);await setValue('#chat-prompt','Reorganizá mi idea');await sendChat();await sleep(200);await clickText('Cancelar','.assistant-question');
+      await clickText('Nueva conversación','.chat');await js(`window.__questionAgain=true`);await setValue('#chat-prompt','Reorganizá mi idea');await sendChat();await sleep(200);
+      // «Otro…» abre un campo propio: el envío espera a que haya texto y Esc lo cierra sin enviar nada.
+      expect(await js(`(()=>{[...document.querySelectorAll('.question-choices .choice-option')].find(b=>b.textContent.includes('Otro')).click();return true;})()`),'falta Otro');await sleep(80);
+      expect(await js(`document.activeElement.matches('.choice-other input')&&document.querySelector('.choice-other .primary').disabled`),'Otro no enfoca el campo o permite enviar vacío');await shot('52c-ia-pregunta-otro');
+      await clickText('Cancelar','.assistant-question');
       expect(await js(`document.querySelector('#chat-prompt').placeholder!=='Respondé acá…'&&document.querySelector('.cancelled-question')?.textContent.includes('cancelada')`),'cancelar deja la pregunta activa');expect(JSON.stringify(await saved())===JSON.stringify(applied),'cancelar cambió el documento');
       await viewport(390,844);await sleep(200);await js(`document.querySelector('.chat-composer').scrollIntoView({block:'center'})`);expect(await js(`document.documentElement.scrollWidth<=innerWidth`),'el chat desborda en móvil');await shot('54-chat-simple-movil');await viewport(1440,900);await js(`scrollTo(0,0)`);
       await js(`window.__questionAgain=true`);await setValue('#chat-prompt','Reorganizá estas piezas');await sendChat();await sleep(200);await tap('.doc-tab-add');expect(await js(`!document.querySelector('.assistant-question')`),'una pregunta de otro documento queda activa');
@@ -538,9 +543,10 @@ try{
   }
   await check('recorrido automático y edición de timeline',async()=>{
     if(!await js(`Boolean(document.querySelector('.motion-editor'))`))await clickText('Editar pasos','.timeline');
-    await js(`document.querySelector('.timeline-edit').open=true`);
     const before=(await saved()).animations.length;
-    expect(await clickText('Crear recorrido','.timeline'),'falta el botón');
+    expect(await clickText('Otra animación','.timeline')||await clickText('Animar mi diagrama','.timeline'),'falta abrir la galería de estilos');
+    expect(await js(`document.querySelectorAll('.style-card').length===5`),'la galería no ofrece cinco estilos');await shot('26b-ui-estilos-animacion');
+    expect(await clickText('Seguir el camino','.style-picker'),'falta el estilo');
     const doc=await saved();expect(doc.animations.length===before+1,'no se creó la animación');
     const steps=doc.animations.at(-1).steps.length;
     expect(await clickText('+ Agregar paso','.timeline'),'falta la acción simple de agregar paso');
@@ -552,7 +558,7 @@ try{
     const edit=async(label,value)=>{await js(`(()=>{const field=[...document.querySelectorAll('.step-editor .field')].find(f=>f.querySelector('label')?.textContent===${JSON.stringify(label)}).querySelector('input,textarea');field.focus();field.select();})()`);await send('Input.insertText',{text:value});};
     await edit('Duración (segundos)','2.5');await sleep(60);await js(`document.activeElement.blur()`);
     expect((await saved()).animations.at(-1).steps.find(s=>s.id===step.id).durationMs===2500,'los segundos no se guardaron como duración canónica');
-    await edit('Texto del paso '+(index+1),'Una idea fácil de contar');await sleep(60);await js(`document.activeElement.blur()`);
+    await edit('Qué se cuenta en el paso '+(index+1),'Una idea fácil de contar');await sleep(60);await js(`document.activeElement.blur()`);
     expect((await saved()).animations.at(-1).steps.find(s=>s.id===step.id).caption==='Una idea fácil de contar','no guardó el texto');
     await key('z',CTRL);await key('z',CTRL);
     const restored=(await saved()).animations.at(-1).steps.find(s=>s.id===step.id);expect(restored.caption===step.caption&&restored.durationMs===step.durationMs,'undo perdió el texto o duración originales');

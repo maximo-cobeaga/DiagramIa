@@ -47,3 +47,20 @@ test('visit context keeps hosts, slugs and coarse device data only',()=>{
   assert.equal(errorLocation('https://app.diagramia.test/assets/index-a1b2.js?v=3',1,2345),'assets/index-a1b2.js:1:2345');
   assert.equal(errorLocation(undefined),null);
 });
+test('behaviour and monetization events carry enums and counts only',()=>{
+  const ok=TelemetryBatchSchema.parse(batch([
+    event('tool_selected',{tool:'freehand'},20),event('panel_toggled',{panel:'timeline',open:true},21),event('welcome_choice',{choice:'examples'},22),
+    event('animation_created',{origin:'zones',steps:6},23),event('animation_played',{steps:6,scenario:false},24),event('animation_finished',{steps:6},25),
+    event('ai_question_answered',{mode:'create',via:'other'},26),event('landing_scroll_depth',{percent:75},27),event('landing_section_viewed',{section:'precios'},28),
+    event('landing_cta_clicked',{placement:'pricing_pro'},29),event('upgrade_prompt_shown',{placement:'header',offer:true},30),
+    event('offer_viewed',{kind:'welcome',percent:40},31),event('checkout_started',{source:'offer',offer:true},32),event('checkout_failed',{status:503},33),
+    event('limit_reached',{kind:'credits_monthly'},34),
+    event('session_summary',{activeSeconds:420,changes:57,aiRequests:3,nodes:21,edges:19,animations:1,usedAi:true,usedAnimation:true},35)]));
+  assert.equal(ok.events.length,16);
+  const rejects=(events:unknown[],why:string)=>assert.throws(()=>TelemetryBatchSchema.parse(batch(events)),undefined,why);
+  rejects([event('ai_question_answered',{mode:'create',via:'option',answer:'Playa'})],'la respuesta elegida es contenido y no se mide');
+  rejects([event('landing_section_viewed',{section:'#secreta'})],'sólo secciones conocidas');
+  rejects([event('landing_scroll_depth',{percent:33})],'sólo cuartos');
+  rejects([event('tool_selected',{tool:'cohete'})],'sólo herramientas del editor');
+  rejects([event('session_summary',{activeSeconds:1,changes:0,aiRequests:0,nodes:0,edges:0,animations:0,usedAi:false,usedAnimation:false,title:'Mi diagrama'})],'sin título');
+});

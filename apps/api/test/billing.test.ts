@@ -31,6 +31,8 @@ test('translate: turns a subscription event into an internal change and ignores 
   assert.equal(scheduled.scheduledCancelAt?.toISOString(),'2026-11-08T12:00:00.000Z');
   assert.equal(translate(Buffer.from(event({},'transaction.completed')),PRICE),null,'otros tipos de evento se confirman sin tocar nada');
   assert.equal(translate(Buffer.from(event({items:[{price:{id:'pri_otro'}}]})),PRICE),null,'otro producto no concede Pro');
+  assert.equal(translate(Buffer.from(event({items:[{price:{id:'pri_year'}}]})),[PRICE,'pri_year'])?.priceId,'pri_year','el plan anual también concede Pro');
+  assert.equal(translate(Buffer.from(event({items:[{price:{id:'pri_year'}}]})),[PRICE,null]),null,'sin precio anual configurado, el anual no se reconoce');
   assert.equal(translate(Buffer.from(event({custom_data:{}})),PRICE),null,'sin cuenta de Diagramia no hay a quién asignar');
   assert.throws(()=>translate(Buffer.from('no es json'),PRICE),BillingError);
   assert.throws(()=>translate(Buffer.from('{"event_id":1}'),PRICE),BillingError);
@@ -54,6 +56,21 @@ test('checkout: sends the price and the account, uses the right host, and fails 
   assert.deepEqual(sent,{items:[{price_id:PRICE,quantity:1}],custom_data:{diagramia_user_id:'user-1'}});
   assert.equal((seen[0]!.init.headers as Record<string,string>).authorization,'Bearer pdl_sdbx_key');
   await createCheckout({...config,env:'live'},'user-1',ok);assert.equal(seen[1]!.url,'https://api.paddle.com/transactions');
+  // Página de pago propia: viaja al crear la transacción y es la única dirección a la que se acepta redirigir.
+  const own={...config,checkoutUrl:'https://app.example/pago.html'};
+  const back=(url:string):typeof fetch=>async(_u,init)=>{seen.push({url:'',init:init!});return new Response(JSON.stringify({data:{checkout:{url}}}),{status:201});};
+  assert.equal(await createCheckout(own,'user-4',back('https://app.example/pago.html?_ptxn=txn_1')),'https://app.example/pago.html?_ptxn=txn_1');
+  assert.deepEqual(JSON.parse(String(seen.at(-1)!.init.body)).checkout,{url:'https://app.example/pago.html'});
+  await assert.rejects(createCheckout(own,'user-4',back('https://otro-sitio.example/pago.html?_ptxn=txn_1')),BillingError,'una dirección ajena no se devuelve al navegador');
+  await assert.rejects(createCheckout(own,'user-4',back('https://app.example/pago.html.evil.example/?_ptxn=txn_1')),BillingError,'ni una que sólo empieza parecido');
+  assert.ok(await createCheckout({...config,checkoutUrl:'http://localhost:5173/pago.html'},'user-4',back('http://localhost:5173/pago.html?_ptxn=txn_1')),'en desarrollo, la página local propia vale');
+  // Plan anual: usa su propio precio, y sin él no hay forma de cobrarlo.
+  await createCheckout({...config,yearlyPriceId:'pri_year'},'user-3',ok,undefined,'year');
+  assert.deepEqual(JSON.parse(String(seen.at(-1)!.init.body)).items,[{price_id:'pri_year',quantity:1}]);
+  await assert.rejects(createCheckout(config,'user-3',ok,undefined,'year'),BillingError);
+  // El descuento viaja sólo si el servidor lo decide; sin él, el cuerpo es el de siempre.
+  await createCheckout(config,'user-2',ok,'dsc_01abcdefghijklmnopqrstuvwx');
+  assert.deepEqual(JSON.parse(String(seen.at(-1)!.init.body)),{items:[{price_id:PRICE,quantity:1}],custom_data:{diagramia_user_id:'user-2'},discount_id:'dsc_01abcdefghijklmnopqrstuvwx'});
   await assert.rejects(createCheckout(config,'u',async()=>new Response('{}',{status:500})),BillingError);
   await assert.rejects(createCheckout(config,'u',async()=>new Response(JSON.stringify({data:{checkout:{url:'http://insecure'}}}),{status:201})),BillingError);
   await assert.rejects(createCheckout(config,'u',async()=>{throw new Error('red caída');}),BillingError);

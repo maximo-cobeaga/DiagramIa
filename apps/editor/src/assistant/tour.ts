@@ -2,6 +2,7 @@ import {autoFocus,previewBatch,type ActionInput,type DiagramDocument} from '@dia
 import {commit,documentStore,newId,notify} from '../store/documentStore';
 import {playbackStore} from '../store/playbackStore';
 import {viewStore} from '../store/viewStore';
+import {track} from '../telemetry';
 
 export type TourStep={caption:string;nodeIds:string[];edgeIds:string[]};
 
@@ -39,6 +40,6 @@ export function saveTour(steps:TourStep[],label:string){
   const {doc}=documentStore.get(),action=tourAction(doc,steps,label);
   if(!action){notify('Los elementos de esta explicación ya no están en el diagrama.','warn');return false;}
   const saved=commit({id:newId('ui'),baseRevision:doc.revision,actions:[action]},'Explicación guardada como animación','ai');
-  if(saved)playbackStore.set({animationId:action.animation.id,scenarioId:'',time:0,playing:false});
+  if(saved){track('animation_created',{origin:'tour',steps:action.animation.steps.length});playbackStore.set({animationId:action.animation.id,scenarioId:'',time:0,playing:false});}
   return saved;
 }

@@ -29,7 +29,7 @@ try{
   pool=new pg.Pool({host:'127.0.0.1',port:dbPort,user:'diagramia',database:'diagramia',password,max:5});
   await migrateDocuments(pool);
   const repo=new PostgresDocumentRepository(pool),accounts=new AccountRepository(pool),alice=await accounts.signIn({issuer:'https://test.example',subject:'alice',email:'alice@example.test',emailVerified:true}),origin=`http://127.0.0.1:${editorPort}`;
-  server=createApp({providers:[],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:[origin],documents:repo,documentToken:'shared-test-token',accounts,telemetry:new TelemetryRepository(pool),billing:{repository:new BillingRepository(pool),paddle:{env:'sandbox',apiKey:'pdl_sdbx_smoke',webhookSecret:'smoke',priceId:'pri_smoke'}},oidc:{redirectUri:new URL(origin+'/api/v1/auth/callback')},config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
+  server=createApp({providers:[],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:[origin],documents:repo,documentToken:'shared-test-token',accounts,telemetry:new TelemetryRepository(pool),billing:{repository:new BillingRepository(pool),paddle:{env:'sandbox',apiKey:'pdl_sdbx_smoke',webhookSecret:'smoke',priceId:'pri_smoke',clientToken:'test_0123456789abcdef0123456789',checkoutUrl:origin+'/pago.html'},prices:{monthlyUsd:10,yearlyUsd:null}},oidc:{redirectUri:new URL(origin+'/api/v1/auth/callback')},config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const apiOrigin=`http://127.0.0.1:${server.address().port}`;
   vite=spawn(process.execPath,[join(root,'apps/editor/node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port',String(editorPort),'--strictPort'],{cwd:join(root,'apps/editor'),env:{...process.env,DIAGRAMIA_API_URL:apiOrigin},stdio:'ignore'});
@@ -109,6 +109,16 @@ try{
   await send('Page.navigate',{url:origin+'/?plan=pro'});
   await until(()=>js("document.querySelector('.account-page')?.textContent.includes('Plan y facturación')&&document.querySelector('.account-page nav button[aria-current=page]')?.textContent==='Plan y facturación'"),'intención Pro desde landing');
   assert.equal(await js("new URL(location.href).searchParams.has('plan')"),false,'la intención se consume');
+  // Vuelta de la página de pago sin pagar: se dice que no hubo cobro, se muestra el plan y el parámetro no queda en la URL.
+  await send('Page.navigate',{url:origin+'/?pro=cancel'});
+  await until(()=>js("document.querySelector('.account-page nav button[aria-current=page]')?.textContent==='Plan y facturación'&&!new URL(location.href).searchParams.has('pro')"),'vuelta del pago cancelado');
+  assert.ok(await js("document.body.textContent.includes('No se hizo ningún cobro')"),'cancelar el pago lo dice con claridad');
+  // La página de pago propia rechaza un enlace sin transacción válida y no carga nada de terceros.
+  await send('Page.navigate',{url:origin+'/pago.html?_ptxn=<script>'});
+  await until(()=>js("document.getElementById('status')?.dataset.tone==='warn'"),'enlace de pago inválido');
+  assert.equal(await js("document.querySelectorAll('script[src*=paddle]').length"),0,'sin transacción válida no se carga Paddle.js');
+  await send('Page.navigate',{url:origin+'/'});await until(()=>js("!!document.querySelector('.account-chip')"),'volver al editor');
+  await js("document.querySelector('.account-chip').click()");await until(()=>js("!!document.querySelector('.account-page')"),'cuenta abierta');
   await js("[...document.querySelectorAll('.account-page nav button')].find(b=>b.textContent==='Configuración').click()");await sleep(150);
   assert.ok(await js("document.querySelector('.account-page').textContent.includes('Cerrar sesión')"),'configuración disponible');
   for(let i=0;i<12;i++){await send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9});assert.ok(await js("!!document.activeElement.closest('.account-page')"),'el foco no escapa de Cuenta, Tab '+i);}

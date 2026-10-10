@@ -55,3 +55,12 @@
 @media(max-width:380px){.team-grid{grid-template-columns:1fr}.contact-page .brand{font-size:21px}.contact-page .nav nav{gap:12px}}
 @media(max-width:760px){.p-node .p-title{font-size:20px}.edge-label{font-size:14px}}
 @media(max-width:760px){.player-header .segmented{grid-template-columns:repeat(3,minmax(0,1fr))}.player-header .segmented button{padding:8px 6px}.player-state{min-height:64px}.flow-legend{gap:8px 16px}}
+
+/* Oferta por tiempo limitado: sólo aparece si el servidor informa una oferta vigente. */
+.annual-note{margin:-6px 0 18px;font-size:14px;color:var(--muted)}
+.annual-link{display:block;margin-top:12px;text-align:center;font-size:14px;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.offer-tag{display:grid;gap:4px;margin:-6px 0 20px;padding:12px 14px;border-radius:10px;background:var(--lime);color:var(--ink);font-size:14px;line-height:1.35}
+.offer-tag[hidden]{display:none}
+.offer-tag strong{font-size:15px}
+.offer-clock{font-size:13px;letter-spacing:.02em}
+.price-card.pro.has-offer .price-tag s{opacity:.55;margin-right:6px}

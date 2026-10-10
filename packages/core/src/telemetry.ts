@@ -17,6 +17,8 @@ const Slug=z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/);
 const Source=z.enum(['user','ai','mcp','import','template']);
 export const EXPORT_KINDS=['json','svg','png1','png2','png3','pdf','presentation-pdf','mermaid','drawio','dot','plantuml-class','plantuml-sequence','plantuml-state','bpmn','markdown','markdown-selection','timeline'] as const;
 export const IMPORT_KINDS=['json','mermaid','drawio','dot','plantuml','bpmn','image','other'] as const;
+export const LANDING_SECTIONS=['hero','story','equipos','play','agents','precios','cierre'] as const;
+export const EDITOR_TOOLS=['select','pan','node','connect','line','arrow','freehand','guided','eraser','zone','frame'] as const;
 export const AI_MODES=['create','edit','transform','animate','explain','review','document'] as const;
 export const FEEDBACK_REASONS=['misunderstood','incorrect','too_simple','too_complex','bad_layout','missing_elements','other'] as const;
 
@@ -25,10 +27,13 @@ const ChangeProps=z.strictObject({count:Count.min(1),source:Source});
 const EVENT_PROPS={
   // Adquisición y embudo
   landing_view:z.strictObject({}),
-  landing_cta_clicked:z.strictObject({placement:z.enum(['nav','hero','closing'])}),
+  landing_cta_clicked:z.strictObject({placement:z.enum(['nav','hero','closing','pricing_free','pricing_pro','pricing_pro_year','enterprise','offer'])}),
+  // Recorrido de la landing: qué secciones se ven y hasta dónde se baja. Sólo ids de sección conocidos y múltiplos de 25.
+  landing_section_viewed:z.strictObject({section:z.enum(LANDING_SECTIONS)}),
+  landing_scroll_depth:z.strictObject({percent:z.union([z.literal(25),z.literal(50),z.literal(75),z.literal(100)])}),
   board_opened:z.strictObject({returning:z.boolean(),fromLanding:z.boolean()}),
   first_element_created:z.strictObject({}),
-  signup_started:z.strictObject({trigger:z.enum(['ai','cloud','menu'])}),
+  signup_started:z.strictObject({trigger:z.enum(['ai','cloud','menu','pro'])}),
   useful_diagram_created:z.strictObject({reason:z.enum(['exported','saved_cloud','reopened']),nodes:Count,edges:Count}),
   // Editor
   node_created:ChangeProps,node_deleted:ChangeProps,node_moved:ChangeProps,node_resized:ChangeProps,node_edited:ChangeProps,
@@ -42,8 +47,28 @@ const EVENT_PROPS={
   import:z.strictObject({format:z.enum(IMPORT_KINDS),ok:z.boolean()}),
   tab_created:z.strictObject({}),
   presentation_started:z.strictObject({steps:Count}),
+  // Uso del editor: herramientas, paneles, inicio y animaciones. Todo enums o conteos, nunca texto.
+  tool_selected:z.strictObject({tool:z.enum(EDITOR_TOOLS)}),
+  panel_toggled:z.strictObject({panel:z.enum(['inspector','assistant','library','history','timeline','search','focus']),open:z.boolean()}),
+  welcome_choice:z.strictObject({choice:z.enum(['ai','draw','examples'])}),
+  search_used:z.strictObject({}),
+  animation_created:z.strictObject({origin:z.enum(['walk','build','edges','zones','spotlight','blank','tour']),steps:Count}),
+  animation_played:z.strictObject({steps:Count,scenario:z.boolean()}),
+  animation_finished:z.strictObject({steps:Count}),
+  // Resumen de la sesión del editor: tiempo activo y tamaño del trabajo. Un evento por sesión de uso, al ocultarse la página.
+  session_summary:z.strictObject({activeSeconds:Count,changes:Count,aiRequests:Count,nodes:Count,edges:Count,animations:Count,usedAi:z.boolean(),usedAnimation:z.boolean()}),
+  // Monetización: qué se le muestra a la persona, si toca el botón y si llega al pago. La oferta es un dato, no un texto.
+  upgrade_prompt_shown:z.strictObject({placement:z.enum(['plan_box','limit','offer','header']),offer:z.boolean()}),
+  offer_viewed:z.strictObject({kind:z.enum(['campaign','welcome']),percent:z.number().int().min(1).max(100)}),
+  checkout_started:z.strictObject({source:z.enum(['plan_box','offer','limit','landing','header']),offer:z.boolean(),interval:z.enum(['month','year']).optional()}),
+  checkout_failed:z.strictObject({status:z.number().int().min(0).max(599)}),
+  // Vuelta de la página de pago. El plan lo cambia el aviso firmado de Paddle, no este evento: sólo mide el recorrido.
+  checkout_returned:z.strictObject({result:z.enum(['completed','cancelled']),activated:z.boolean()}),
+  limit_reached:z.strictObject({kind:z.enum(['credits_daily','credits_monthly','documents','own_elements'])}),
   // IA en el editor: el gateway registra por su cuenta cada pedido (ai_request) con tokens y costo.
   ai_opened:z.strictObject({}),
+  ai_question_answered:z.strictObject({mode:z.enum(AI_MODES),via:z.enum(['option','other'])}),
+  ai_suggestion_clicked:z.strictObject({}),
   ai_proposal_applied:z.strictObject({requestId:Id,mode:z.enum(AI_MODES),actions:Count}),
   ai_proposal_discarded:z.strictObject({requestId:Id,mode:z.enum(AI_MODES)}),
   ai_regenerated:z.strictObject({requestId:Id,mode:z.enum(AI_MODES)}),

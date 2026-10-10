@@ -60,6 +60,19 @@ FROM telemetry_events WHERE origin = 'server' AND name = 'ai_request' AND occurr
 GROUP BY user_id ORDER BY usd DESC NULLS LAST;
 ```
 
+## Uso, monetización y landing (ADR 092)
+
+Eventos nuevos, todos enums o conteos (el contrato sigue sin texto libre):
+
+| Grupo | Eventos |
+|---|---|
+| Uso del editor | `tool_selected`, `panel_toggled`, `welcome_choice`, `search_used`, `animation_created` (origen y pasos), `animation_played`, `animation_finished`, `ai_suggestion_clicked`, `ai_question_answered` (sólo «opción» u «otro», nunca el texto) |
+| Sesión | `session_summary`: tiempo activo (con interacción reciente y página visible), cambios, pedidos de IA, tamaño del diagrama (nodos, conexiones, animaciones) y si usó IA o animaciones. Uno por sesión de uso, al ocultarse la página |
+| Monetización | `upgrade_prompt_shown`, `offer_viewed`, `checkout_started`, `checkout_failed`, `limit_reached` |
+| Landing | `landing_section_viewed` (secciones conocidas), `landing_scroll_depth` (25/50/75/100) y los botones de precios en `landing_cta_clicked` |
+
+El panel del fundador agrega «Suscripción y oferta» (del aviso al pago, landing → precios → Pro, oferta y límites) y «Uso del editor» (sesiones, tiempo activo, adopción de IA y animaciones, preguntas respondidas con «Otro», animaciones que llegan al final). Las métricas diarias nuevas se calculan igual que las anteriores; los días previos a este cambio figuran en cero porque esos eventos no existían.
+
 ## Dashboard del fundador (P7.3)
 
 Abrí el editor en `/#fundador` con una cuenta cuyo email verificado esté en `DIAGRAMIA_ADMIN_EMAILS` (separados por comas). Muestra los 10 indicadores de la sección 12 de la sesión de negocio para la semana UTC actual contra la anterior, más costo de IA, fricción y una tabla de los últimos 14 días. Definiciones: ADR 053. API: `GET /v1/admin/dashboard?to=AAAA-MM-DD`.

@@ -41,7 +41,67 @@
       Promise.race([send('landing_cta_clicked',{placement:link.dataset.cta}),new Promise(resolve=>setTimeout(resolve,300))]).then(()=>location.assign(link.href));
     });
   }
-  // Páginas que viven en el editor (privacidad): mismo origen que la app, para tener una sola fuente.
-  if(app)for(const link of document.querySelectorAll('[data-app-path]'))link.href=new URL(link.dataset.appPath,new URL(app,location.href)).href;
+  // Páginas que viven en el editor (privacidad, plan Pro): mismo origen que la app. Llevan el ID anónimo y la campaña para no cortar el embudo.
+  if(app)for(const link of document.querySelectorAll('[data-app-path]')){
+    const target=new URL(link.dataset.appPath,new URL(app,location.href));
+    if(enabled&&link.dataset.track){target.searchParams.set('aid',anonymousId);target.searchParams.set('sid',sessionId);}
+    if(link.dataset.track)for(const key of utm)if(params.get(key))target.searchParams.set(key,params.get(key));
+    link.href=target.href;
+  }
+  // Botones de precios: se mide el clic con el mismo margen de 300 ms que los CTA principales.
+  // Desde acá todo es opcional y cada parte se aísla: una falla en una no afecta a las otras ni a los enlaces.
+  const safely=run=>{try{run();}catch{/* la landing sigue funcionando sin esta parte */}};
+  safely(()=>{for(const link of document.querySelectorAll('[data-track]')){
+    link.addEventListener('click',event=>{
+      const placement=link.dataset.track;
+      if(!enabled||event.metaKey||event.ctrlKey||event.shiftKey||event.button!==0||link.target==='_blank')return void send('landing_cta_clicked',{placement});
+      event.preventDefault();
+      Promise.race([send('landing_cta_clicked',{placement}),new Promise(resolve=>setTimeout(resolve,300))]).then(()=>location.assign(link.href));
+    });
+  }});
+  // Recorrido: cada sección vista una vez por visita y la profundidad de lectura en cuartos. Ni texto ni posiciones exactas.
+  if(enabled)safely(()=>{
+    const SECTIONS=new Set(['hero','story','equipos','play','agents','precios','cierre']),seen=new Set();
+    if('IntersectionObserver' in window){
+      const observer=new IntersectionObserver(entries=>{
+        for(const entry of entries){
+          const id=entry.target.id;
+          if(entry.isIntersecting&&SECTIONS.has(id)&&!seen.has(id)){seen.add(id);observer.unobserve(entry.target);void send('landing_section_viewed',{section:id});}
+        }
+      },{threshold:.35});
+      for(const id of SECTIONS){const element=document.getElementById(id);if(element)observer.observe(element);}
+    }
+    const marks=[25,50,75,100],reached=new Set();
+    const onScroll=()=>{
+      const range=document.documentElement.scrollHeight-innerHeight;if(range<=0)return;
+      const ratio=scrollY/range*100;
+      for(const mark of marks)if(ratio>=mark-1&&!reached.has(mark)){reached.add(mark);void send('landing_scroll_depth',{percent:mark});}
+      if(reached.size===marks.length)removeEventListener('scroll',onScroll);
+    };
+    addEventListener('scroll',onScroll,{passive:true});
+  });
   void send('landing_view',{});
+
+  // Oferta por tiempo limitado: la decide el servidor (vencimiento real); si no hay oferta o no responde, no se muestra nada.
+  // No depende de la medición: quien pide no ser medido igual ve la oferta. Mismo gateway que los eventos, detrás del proxy de la app.
+  const offerUrl=endpoint?endpoint.replace(/\/events$/,'/offer'):app?new URL('api/v1/offer',new URL(app,location.href)).href:'';
+  const card=document.querySelector('.price-card.pro'),tag=document.getElementById('offer-tag');
+  if(offerUrl&&card&&tag)safely(()=>fetch(offerUrl,{mode:'cors',credentials:'omit',headers:{'x-diagramia-client':'editor'}}).then(r=>r.ok?r.json():null).then(body=>{
+    const offer=body&&body.available&&body.offer;if(!offer)return;
+    const end=Date.parse(offer.endsAt);if(!(end>Date.now()))return;
+    const en=document.documentElement.lang==='en',money=value=>'USD '+(Number.isInteger(value)?value:value.toFixed(2));
+    document.getElementById('offer-headline').textContent=en?`${offer.percent}% off — ${money(offer.priceUsd)}/month`:`${offer.percent}% menos — ${money(offer.priceUsd)} por mes`;
+    document.getElementById('offer-detail').textContent=en?(offer.months>1?`For your first ${offer.months} months. Regular price ${money(offer.regularUsd)}.`:`On your first month. Regular price ${money(offer.regularUsd)}.`)
+      :(offer.months>1?`Durante tus primeros ${offer.months} meses. Después, ${money(offer.regularUsd)} por mes.`:`En tu primer mes. Después, ${money(offer.regularUsd)} por mes.`);
+    const clock=document.getElementById('offer-clock'),pad=n=>String(n).padStart(2,'0');
+    const tick=()=>{
+      const left=end-Date.now();
+      if(left<=0){tag.hidden=true;card.classList.remove('has-offer');clearInterval(timer);return;}
+      const d=Math.floor(left/86400000),h=Math.floor(left%86400000/3600000),m=Math.floor(left%3600000/60000),s=Math.floor(left%60000/1000);
+      clock.textContent=(en?'Ends in ':'Termina en ')+(d?d+(en?'d ':' d '):'')+pad(h)+':'+pad(m)+':'+pad(s);
+    };
+    const timer=setInterval(tick,1000);tick();
+    tag.hidden=false;card.classList.add('has-offer');
+    void send('offer_viewed',{kind:offer.kind,percent:offer.percent});
+  }).catch(()=>{}));
 })();

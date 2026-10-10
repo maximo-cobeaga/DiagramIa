@@ -82,8 +82,28 @@ El gateway recibe los avisos de Paddle en `https://app.<dominio>/api/v1/billing/
 
 1. En Paddle (sandbox o real) → Developer Tools → Notifications → **New destination**: tipo URL, esa dirección y los eventos `subscription.created`, `subscription.activated`, `subscription.updated`, `subscription.canceled`, `subscription.paused`, `subscription.resumed`, `subscription.past_due` y `subscription.trialing`. Copiá el **secreto** del destino.
 2. En `.env.production`: `DIAGRAMIA_PADDLE_ENV`, `DIAGRAMIA_PADDLE_API_KEY`, `DIAGRAMIA_PADDLE_WEBHOOK_SECRET` y `DIAGRAMIA_PADDLE_PRICE_PRO` (las tres últimas juntas o ninguna). `npm run doctor -- --env .env.production` las revisa.
-3. En Paddle → Checkout → Checkout settings: configurá el **default payment link** (`https://app.<dominio>/`). Sin eso, la creación del checkout falla.
+3. En Paddle → Checkout → Checkout settings: configurá el **default payment link** con la página de pago propia, `https://app.<dominio>/pago.html` (en local, `http://127.0.0.1:5173/pago.html`). Sin eso Paddle rechaza la creación de cualquier pago (`transaction_default_checkout_url_not_set`, visible en el log del gateway como `[billing] Paddle no creó el pago`).
+3b. En Paddle → Developer tools → Authentication → **Client-side tokens**: creá uno y cargalo en `DIAGRAMIA_PADDLE_CLIENT_TOKEN`. Es público (`test_…` en sandbox, `live_…` en real) y es lo único de Paddle que llega al navegador. Sin él, el editor no ofrece Pro.
+
+**Cómo se abre el pago (ADR 094).** Paddle no redirige a una página suya: devuelve la dirección de la página de pago propia con `?_ptxn=<transacción>`, y esa página carga Paddle.js, que abre el pago encima. `pago.html` es la única página con un script de terceros y tiene su propia CSP en `infra/nginx.conf`; el editor conserva la estricta. Al terminar vuelve a `/?pro=ok` (o `/?pro=cancel`) y el editor espera el aviso firmado de Paddle para mostrar Pro.
+
+**Si la configuración queda incompleta**, el gateway arranca igual con el cobro apagado y lo dice en el log (`COBRO APAGADO`, `COBRO SIN PÁGINA DE PAGO`, `OFERTA APAGADA`). `npm run doctor` muestra qué falta.
 4. Desplegá y probá en el sandbox con una tarjeta de prueba de Paddle. No uses claves reales hasta que Paddle apruebe la cuenta.
+
+### Oferta por tiempo limitado (ADR 092)
+
+Es opcional y sólo funciona con el cobro configurado. Primero se crea el descuento en Paddle (Catalog → Discounts): porcentaje, aplicable al precio de Pro y, si querés que valga sólo los primeros meses, «recurring» con ese máximo de períodos. Después, en `.env.production`:
+
+| Variable | Qué es |
+|---|---|
+| `DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY` | (Pago, no oferta) ID del precio anual de USD 40 en Paddle. Opcional: sin él no se ofrece el plan anual. |
+| `DIAGRAMIA_OFFER_DISCOUNT_ID` | ID del descuento (`dsc_…`). Sin esta variable no hay oferta. |
+| `DIAGRAMIA_OFFER_PERCENT` | El mismo porcentaje del descuento, entero entre 5 y 90. Es lo que se muestra: Paddle cobra lo que dice el descuento. |
+| `DIAGRAMIA_OFFER_MONTHS` | Cuántos meses vale el descuento (1 a 12; 1 por defecto). Debe coincidir con los períodos del descuento en Paddle. |
+| `DIAGRAMIA_OFFER_ENDS_AT` | Vencimiento de la campaña para todos, en ISO, por ejemplo `2026-11-30T23:59:00-03:00`. |
+| `DIAGRAMIA_OFFER_WELCOME_HOURS` | Horas desde el alta de cada cuenta durante las que vale la oferta de bienvenida (0 a 720). |
+
+Hace falta al menos una de las dos ventanas; si hay ambas, se muestra la que vence más tarde. La landing consulta `GET /v1/offer` (sólo campaña) y el editor recibe la oferta de cada cuenta en `/v1/auth/me`. Al vencer, el servidor deja de aplicar el descuento al crear el pago.
 
 ## Reverse proxy en Docker
 

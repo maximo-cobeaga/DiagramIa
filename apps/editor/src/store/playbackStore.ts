@@ -3,6 +3,7 @@ import {animationDuration,resolveScenario,stepCamera,stepStarts,sampleAnimation,
 import {createStore,useStore} from './createStore';
 import {documentStore} from './documentStore';
 import {cameraFor,cancelCameraMove,moveCamera,viewStore} from './viewStore';
+import {track,trackThrottled} from '../telemetry';
 
 // El playhead es estado de interfaz: undo/redo y las ediciones no lo reinician.
 // `follow`: la cámara del editor acompaña cada paso. `cue` cuenta las navegaciones explícitas (reproducir, ir a un paso).
@@ -26,7 +27,8 @@ export function stepBy(d:DiagramDocument,delta:number){
   seekStep(d,sampleAnimation(animation,time).index+delta);
 }
 export function togglePlay(d:DiagramDocument){
-  const {animationId,time,playing}=playbackStore.get(),animation=currentAnimation(d,animationId);if(!animation)return;
+  const {animationId,time,playing,scenarioId}=playbackStore.get(),animation=currentAnimation(d,animationId);if(!animation)return;
+  if(!playing)track('animation_played',{steps:animation.steps.length,scenario:Boolean(scenarioId)});
   playbackStore.set({playing:!playing,time:!playing&&time>=animationDuration(animation)?0:time,cue:playbackStore.get().cue+(playing?0:1)});
 }
 
@@ -40,7 +42,10 @@ export function usePlaybackClock(){
     let last:number|undefined,frame=requestAnimationFrame(function tick(stamp){
       if(last!==undefined){
         const next=playbackStore.get().time+stamp-last;
-        if(next>=duration)playbackStore.set(loop?{time:next%duration}:{time:duration,playing:false});else playbackStore.set({time:next});
+        if(next>=duration){
+          if(!loop)trackThrottled('animation_finished',{steps:animation?.steps.length??0},5_000);
+          playbackStore.set(loop?{time:next%duration}:{time:duration,playing:false});
+        }else playbackStore.set({time:next});
       }
       last=stamp;if(playbackStore.get().playing)frame=requestAnimationFrame(tick);
     });

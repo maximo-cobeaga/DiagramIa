@@ -56,11 +56,28 @@ const context=():TelemetryContext=>({
 // ---- Cola y envío ----
 const queue:TelemetryEvent[]=[];
 let disabledByServer=false,backoffUntil=0,sending=false;
+// Resumen de uso de la sesión: tiempo activo (con interacción real y página visible) y cuánto se trabajó. Se emite al ocultarse la página.
+const usage={activeMs:0,changes:0,aiRequests:0,usedAi:false,usedAnimation:false};
+let lastActivity=0,probe:()=>{nodes:number;edges:number;animations:number}=()=>({nodes:0,edges:0,animations:0});
+/** El editor registra cómo leer el tamaño del trabajo actual (sólo conteos) para el resumen de sesión. */
+export function setSessionProbe(fn:typeof probe){probe=fn;}
+/** Un pedido a la IA salió del navegador (el costo y el resultado los mide el servidor por su cuenta). */
+export function noteAiRequest(){usage.aiRequests++;usage.usedAi=true;}
+function emitSummary(){
+  const activeSeconds=Math.round(usage.activeMs/1000);
+  if(activeSeconds<3&&!usage.changes)return;
+  const size=probe();
+  track('session_summary',{activeSeconds:Math.min(100_000,activeSeconds),changes:Math.min(100_000,usage.changes),aiRequests:Math.min(100_000,usage.aiRequests),
+    nodes:Math.min(100_000,size.nodes),edges:Math.min(100_000,size.edges),animations:Math.min(100_000,size.animations),usedAi:usage.usedAi,usedAnimation:usage.usedAnimation});
+  usage.activeMs=0;usage.changes=0;usage.aiRequests=0;
+}
 export function track<N extends TelemetryEventName>(name:N,props:Props<N>){
   if(disabledByServer||!telemetryEnabled())return;
   const parsed=TelemetryEventSchema.safeParse({id:crypto.randomUUID(),name,at:new Date().toISOString(),props});
   if(!parsed.success){if(['127.0.0.1','localhost'].includes(location.hostname))console.warn('[telemetry] evento descartado',name,parsed.error.issues[0]?.message);return;}
   queue.push(parsed.data as TelemetryEvent);
+  if(name==='ai_opened')usage.usedAi=true;
+  else if(name==='animation_played'||name==='animation_created')usage.usedAnimation=true;
   if(queue.length>MAX_QUEUE)queue.splice(0,queue.length-MAX_QUEUE);
   if(queue.length>=20)void flush();
 }
@@ -71,6 +88,12 @@ export function trackOnce<N extends TelemetryEventName>(key:string,name:N,props:
   if(seen.has(key))return;
   seen.add(key);write('local',ONCE,JSON.stringify([...seen].slice(-500)));
   track(name,props);
+}
+/** Un evento por sesión del navegador (o por clave): avisos que se vuelven a dibujar muchas veces y no deben inflar la medición. */
+export function trackSession<N extends TelemetryEventName>(key:string,name:N,props:Props<N>){
+  const mark='diagramia.telemetry.session.'+key;
+  if(read('session',mark))return;
+  write('session',mark,'1');track(name,props);
 }
 const lastThrottled=new Map<string,number>();
 /** Para gestos continuos (zoom, pan, selección): como mucho un evento por ventana. */
@@ -99,7 +122,7 @@ let lastAi:{requestId:string;at:number;edited:boolean}|null=null;
 /** Mide un lote confirmado por tipo de cambio. Después de aplicar IA, también la primera edición manual y el deshacer. */
 export function trackBatch(actions:readonly {type:string}[],source:Source){
   const counts=changeCounts(actions);
-  for(const [name,count] of Object.entries(counts))track(name as 'node_created',{count:count!,source});
+  for(const [name,count] of Object.entries(counts)){track(name as 'node_created',{count:count!,source});usage.changes+=count!;}
   if(counts.node_created&&(source==='user'||source==='ai'))trackOnce('first_element_created','first_element_created',{});
   if(source==='user'&&lastAi&&!lastAi.edited&&Date.now()-lastAi.at<5*60_000){
     lastAi.edited=true;track('ai_edit_after_apply',{requestId:lastAi.requestId,seconds:Math.round((Date.now()-lastAi.at)/1000)});
@@ -144,6 +167,11 @@ export function startTelemetry(){
   };
   if(document.readyState==='complete')setTimeout(timing,3000);else window.addEventListener('load',()=>setTimeout(timing,3000),{once:true});
   setInterval(()=>void flush(),FLUSH_MS);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')void flush(true);});
-  window.addEventListener('pagehide',()=>void flush(true));
+  // Tiempo activo: segundos con interacción reciente y la página a la vista. Parado o en segundo plano no suma.
+  const touch=()=>{lastActivity=Date.now();};
+  for(const type of ['pointerdown','keydown','wheel','touchstart'])window.addEventListener(type,touch,{passive:true,capture:true});
+  window.addEventListener('pointermove',()=>{if(Date.now()-lastActivity>1000)touch();},{passive:true,capture:true});
+  setInterval(()=>{if(document.visibilityState==='visible'&&Date.now()-lastActivity<30_000)usage.activeMs+=1000;},1000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){emitSummary();void flush(true);}});
+  window.addEventListener('pagehide',()=>{emitSummary();void flush(true);});
 }

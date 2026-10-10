@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createServer} from 'node:http';
+import {createServer,request} from 'node:http';
 import {generateKeyPairSync,sign,createHash} from 'node:crypto';
 import type {AddressInfo} from 'node:net';
 import {OidcAuthenticator} from '../src/auth/oidc.js';
@@ -60,6 +60,14 @@ test('OIDC validates PKCE, state, browser binding, nonce, signature and single-u
       const gateway=`http://127.0.0.1:${(app.address() as AddressInfo).port}`;
       expectedRedirect=gateway+'/api/v1/auth/callback';
       options.oidc=new OidcAuthenticator({issuer,clientId:'test-client',clientSecret:'test-secret',redirectUri:expectedRedirect,homeUrl:gateway+'/'});
+      // Abierto con otro nombre de host, el login pasa primero al host registrado (ahí vive la cookie del flujo), una sola vez.
+      const port=(app.address() as AddressInfo).port,otherHost=(path:string)=>new Promise<{status:number;location:string|undefined;cookie:string[]|undefined}>((resolve,reject)=>{
+        request({host:'127.0.0.1',port,path,headers:{host:'localhost:'+port}},response=>{response.resume();resolve({status:response.statusCode!,location:response.headers.location,cookie:response.headers['set-cookie']});}).on('error',reject).end();
+      });
+      const bounced=await otherHost('/v1/auth/login');
+      assert.equal(bounced.status,302);assert.equal(bounced.location,gateway+'/api/v1/auth/login?canonical=1');assert.equal(bounced.cookie,undefined,'el salto no deja cookies en el host equivocado');
+      const once=await otherHost('/v1/auth/login?canonical=1');
+      assert.equal(once.status,302);assert.ok(once.location!.startsWith(issuer),'con la marca ya no vuelve a saltar: sin bucle aunque un proxy cambie el Host');
       const login=await fetch(gateway+'/v1/auth/login',{redirect:'manual'});
       assert.equal(login.status,302);
       const target=new URL(login.headers.get('location')!);nonce=target.searchParams.get('nonce')!;challenge=target.searchParams.get('code_challenge')!;

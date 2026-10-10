@@ -373,3 +373,22 @@ Límites: sin modelos pagos, email enviado, login Auth0 real ni pago Paddle comp
 41. **Landing y movimiento:** en localhost:4173, comprobar precios, públicos y Empresas; alternar Campaña/Primer día/Compra, reproducir y pausar. Repetir en teléfono y con reducción de movimiento; verificar lectura sin acercar ni desplazar el SVG.
 42. **Empresas y bandeja:** enviar una consulta de prueba; confirmar que aparece en localhost:5173/#fundador con cuenta administradora verificada. Abrir correo, responder desde el cliente y marcar respondida; recargar para verificar el estado. Cuenta común no debe ver la bandeja. En producción repetir después de desplegar migración 008 y validar allowlist/APP_URL.
 43. **Cuenta:** abrir desde encabezado, recorrer las cuatro secciones con teclado, Tab/Shift+Tab y Escape; volver al mismo diagrama sin pérdida ni acción accidental. Guardar/reabrir un diagrama con Auth0 real y comprobar errores sin perder el documento. Revisar móvil/lector de pantalla. Pro debe explicar si está deshabilitado; verificar checkout sólo cuando Paddle esté configurado, con una compra sandbox y webhook real antes de anunciar el cobro operativo.
+
+### Preguntas con opciones, Pro directo, oferta, animaciones y medición (09/10/2026, ADR 092)
+
+`npm run check` **167/167**. Regresión Chromium **59/59** contra editor 5174 y gateway de demostración 8788 aislados (sin proveedor remoto ni IA paga). `smoke:landing` **10/10** con una oferta de campaña vigente: porcentaje, precio, meses y cuenta regresiva visibles. `smoke:repository`, `smoke:dashboard` y `smoke:shared` aprobados con PostgreSQL real: oferta visible para una cuenta Free y ausente para una Pro, `/v1/offer` público, descuento sólo en el cuerpo del pago cuando el servidor lo decide, y los nuevos indicadores del panel iguales a los calculados a mano. Capturas: `state/smoke/26b-ui-estilos-animacion.png`, `52b-ia-pregunta-opciones.png`, `52c-ia-pregunta-otro.png` y `evidencias/ui-landing-planes-1440.png`.
+
+Hallazgos de la propia prueba: la primera versión de la landing rompía todo el script por una expresión regular mal escapada (lo detectó `smoke:landing`); la oferta dependía de que la medición estuviera activa y se desacopló (quien pide no ser medido igual la ve).
+
+44. **Preguntas con opciones:** pedir algo ambiguo («agregá algo»). La IA pregunta y ofrece 2 a 4 respuestas más «Otro…». Tocar una responde y sigue; «Otro…» abre un campo y Enter envía. Con un modelo real, observar si las opciones tienen sentido.
+45. **Pro directo:** sin sesión, tocar «Pasar a Pro» en la landing lleva al login y, al volver, abre el pago. Con sesión, abre el pago sin pasar por la cuenta. Con la oferta vencida, el precio del pago es el normal.
+46. **Animaciones:** en un diagrama con zonas, «Animar mi diagrama» muestra cinco estilos; cada uno crea una animación que se reproduce; en «Editar pasos» se entiende qué tocar. Anotar qué sigue confuso.
+
+### Seguridad, solidez, precios y panel con gráficas (09/10/2026, ADR 093–094)
+
+`npm run check` **169/169**; regresión Chromium **59/59**; `smoke:landing` 10/10; `smoke:shared`, `smoke:repository` y `smoke:dashboard` aprobados con PostgreSQL real. Sonda con Chrome real contra el sandbox de Paddle: la página de pago carga Paddle.js y el marco del pago sin violaciones de CSP (la primera política bloqueaba la hoja de estilos de Paddle y se corrigió); un enlace sin transacción válida no carga nada de terceros. Pantalla de recuperación del editor comprobada forzando un error de dibujo. `nginx -t` aprobado sobre la plantilla. **No se completó ningún pago de prueba:** Paddle exige el default payment link, que sólo se carga desde su panel.
+
+47. **Pago en sandbox (requiere el default payment link):** con sesión, «Pasar a Pro» abre la página de pago y el formulario de Paddle encima; pagar con la tarjeta de prueba 4242 4242 4242 4242 vuelve al editor y, con el webhook configurado, muestra Pro. Cerrar el pago vuelve con «No se hizo ningún cobro». Mirar la consola por orígenes bloqueados.
+48. **Plan anual:** en Plan y facturación, elegir Anual muestra USD 40 por año y abre el pago con ese precio; la oferta no se aplica.
+49. **Panel:** `/#fundador` muestra el recorrido de la semana y las ocho tendencias; pasar el mouse muestra fecha y valor.
+

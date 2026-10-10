@@ -6,7 +6,7 @@ import {selectionStore} from '../store/selectionStore';
 import {fit,focusOn,viewStore} from '../store/viewStore';
 import {saveFile} from '../ui';
 import {FEEDBACK_REASONS} from '@diagramia/core';
-import {track,trackAiApplied} from '../telemetry';
+import {noteAiRequest,track,trackAiApplied} from '../telemetry';
 import {ReauthButton} from '../shell/AccountPage';
 import {accountStore,signIn} from '../store/accountStore';
 import {Markdown} from './Markdown';
@@ -25,7 +25,7 @@ type Common={requestId:string;mode:AiMode;provider:string;providerKind:ProviderI
 type Finding={targetId:string;severity:'info'|'warning'|'risk';observation:string;evidence:string;suggestion:string};
 type Result=Common&(
   |{kind:'proposal';summary:string;batch:ActionBatchInput;changes:Changes;prunedReferences:{stepId:string;removed:string[]}[];warnings?:string[]}
-  |{kind:'clarification';summary:string;clarification:string}
+  |{kind:'clarification';summary:string;clarification:string;options?:string[]}
   |{kind:'text';text:string;tour?:TourStep[]}
   |{kind:'review';summary:string;findings:Finding[]});
 /** `shown` es lo que se ve en la burbuja del usuario cuando difiere del pedido (por ejemplo, «Explicar más»). */
@@ -63,6 +63,19 @@ const replyOf=(result:Result)=>(result.kind==='proposal'?`Propuse ${result.batch
   :result.kind==='clarification'?result.clarification:result.kind==='text'?result.text
   :`Revisión: ${result.summary} ${result.findings.map(f=>`[${f.targetId}] ${f.observation}`).join(' ')}`).trim().slice(0,1500)||'Sin respuesta.';
 
+/** Respuestas sugeridas de una pregunta de la IA, más «Otro» para escribir una distinta. Un toque envía la respuesta. */
+function QuestionChoices({options,disabled,onChoose,onOther}:{options:string[];disabled:boolean;onChoose:(text:string)=>void;onOther:(text:string)=>void}){
+  const [other,setOther]=useState(false),[text,setText]=useState('');
+  const sendOther=()=>{if(text.trim()&&!disabled)onOther(text.trim());};
+  return <div className="question-choices" role="group" aria-label="Respuestas sugeridas">
+    {options.map((option,i)=><button key={option} className="choice-option" disabled={disabled} onClick={()=>onChoose(option)}><span className="choice-key" aria-hidden="true">{i+1}</span>{option}</button>)}
+    {other
+      ?<div className="choice-other"><input autoFocus aria-label="Tu respuesta" maxLength={500} value={text} placeholder="Escribí tu respuesta…" onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();sendOther();}else if(e.key==='Escape')setOther(false);}}/>
+        <button className="primary" disabled={!text.trim()||disabled} onClick={sendOther}>Enviar</button></div>
+      :<button className="choice-option other" disabled={disabled} aria-expanded={false} onClick={()=>setOther(true)}><span className="choice-key" aria-hidden="true">+</span>Otro…</button>}
+  </div>;
+}
+
 /** Chat con el asistente: mensajes en burbujas, propuestas como tarjetas que se ven en el canvas, y el cuadro de texto abajo. */
 export function Chat(){
   const {doc}=useStore(documentStore),{ids}=useStore(selectionStore),{staging}=useStore(viewStore),{auth}=useStore(accountStore);
@@ -89,7 +102,7 @@ export function Chat(){
   useEffect(()=>{threadRef.current?.scrollTo({top:threadRef.current.scrollHeight});},[turns.length,last?.status]);
 
   async function send(turn:Turn){
-    controller.current=new AbortController();unstage();
+    controller.current=new AbortController();unstage();noteAiRequest();
     setTurns(list=>[...list.filter(t=>t.id!==turn.id),{...turn,status:'sending',error:undefined}]);
     try{
       const response=await fetch(API+'/v1/assist',{method:'POST',headers:HEADERS,body:turn.body,signal:controller.current.signal}),data=await response.json();
@@ -149,7 +162,13 @@ export function Chat(){
 
   function answer(turn:Turn){
     const result=turn.result!;
-    if(result.kind==='clarification')return turn.outcome==='cancelled'?<p className="cancelled-question">Pregunta cancelada.</p>:<div className="assistant-question"><p>{result.clarification}</p>{turn===last&&!turn.outcome&&<div className="question-actions"><button onClick={()=>document.getElementById('chat-prompt')?.focus()}>Responder</button><button className="quiet" onClick={()=>patch(turn.id,{outcome:'cancelled'})}>Cancelar</button></div>}</div>;
+    if(result.kind==='clarification'){
+      if(turn.outcome==='cancelled')return <p className="cancelled-question">Pregunta cancelada.</p>;
+      const options=result.options??[],open=turn===last&&!turn.outcome;
+      return <div className="assistant-question"><p>{result.clarification}</p>
+        {open&&options.length>0&&<QuestionChoices options={options} disabled={sending} onChoose={choice=>{track('ai_question_answered',{mode:result.mode,via:'option'});submit(choice);}} onOther={text=>{track('ai_question_answered',{mode:result.mode,via:'other'});submit(text);}}/>}
+        {open&&<div className="question-actions">{options.length===0&&<button onClick={()=>document.getElementById('chat-prompt')?.focus()}>Responder</button>}<button className="quiet" onClick={()=>patch(turn.id,{outcome:'cancelled'})}>Cancelar</button></div>}</div>;
+    }
     if(result.kind==='text'){
       const tour=result.tour??[],label=`Explicación: ${turn.shown??turn.prompt}`.slice(0,120);
       return <>
@@ -245,7 +264,7 @@ export function Chat(){
         <div className="welcome-mark" aria-hidden="true">✦</div>
         <h2>¿Qué idea tenés hoy?</h2>
         <p>Contámela y le damos forma juntos. También podés pedirme que explique o mejore tu diagrama.</p>
-        <div className="chips">{SUGGESTIONS.map(text=><button key={text} className="chip-button" onClick={()=>setPrompt(text)}>{text}</button>)}</div>
+        <div className="chips">{SUGGESTIONS.map(text=><button key={text} className="chip-button" onClick={()=>{track('ai_suggestion_clicked',{});setPrompt(text);}}>{text}</button>)}</div>
         <p className="welcome-control">Vos decidís: cada cambio espera tu aprobación.</p>
       </div>}
       {turns.map(turn=><div key={turn.id} className="exchange">

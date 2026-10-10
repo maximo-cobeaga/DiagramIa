@@ -13,6 +13,10 @@ import {RemoteMcpService} from './mcp.js';
 import {TelemetryRepository} from './repositories/telemetry.js';
 import {ContactRepository} from './repositories/contact.js';
 import {FounderDashboard} from './repositories/dashboard.js';
+import {parseOffer} from './billing/offer.js';
+
+/** Precios de lista del plan Pro en USD (ADR 093): los que muestran la landing, el editor y la oferta. Deben coincidir con los precios de Paddle. */
+const PRO_PRICE_USD=10,PRO_YEARLY_USD=40;
 
 const root=fileURLToPath(new URL('../../../',import.meta.url));
 // Carga opcional de .env en la raíz del repo (el archivo está en .gitignore). Las variables ya definidas tienen prioridad.
@@ -56,12 +60,25 @@ async function start(){
       const purge=()=>accounts.purgeExpired().catch(error=>console.error('No se pudo purgar datos vencidos:',error instanceof Error?error.message:String(error)));
       await purge();setInterval(()=>void purge(),6*3_600_000).unref();
     }
-    // Cobro (ADR 089): todo o nada. Sin las cuatro variables, el plan Pro no se ofrece.
-    const paddleNames=['DIAGRAMIA_PADDLE_API_KEY','DIAGRAMIA_PADDLE_WEBHOOK_SECRET','DIAGRAMIA_PADDLE_PRICE_PRO'] as const,paddleConfigured=paddleNames.filter(name=>!!env[name]);
-    if(paddleConfigured.length&&paddleConfigured.length!==paddleNames.length)throw new Error(`Cobro incompleto: configurar ${paddleNames.filter(name=>!env[name]).join(', ')}.`);
-    if(paddleConfigured.length&&!accounts)throw new Error('El cobro requiere OIDC y PostgreSQL configurados.');
+    // Cobro (ADR 089/094): todo o nada, pero una configuración incompleta apaga el cobro en vez de tirar abajo el producto.
+    // El editor, la IA y la nube no dependen de Paddle; el aviso queda en el log y en `npm run doctor`.
+    const paddleNames=['DIAGRAMIA_PADDLE_API_KEY','DIAGRAMIA_PADDLE_WEBHOOK_SECRET','DIAGRAMIA_PADDLE_PRICE_PRO'] as const;
+    let paddleConfigured=paddleNames.filter(name=>!!env[name]);
+    const billingOff=(reason:string)=>{console.error(`COBRO APAGADO: ${reason} El resto del servicio funciona con el plan Free.`);paddleConfigured=[];};
+    if(paddleConfigured.length&&paddleConfigured.length!==paddleNames.length)billingOff(`configuración incompleta, falta ${paddleNames.filter(name=>!env[name]).join(', ')}.`);
+    else if(paddleConfigured.length&&!accounts)billingOff('requiere OIDC y PostgreSQL configurados.');
     const paddleEnv=env.DIAGRAMIA_PADDLE_ENV==='live'?'live':'sandbox';
-    const billing=paddleConfigured.length&&pool?{repository:new BillingRepository(pool),paddle:{env:paddleEnv as 'live'|'sandbox',apiKey:env.DIAGRAMIA_PADDLE_API_KEY!,webhookSecret:env.DIAGRAMIA_PADDLE_WEBHOOK_SECRET!,priceId:env.DIAGRAMIA_PADDLE_PRICE_PRO!}}:undefined;
+    // Token público de Paddle.js: debe ser del mismo entorno que la clave. Sin él hay cobro configurado pero no se ofrece el pago.
+    let clientToken:string|null=env.DIAGRAMIA_PADDLE_CLIENT_TOKEN||null;
+    if(paddleConfigured.length&&!clientToken)console.error('COBRO SIN PÁGINA DE PAGO: falta DIAGRAMIA_PADDLE_CLIENT_TOKEN (Paddle → Developer tools → Authentication → Client-side tokens). No se ofrece Pro hasta cargarlo.');
+    if(clientToken&&!new RegExp(`^${paddleEnv==='live'?'live':'test'}_[a-z0-9]{20,60}$`).test(clientToken)){
+      console.error(`COBRO SIN PÁGINA DE PAGO: DIAGRAMIA_PADDLE_CLIENT_TOKEN no es un token ${paddleEnv==='live'?'live_':'test_'}… del entorno ${paddleEnv}. ¿Pegaste la clave de API por error? Esa nunca va acá.`);clientToken=null;
+    }
+    // Página propia donde se abre el pago: vive en el mismo origen que el editor.
+    const checkoutUrl=env.DIAGRAMIA_OIDC_HOME_URL?new URL('pago.html',env.DIAGRAMIA_OIDC_HOME_URL).href:null;
+    let offer:ReturnType<typeof parseOffer>;
+    try{offer=paddleConfigured.length?parseOffer(env,PRO_PRICE_USD):undefined;}catch(error){console.error('OFERTA APAGADA:',error instanceof Error?error.message:String(error));}
+    const billing=paddleConfigured.length&&pool?{repository:new BillingRepository(pool),paddle:{env:paddleEnv as 'live'|'sandbox',apiKey:env.DIAGRAMIA_PADDLE_API_KEY!,webhookSecret:env.DIAGRAMIA_PADDLE_WEBHOOK_SECRET!,priceId:env.DIAGRAMIA_PADDLE_PRICE_PRO!,yearlyPriceId:env.DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY||null,clientToken,checkoutUrl},offer,prices:{monthlyUsd:PRO_PRICE_USD,yearlyUsd:PRO_YEARLY_USD}}:undefined;
     const remoteMcp=mcpConfigured.length&&documents&&accounts?new RemoteMcpService({resourceUrl:env.DIAGRAMIA_MCP_RESOURCE_URL!,issuer:env.DIAGRAMIA_OIDC_ISSUER!,jwksUrl:env.DIAGRAMIA_MCP_JWKS_URL!},accounts,documents):undefined;
     const server=createApp({
       providers,ledger,productPrompt,token,documents,
@@ -93,4 +110,6 @@ async function start(){
     for(const signal of ['SIGINT','SIGTERM']as const)process.once(signal,()=>server.close(()=>{void pool?.end().finally(()=>process.exit(0));}));
   }catch(error){await pool?.end();throw error;}
 }
+// Una promesa suelta que falla (un aviso, una medición) no debe tirar el gateway con pedidos en curso: queda en el log, sin datos del pedido.
+process.on('unhandledRejection',reason=>{console.error('[gateway] promesa sin manejar:',reason instanceof Error?reason.name+': '+reason.message:'error');});
 start().catch(error=>{console.error('No se pudo iniciar el gateway:',error instanceof Error?error.message:String(error));process.exitCode=1;});

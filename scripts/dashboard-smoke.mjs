@@ -45,9 +45,13 @@ try{
   await serverEvents.record({name:'ai_request',props:{requestId:'req-a',mode:'create',provider:'openai',model:'gpt-6-luna',outcome:'proposal',errorCode:null,inputTokens:6000,cachedInputTokens:0,outputTokens:1500,costUsd:0.002,latencyMs:3000,calls:1,repairs:0,replayed:false}},userA);
   await serverEvents.record({name:'ai_request',props:{requestId:'req-x',mode:'edit',provider:'openai',model:'none',outcome:'blocked',errorCode:'RATE_LIMITED',inputTokens:0,cachedInputTokens:0,outputTokens:0,costUsd:null,latencyMs:1,calls:0,repairs:0,replayed:false}},userA);
   // B mira la landing y se va. C entra directo, llega a un diagrama útil a los 30 min y deja un 👎.
-  await visit(b,'2026-10-09T09:00:00Z',[['landing_view',{}]]);
+  await visit(b,'2026-10-09T09:00:00Z',[['landing_view',{}],['landing_section_viewed',{section:'precios'},'2026-10-09T09:01:00Z'],['landing_scroll_depth',{percent:75},'2026-10-09T09:01:30Z'],
+    ['landing_cta_clicked',{placement:'pricing_pro'},'2026-10-09T09:02:00Z']]);
   await visit(c,'2026-10-09T12:00:00Z',[['board_opened',{returning:false,fromLanding:false}],['first_element_created',{},'2026-10-09T12:05:00Z'],
-    ['useful_diagram_created',{reason:'saved_cloud',nodes:4,edges:3},'2026-10-09T12:30:00Z'],['ai_feedback',{requestId:'req-c',rating:'down',reason:'bad_layout'},'2026-10-09T12:31:00Z']]);
+    ['useful_diagram_created',{reason:'saved_cloud',nodes:4,edges:3},'2026-10-09T12:30:00Z'],['ai_feedback',{requestId:'req-c',rating:'down',reason:'bad_layout'},'2026-10-09T12:31:00Z'],
+    ['upgrade_prompt_shown',{placement:'plan_box',offer:true},'2026-10-09T12:40:00Z'],['checkout_started',{source:'offer',offer:true},'2026-10-09T12:41:00Z'],['checkout_returned',{result:'completed',activated:true},'2026-10-09T12:41:30Z'],
+    ['ai_question_answered',{mode:'create',via:'other'},'2026-10-09T12:42:00Z'],['animation_played',{steps:4,scenario:false},'2026-10-09T12:43:00Z'],['animation_finished',{steps:4},'2026-10-09T12:44:00Z'],
+    ['session_summary',{activeSeconds:300,changes:40,aiRequests:1,nodes:6,edges:5,animations:1,usedAi:true,usedAnimation:true},'2026-10-09T12:50:00Z']]);
   // Semana anterior: D llega el 02/10 y vuelve el día 7 (09/10); E llega el 03/10 y vuelve el 05/10, no el día 7.
   await visit(d,'2026-10-02T15:00:00Z',[['board_opened',{returning:false,fromLanding:false}]]);
   await visit(d,'2026-10-09T15:00:00Z',[['board_opened',{returning:true,fromLanding:false}]]);
@@ -64,6 +68,10 @@ try{
   }
   assert.equal(report.indicators.length,10);
   assert.deepEqual([report.wau,report.previousWau],[4,2]);
+  // Monetización y uso: eventos nuevos sembrados a mano (ADR 092), con cociente calculado por separado.
+  assert.deepEqual(report.monetization,{upgradePrompts:1,offerViews:0,proCtaClicks:1,checkoutStarted:1,checkoutFailed:0,checkoutCompleted:1,limitHits:0,previous:{checkoutStarted:0,upgradePrompts:0},
+    promptToCheckout:0.5,landingToPricing:0.5,pricingToProClick:1});
+  assert.deepEqual(report.usage,{sessions:1,avgActiveMinutes:5,avgChanges:40,aiShare:1,animationShare:1,questionsAnswered:1,questionOtherShare:1,animationsCreated:0,animationFinishRate:1,landingScrolled75:0.5,landingReachedClosing:0});
   assert.deepEqual(report.cost,{aiUsd:0.002,previousAiUsd:0,perActiveUser:0.0005,aiRequests:1,blocked:1,failed:0});
   // Recalcular no duplica: un registro por día y los mismos números.
   const again=await dashboard.report();
@@ -89,13 +97,22 @@ try{
     socket=new WebSocket(ws);await new Promise((resolve,reject)=>{socket.onopen=resolve;socket.onerror=reject;});
     let sequence=0;const pending=new Map();socket.onmessage=event=>{const msg=JSON.parse(event.data);if(msg.id){const wait=pending.get(msg.id);pending.delete(msg.id);msg.error?wait.reject(new Error(msg.error.message)):wait.resolve(msg.result);}};
     const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject});socket.send(JSON.stringify({id,method,params}));});
-    const js=async expression=>{const value=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(value.exceptionDetails)throw new Error(value.exceptionDetails.text);return value.result.value;};
+    const js=async expression=>{const value=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(value.exceptionDetails)throw new Error(value.exceptionDetails.exception?.description??value.exceptionDetails.text);return value.result.value;};
     const shot=async name=>{mkdirSync(join(root,'state/smoke'),{recursive:true});writeFileSync(join(root,'state/smoke',name+'.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));};
     await send('Page.enable');await send('Runtime.enable');await send('Network.enable');
     await send('Network.setCookie',{name:'diagramia_session',value:ana.token,url:origin});
     await send('Page.navigate',{url:origin+'/#fundador'});
-    let tiles=0;for(let i=0;i<60&&tiles<9;i++){await sleep(250);tiles=await js("document.querySelectorAll('.founder-tile').length");}
-    assert.equal(tiles,11,'9 indicadores más costo y fricción');
+    // La bandeja de consultas carga aparte: sólo se cuentan los indicadores del panel.
+    const metricTiles="[...document.querySelectorAll('.founder-tile')].filter(t=>t.closest('section')?.getAttribute('aria-label')!=='Consultas de empresas').length";
+    let tiles=0;for(let i=0;i<60&&tiles<17;i++){await sleep(250);tiles=await js(metricTiles);}
+    assert.equal(tiles,17,'9 indicadores, costo y fricción, suscripción y uso');
+    // Tendencias y recorrido: ocho gráficas con su tabla, hover/teclado con valor del día, y las etapas del recorrido con los valores sembrados.
+    assert.equal(await js("document.querySelectorAll('.trend-tile').length"),8,'ocho tendencias');
+    assert.equal(await js("document.querySelectorAll('.funnel li').length"),7,'siete etapas del recorrido');
+    assert.ok(await js("[...document.querySelectorAll('.funnel li')].map(li=>li.textContent).join('|').includes('Vieron la landing2')"),'la etapa de la landing muestra los 2 visitantes sembrados');
+    await js("(()=>{const svg=document.querySelector('.trend-tile svg');svg.focus();svg.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));})()");await sleep(120);
+    assert.ok(await js("(document.querySelector('.trend-tip')?.textContent??'').split('/').length===2"),'el hover por teclado muestra la fecha (dd/mm) y el valor');
+    assert.equal(await js("document.querySelectorAll('.trend-table tbody tr').length"),28,'la tabla trae los 28 días');
     const hero=await js("document.querySelector('.founder-hero strong').textContent");assert.equal(hero,'0.50');
     const text=await js('document.body.innerText');
     for(let i=0;i<40&&!await js("!!document.querySelector('.inquiry')");i++)await sleep(100);

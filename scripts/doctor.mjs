@@ -121,7 +121,7 @@ section('Cobro de la suscripción Pro (Paddle)');
 {
   const names=['DIAGRAMIA_PADDLE_API_KEY','DIAGRAMIA_PADDLE_WEBHOOK_SECRET','DIAGRAMIA_PADDLE_PRICE_PRO'],filledPaddle=names.filter(name=>get(name));
   if(!filledPaddle.length)warn('El cobro está apagado: nadie puede pasar a Pro.','Cuando tengas la cuenta de Paddle, completá DIAGRAMIA_PADDLE_* (docs/GUIA_PASO_A_PASO.md, paso 8).');
-  else if(filledPaddle.length!==names.length)bad(`Cobro incompleto: faltan ${names.filter(name=>!get(name)).join(', ')}.`,'Las tres variables van juntas; el gateway no arranca con alguna sola.');
+  else if(filledPaddle.length!==names.length)bad(`Cobro incompleto: faltan ${names.filter(name=>!get(name)).join(', ')}.`,'Las tres variables van juntas; con alguna sola el cobro queda apagado (el resto del servicio funciona).');
   else{
     const live=get('DIAGRAMIA_PADDLE_ENV')==='live',key=get('DIAGRAMIA_PADDLE_API_KEY');
     ok(`Paddle en modo ${live?'REAL (live)':'pruebas (sandbox)'}: clave ${secret('DIAGRAMIA_PADDLE_API_KEY')}`);
@@ -131,6 +131,15 @@ section('Cobro de la suscripción Pro (Paddle)');
     if(!/^pri_[a-z0-9]{20,}$/.test(get('DIAGRAMIA_PADDLE_PRICE_PRO')))bad('DIAGRAMIA_PADDLE_PRICE_PRO no parece un ID de precio (pri_…).','Copialo desde Catalog → Prices en el panel de Paddle.');
     if(get('DIAGRAMIA_PADDLE_WEBHOOK_SECRET').length<16)bad('DIAGRAMIA_PADDLE_WEBHOOK_SECRET es demasiado corto.','Copialo entero desde Developer Tools → Notifications.');
     if(!get('DIAGRAMIA_DATABASE_URL')&&!production)bad('El cobro necesita base de datos y login.');
+    // Página de pago (ADR 094): sin el token público de Paddle.js hay cobro configurado pero nadie puede pagar.
+    const clientToken=get('DIAGRAMIA_PADDLE_CLIENT_TOKEN');
+    if(!clientToken)bad('Falta DIAGRAMIA_PADDLE_CLIENT_TOKEN: no se ofrece Pro porque no hay dónde pagar.','Crealo en Paddle → Developer tools → Authentication → Client-side tokens. Es público (empieza con test_ o live_); NO es la clave de API.');
+    else if(/^pdl_/.test(clientToken))bad('DIAGRAMIA_PADDLE_CLIENT_TOKEN tiene una clave de API. Esa clave es secreta y este valor llega al navegador.','Revocá esa clave en Paddle ya mismo y poné acá un client-side token (test_… o live_…).');
+    else if(!new RegExp(`^${live?'live':'test'}_[a-z0-9]{20,60}$`).test(clientToken))bad(`DIAGRAMIA_PADDLE_CLIENT_TOKEN no es un token ${live?'live_':'test_'}… del entorno elegido.`,'El token y la clave de API tienen que ser del mismo entorno (sandbox o live).');
+    else ok('Página de pago lista: token público de Paddle.js cargado.');
+    warn('Recordá el «default payment link» en Paddle (Checkout → Checkout settings).',`Tiene que ser ${get('DIAGRAMIA_OIDC_HOME_URL')?new URL('pago.html',get('DIAGRAMIA_OIDC_HOME_URL')).href:'https://app.<dominio>/pago.html'}. Sin eso Paddle no crea ningún pago; no se puede comprobar desde acá.`);
+    if(get('DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY')&&!/^pri_[a-z0-9]{20,}$/.test(get('DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY')))bad('DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY no parece un ID de precio (pri_…).','Copialo desde Catalog → Prices, o dejalo vacío para no ofrecer el plan anual.');
+    if(!get('DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY'))warn('Sin plan anual: falta DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY.','Es opcional. La landing y los términos ya lo anuncian: cargalo o quitá esa mención.');
   }
 }
 

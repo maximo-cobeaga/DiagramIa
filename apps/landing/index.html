@@ -12,6 +12,7 @@
   <!-- URL del editor y del endpoint de eventos. En producción las fija el despliegue (P8.4); vacías, los botones no salen de la página y no se mide nada. -->
   <meta name="diagramia-app" content="http://127.0.0.1:5173/">
   <meta name="diagramia-events" content="http://127.0.0.1:5173/api/v1/events">
+  <script src="links.js" defer></script>
   <script src="telemetry.js" defer></script>
 </head>
 <body>
@@ -22,7 +23,7 @@
     <div class="nav-end"><button id="language" class="language" aria-label="Switch to English">EN</button><a class="button small dark" href="#play" data-cta="nav" data-es="Crear diagrama" data-en="Create a diagram">Crear diagrama</a></div>
   </header>
   <main id="main">
-    <section class="hero wrap">
+    <section id="hero" class="hero wrap">
       <div class="eyebrow"><span class="tiny-mark">◧</span><span data-es="EL CANVAS PARA IDEAS QUE EVOLUCIONAN" data-en="A CANVAS FOR IDEAS THAT EVOLVE">EL CANVAS PARA IDEAS QUE EVOLUCIONAN</span></div>
       <div class="hero-grid">
         <div><h1><span data-es="Ideas." data-en="Ideas.">Ideas.</span><br><span class="hero-line" data-es="En movimiento." data-en="In motion.">En movimiento.</span></h1><p class="hero-copy" data-es="Dales forma con IA. Editá cada detalle. Mostrá cómo funcionan, paso a paso." data-en="Shape them with AI. Edit every detail. Show how they work, step by step.">Dales forma con IA. Editá cada detalle. Mostrá cómo funcionan, paso a paso.</p><div class="hero-actions"><a class="button dark" href="#play" data-cta="hero" data-es="Crear diagrama" data-en="Create a diagram">Crear diagrama</a><a class="button outline" href="#story" data-es="Descubrir el canvas" data-en="Discover the canvas">Descubrir el canvas</a><span class="caption" data-es="Bajá y seguí la idea." data-en="Scroll to follow the idea.">Bajá y seguí la idea.</span></div></div>
@@ -114,18 +115,21 @@
       <div class="price-grid">
         <article class="price-card"><h3>Free</h3><p class="price-tag">USD 0</p>
           <ul><li data-es="Pizarra completa en tu navegador, sin cuenta" data-en="Full canvas in your browser, no account">Pizarra completa en tu navegador, sin cuenta</li><li data-es="20 créditos de IA por mes" data-en="20 AI credits per month">20 créditos de IA por mes</li><li data-es="3 diagramas en la nube" data-en="3 cloud diagrams">3 diagramas en la nube</li><li data-es="Exportá a JSON, SVG, PNG, Mermaid, PDF y más" data-en="Export to JSON, SVG, PNG, Mermaid, PDF and more">Exportá a JSON, SVG, PNG, Mermaid, PDF y más</li></ul>
-          <a class="button outline" href="#" data-app-path="" data-es="Crear un diagrama" data-en="Create a diagram">Crear un diagrama</a></article>
-        <article class="price-card pro"><span class="price-flag mono" data-es="RECOMENDADO" data-en="RECOMMENDED">RECOMENDADO</span><h3>Pro</h3><p class="price-tag">USD 5 <small data-es="por mes" data-en="per month">por mes</small></p>
+          <a class="button outline" href="#" data-app-path="" data-track="pricing_free" data-es="Crear un diagrama" data-en="Create a diagram">Crear un diagrama</a></article>
+        <article class="price-card pro"><span class="price-flag mono" data-es="RECOMENDADO" data-en="RECOMMENDED">RECOMENDADO</span><h3>Pro</h3><p class="price-tag">USD 10 <small data-es="por mes" data-en="per month">por mes</small></p>
+          <p class="annual-note" data-es="o USD 40 por año: ahorrás 67 %" data-en="or USD 40 per year: save 67%">o USD 40 por año: ahorrás 67 %</p>
+          <p class="offer-tag" id="offer-tag" hidden><strong id="offer-headline"></strong><span id="offer-detail"></span><span class="offer-clock mono" id="offer-clock" role="timer" aria-live="off"></span></p>
           <ul><li data-es="Todo lo del plan Free" data-en="Everything in Free">Todo lo del plan Free</li><li data-es="400 créditos de IA por mes" data-en="400 AI credits per month">400 créditos de IA por mes</li><li data-es="Hasta 100 diagramas en la nube (1 GB)" data-en="Up to 100 cloud diagrams (1 GB)">Hasta 100 diagramas en la nube (1 GB)</li><li data-es="Hasta 200 elementos propios" data-en="Up to 200 custom elements">Hasta 200 elementos propios</li></ul>
-          <a class="button lime" href="#" data-app-path="?plan=pro" data-es="Pasar a Pro" data-en="Go Pro">Pasar a Pro</a></article>
+          <a class="button lime" href="#" data-app-path="?plan=pro" data-track="pricing_pro" data-es="Pasar a Pro" data-en="Go Pro">Pasar a Pro</a>
+          <a class="annual-link" href="#" data-app-path="?plan=pro&amp;interval=year" data-track="pricing_pro_year" data-es="Prefiero el plan anual · USD 40" data-en="I prefer the annual plan · USD 40">Prefiero el plan anual · USD 40</a></article>
         <article class="price-card business"><h3 data-es="Empresas" data-en="Business">Empresas</h3><p class="price-tag" data-es="A medida" data-en="Custom">A medida</p>
           <ul><li data-es="Todo lo de Pro" data-en="Everything in Pro">Todo lo de Pro</li><li data-es="Créditos de IA y almacenamiento acordados" data-en="Agreed AI credits and storage">Créditos de IA y almacenamiento acordados</li><li data-es="Te ayudamos a llevarlo a tu equipo" data-en="We help you roll it out to your team">Te ayudamos a llevarlo a tu equipo</li><li data-es="Facturación y condiciones a medida" data-en="Custom billing and terms">Facturación y condiciones a medida</li></ul>
-          <a class="button dark" href="empresas.html" data-es="Hablar con nosotros" data-en="Talk to us">Hablar con nosotros</a></article>
+          <a class="button dark" href="empresas.html" data-track="enterprise" data-es="Hablar con nosotros" data-en="Talk to us">Hablar con nosotros</a></article>
       </div>
       <p class="price-foot"><span data-es="Pagos seguros con Paddle. Impuestos según tu país." data-en="Secure payments via Paddle. Taxes depend on your country.">Pagos seguros con Paddle. Impuestos según tu país.</span> <a href="precios.html" data-es="Ver el detalle" data-en="See the details">Ver el detalle</a> · <a href="reembolsos.html" data-es="Reembolsos" data-en="Refunds">Reembolsos</a></p>
     </section>
 
-    <section class="closing wrap reveal"><span class="eyebrow" data-es="DE LA IDEA A LO QUE SIGUE" data-en="FROM THE IDEA TO WHAT COMES NEXT">DE LA IDEA A LO QUE SIGUE</span><h2 class="scroll-lines"><span data-es="Hay ideas que" data-en="Some ideas">Hay ideas que</span><span data-es="necesitan moverse." data-en="need to move.">necesitan moverse.</span></h2><a href="#play" class="button dark" data-cta="closing" data-es="Crear diagrama" data-en="Create a diagram">Crear diagrama</a><a class="text-link" href="#precios" data-es="Ver planes y precios" data-en="See plans and pricing">Ver planes y precios</a></section>
+    <section id="cierre" class="closing wrap reveal"><span class="eyebrow" data-es="DE LA IDEA A LO QUE SIGUE" data-en="FROM THE IDEA TO WHAT COMES NEXT">DE LA IDEA A LO QUE SIGUE</span><h2 class="scroll-lines"><span data-es="Hay ideas que" data-en="Some ideas">Hay ideas que</span><span data-es="necesitan moverse." data-en="need to move.">necesitan moverse.</span></h2><a href="#play" class="button dark" data-cta="closing" data-es="Crear diagrama" data-en="Create a diagram">Crear diagrama</a><a class="text-link" href="#precios" data-es="Ver planes y precios" data-en="See plans and pricing">Ver planes y precios</a></section>
   </main>
   <footer class="wrap"><a class="brand" href="#"><span>diagramia</span></a><span data-es="Creá. Transformá. Explicá." data-en="Create. Transform. Explain.">Creá. Transformá. Explicá.</span><a href="precios.html" data-es="Precios" data-en="Pricing">Precios</a><a href="terminos.html" data-es="Términos" data-en="Terms">Términos</a><a href="reembolsos.html" data-es="Reembolsos" data-en="Refunds">Reembolsos</a><a data-app-path="privacidad.html" href="#" data-es="Privacidad" data-en="Privacy">Privacidad</a><span class="mono">© 2026 DIAGRAMIA</span></footer>
   <dialog id="mcp-dialog"><div class="dialog-heading"><span class="mono">MCP</span><button id="close-dialog" aria-label="Cerrar">×</button></div><h2 data-es="Un canvas para tu agente." data-en="A canvas for your agent.">Un canvas para tu agente.</h2><p data-es="Tu IA puede leer tus diagramas, aplicar cambios, comprobar reglas y crear animaciones a través de MCP, con permisos sobre tu cuenta." data-en="Your AI can read your diagrams, apply changes, check rules and create animations through MCP, with permissions over your account.">Tu IA puede leer tus diagramas, aplicar cambios, comprobar reglas y crear animaciones a través de MCP, con permisos sobre tu cuenta.</p><pre>{

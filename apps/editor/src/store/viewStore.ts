@@ -1,5 +1,5 @@
 import {documentBounds,groupMembers,type DiagramDocument,type DiagramNode,type Rect} from '@diagramia/core';
-import {trackThrottled} from '../telemetry';
+import {track,trackThrottled} from '../telemetry';
 import {createStore} from './createStore';
 
 export type Camera={x:number;y:number;zoom:number};
@@ -45,6 +45,20 @@ viewStore.subscribe(()=>{
   if(tool!=='connect'&&(connectFromId||connectFromAnchor))viewStore.set({connectFromId:null,connectFromAnchor:null});
   if(searchOpen&&(staging||presenting||tutorial||editingId))viewStore.set({searchOpen:false});
 });
+
+// Uso de herramientas y paneles (P7): sólo cambios reales de estado, nunca contenido del documento.
+{
+  const snapshot=()=>{const {tool,panel,sideOpen,timelineOpen,searchOpen,focusMode}=viewStore.get();return {tool,panel,sideOpen,timelineOpen,searchOpen,focusMode};};
+  let seen=snapshot();
+  viewStore.subscribe(()=>{
+    const now=snapshot(),before=seen;seen=now;
+    if(now.tool!==before.tool)track('tool_selected',{tool:now.tool});
+    if(now.sideOpen!==before.sideOpen||(now.sideOpen&&now.panel!==before.panel))track('panel_toggled',{panel:now.panel,open:now.sideOpen});
+    if(now.timelineOpen!==before.timelineOpen)track('panel_toggled',{panel:'timeline',open:now.timelineOpen});
+    if(now.focusMode!==before.focusMode)track('panel_toggled',{panel:'focus',open:now.focusMode});
+    if(now.searchOpen!==before.searchOpen){track('panel_toggled',{panel:'search',open:now.searchOpen});if(now.searchOpen)track('search_used',{});}
+  });
+}
 
 export function setTheme(theme:Theme){
   viewStore.set({theme});

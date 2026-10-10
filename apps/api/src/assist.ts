@@ -16,9 +16,20 @@ export const AssistRequestSchema=z.strictObject({
 }).refine(r=>r.history.every((turn,i)=>turn.role===(i%2?'assistant':'user'))&&r.history.length%2===0,'history debe alternar user/assistant y terminar en assistant');
 // Los modelos suelen mandar null donde el contrato dice texto vacío: se acepta y se normaliza en vez de gastar una reparación.
 const Text=(max:number)=>z.string().max(max).nullish().transform(value=>value??'');
-const QuestionSchema=z.object({clarification:z.string().trim().min(1).max(2000),summary:Text(2000).catch('').optional()});
+// Respuestas posibles de una pregunta: la interfaz agrega «Otro» por su cuenta, así que se descartan las que ya lo dicen.
+const Options=z.array(z.unknown()).max(12).nullish().catch(undefined).transform(list=>{
+  const seen=new Set<string>(),out:string[]=[];
+  for(const item of list??[]){
+    if(typeof item!=='string')continue;
+    const option=item.trim().replace(/\s+/g,' ').slice(0,120),key=option.toLowerCase();
+    if(!option||/^(otro|otra|otros|otras|other)\b/.test(key)||seen.has(key))continue;
+    seen.add(key);out.push(option);
+  }
+  return out.length>=2?out.slice(0,4):[];
+});
+const QuestionSchema=z.object({clarification:z.string().trim().min(1).max(2000),summary:Text(2000).catch('').optional(),options:Options});
 const Clarification=z.string().trim().max(2000).nullable().default(null).transform(value=>value||null);
-const ProposalSchema=z.object({summary:Text(2000),clarification:Clarification,actions:z.array(z.unknown()).max(200).default([])});
+const ProposalSchema=z.object({summary:Text(2000),clarification:Clarification,options:Options,actions:z.array(z.unknown()).max(200).default([])});
 // El modo Crear describe contenido y relaciones. El gateway construye las acciones y la geometría queda en el core.
 // Alias semánticos frecuentes de modelos chicos. La traducción es cerrada: un tipo desconocido sigue fallando.
 const CREATE_KIND_ALIASES:Record<string,typeof NODE_KINDS[number]>={
@@ -28,7 +39,7 @@ const CREATE_KIND_ALIASES:Record<string,typeof NODE_KINDS[number]>={
   message_queue:'queue',message_broker:'queue'
 };
 const CreateKind=z.preprocess(value=>typeof value==='string'?CREATE_KIND_ALIASES[value.trim().toLowerCase()]??value:value,z.enum(NODE_KINDS).default('service'));
-const CreateSchema=z.object({summary:Text(2000),clarification:Clarification,
+const CreateSchema=z.object({summary:Text(2000),clarification:Clarification,options:Options,
   zones:z.array(z.object({id:Id,label:z.string().min(1).max(200)})).max(20).default([]),
   nodes:z.array(z.object({id:Id,kind:CreateKind,label:z.string().min(1).max(200),zoneId:Id.nullish(),shape:z.enum(SHAPES).nullish(),icon:z.enum(ICONS).nullish(),details:Text(2000),style:NodeStyleSchema.optional()})).max(100).default([]),
   edges:z.array(z.object({from:Id,to:Id,label:Text(160),line:z.enum(LINES).optional(),startArrow:z.enum(ARROWS).optional(),endArrow:z.enum(ARROWS).optional(),style:EdgeStyleSchema.optional()})).max(150).default([])
@@ -48,14 +59,14 @@ const nullable=(schema:Record<string,unknown>)=>({anyOf:[schema,{type:'null'}]})
 const text={type:'string'},oneOf=(values:readonly string[])=>({type:'string',enum:[...values]}),list=(items:unknown)=>({type:'array',items});
 const color=nullable(text),dash=nullable(oneOf(['solid','dashed','dotted']));
 const STRICT_SCHEMAS:Partial<Record<Mode,{name:string;schema:Record<string,unknown>}>>={
-  create:{name:'diagram_inventory',schema:strictObject({summary:text,clarification:nullable(text),
+  create:{name:'diagram_inventory',schema:strictObject({summary:text,clarification:nullable(text),options:nullable(list(text)),
     zones:list(strictObject({id:text,label:text})),
     nodes:list(strictObject({id:text,kind:oneOf(NODE_KINDS),label:text,zoneId:nullable(text),shape:nullable(oneOf(SHAPES)),icon:nullable(oneOf(ICONS)),details:nullable(text),
       style:nullable(strictObject({fill:color,stroke:color,textColor:color,strokeWidth:nullable({type:'number'}),dash,fontSize:nullable({type:'integer'}),bold:nullable({type:'boolean'}),italic:nullable({type:'boolean'}),align:nullable(oneOf(['left','center','right'])),iconSize:nullable(oneOf(['small','large']))}))})),
     edges:list(strictObject({from:text,to:text,label:text,line:nullable(oneOf(LINES)),startArrow:nullable(oneOf(ARROWS)),endArrow:nullable(oneOf(ARROWS)),
       style:nullable(strictObject({stroke:color,textColor:color,strokeWidth:nullable({type:'number'}),dash,fontSize:nullable({type:'integer'})}))}))})},
-  explain:{name:'diagram_explanation',schema:strictObject({clarification:nullable(text),answer:text,tour:list(strictObject({caption:text,nodeIds:list(text),edgeIds:list(text)}))})},
-  review:{name:'diagram_review',schema:strictObject({clarification:nullable(text),summary:text,findings:list(strictObject({targetId:text,severity:oneOf(['info','warning','risk']),observation:text,evidence:text,suggestion:text}))})}
+  explain:{name:'diagram_explanation',schema:strictObject({clarification:nullable(text),options:nullable(list(text)),answer:text,tour:list(strictObject({caption:text,nodeIds:list(text),edgeIds:list(text)}))})},
+  review:{name:'diagram_review',schema:strictObject({clarification:nullable(text),options:nullable(list(text)),summary:text,findings:list(strictObject({targetId:text,severity:oneOf(['info','warning','risk']),observation:text,evidence:text,suggestion:text}))})}
 };
 /** Schema estricto que el gateway entrega al proveedor en este modo, si hay uno. */
 export const strictSchemaFor=(mode:Mode)=>STRICT_SCHEMAS[mode];
@@ -91,7 +102,7 @@ const OUTPUT_CONTRACT=(mode:Mode,detail:keyof typeof EXPLAIN_DETAIL='brief')=>mo
     ?'Respondé ÚNICAMENTE con un objeto JSON: {"clarification": null, "summary": string, "findings": [{"targetId": string, "severity": "info"|"warning"|"risk", "observation": string, "evidence": string, "suggestion": string}]}. Cada targetId debe ser el ID de un nodo, conexión, zona, grupo o frame del contexto; nunca el de un paso o una animación.'
     :'Respondé con texto en Markdown. No devuelvas acciones ni JSON.';
 const SUMMARY_RULE='\n"summary" es una o dos oraciones simples que cualquier persona entienda.';
-const QUESTION_RULE='\nSi falta información esencial o hay varias interpretaciones que cambiarían el resultado, preguntá antes de preparar cambios o inventar datos. Hacé una pregunta breve y concreta, con dos o tres alternativas si ayudan. Devolvé clarification con la pregunta; dejá actions/zones/nodes/edges/findings/tour vacíos y answer vacío según tu formato. Documentar puede devolver sólo {"clarification": "pregunta"} en vez de Markdown. Si podés resolver detalles de estilo razonablemente, avanzá sin preguntar por ellos. Al recibir la respuesta, continuá el pedido original del historial con el documento y la selección actuales.';
+const QUESTION_RULE='\nSi falta información esencial o hay varias interpretaciones que cambiarían el resultado, preguntá antes de preparar cambios o inventar datos. Hacé UNA pregunta breve y concreta. Devolvé clarification con la pregunta y options con 2 a 4 respuestas posibles, cortas (hasta 8 palabras) y excluyentes entre sí, sin incluir «Otro»: la interfaz lo agrega para que la persona escriba otra cosa. Si no hay alternativas razonables, options va vacío. Devolvé clarification con la pregunta; dejá actions/zones/nodes/edges/findings/tour vacíos y answer vacío según tu formato. Documentar puede devolver sólo {"clarification": "pregunta"} en vez de Markdown. Si podés resolver detalles de estilo razonablemente, avanzá sin preguntar por ellos. Al recibir la respuesta, continuá el pedido original del historial con el documento y la selección actuales.';
 const CREATE_INVENTORY_RULE='\nIMPORTANTE: nodes y zones declaran sólo elementos NUEVOS. No vuelvas a incluir piezas existentes para conservarlas: el engine las conserva automáticamente. Las conexiones sí pueden referir IDs existentes. Un ID nuevo no puede coincidir con ninguno existente ni repetirse entre nodes y zones. Usá títulos cortos, detalles de una o dos líneas y etiquetas de conexiones breves; evitá repetir el mismo dato en varias piezas. No inventes precios, reservas, disponibilidad ni información actual.';
 
 /** Prompt de sistema estable (se cachea): instrucciones del producto + contrato de acciones vigente. */
@@ -237,7 +248,7 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
         // No se dimensiona, repara ni previsualiza nada hasta que el usuario responda.
         let question:ReturnType<typeof QuestionSchema.parse>|undefined;
         try{const parsed=QuestionSchema.safeParse(extractJson(result.text));if(parsed.success)question=parsed.data;}catch{/* el texto/JSON normal sigue el contrato de su modo */}
-        if(question){const response={...base(),kind:'clarification' as const,summary:question.summary??'',clarification:question.clarification};settle('completed',response);return response;}
+        if(question){const response={...base(),kind:'clarification' as const,summary:question.summary??'',clarification:question.clarification,options:question.options};settle('completed',response);return response;}
         if(request.mode==='document'){
           const response={...base(),kind:'text' as const,text:result.text.trim()};settle('completed',response);return response;
         }
@@ -258,7 +269,7 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
           return {...spec,actions:designed(createActions(spec,doc),doc,request.requestId)};
         })():ProposalSchema.parse(parsed);
         if(!proposal.actions.length){
-          const response={...base(),kind:'clarification' as const,summary:proposal.summary,clarification:proposal.clarification??(proposal.summary||'El asistente no propuso cambios.')};settle('completed',response);return response;
+          const response={...base(),kind:'clarification' as const,summary:proposal.summary,clarification:proposal.clarification??(proposal.summary||'El asistente no propuso cambios.'),options:proposal.clarification?proposal.options:[]};settle('completed',response);return response;
         }
         // El ID del lote es el del pedido: reintentar el mismo pedido nunca aplica dos veces.
         // Las rutas las calcula el engine: una ruta escrita por el modelo se descarta. Después se ordena el lote para que nada se superponga.

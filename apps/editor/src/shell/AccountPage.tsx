@@ -31,7 +31,7 @@ function UpgradeCard({account}:{account:Account}){
   if(!account.billing.available||account.billing.plan==='pro')return null;
   return <section className="upgrade-card" aria-label="Plan Pro">
     <div><span className="eyebrow">DIAGRAMIA PRO</span><h3>Más IA, más diagramas, sin frenarte.</h3>
-      <p className="price"><strong>USD 5</strong> por mes · cancelás cuando quieras</p></div>
+      <p className="price"><strong>USD {account.billing.prices?.monthlyUsd??10}</strong> por mes{account.billing.prices?.yearlyUsd?` o USD ${account.billing.prices.yearlyUsd} por año`:''} · cancelás cuando quieras</p></div>
     <ProBenefits/>
     <button className="primary big" disabled={working} onClick={async()=>{setWorking(true);setError('');const failure=await startCheckout();if(failure){setWorking(false);setError(failure);}}}>{working?'Abriendo el pago…':'Pasar a Pro'}</button>
     <small>Si pasan menos de 48 horas desde el pago, te lo devolvemos. <a href="https://diagramia.app/reembolsos.html" target="_blank" rel="noopener noreferrer">Condiciones</a></small>

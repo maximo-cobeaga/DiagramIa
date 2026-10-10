@@ -75,7 +75,9 @@ try{
   assert.notEqual(alice.session.projectId,bob.session.projectId);
   const server=createApp({providers:[mockProvider(1)],ledger:new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:100,ledgerPath:null}),productPrompt:'Prueba',token:null,allowedOrigins:['http://127.0.0.1:5173'],documents:reopened,documentToken:'private-test-token',localWorkspace:true,accounts,telemetry:new TelemetryRepository(sourcePool),
     // Este recorrido prueba créditos e idempotencia con pedidos seguidos; los límites por minuto tienen su propia prueba en gateway.test.ts.
-    billing:{repository:new BillingRepository(sourcePool),paddle:{env:'sandbox',apiKey:'pdl_sdbx_smoke',webhookSecret:'smoke-webhook-secret',priceId:'pri_smoke_pro'}},
+    billing:{repository:new BillingRepository(sourcePool),paddle:{env:'sandbox',apiKey:'pdl_sdbx_smoke',webhookSecret:'smoke-webhook-secret',priceId:'pri_smoke_pro',yearlyPriceId:'pri_smoke_pro_year',clientToken:'test_0123456789abcdef0123456789',checkoutUrl:'http://127.0.0.1:5173/pago.html'},prices:{monthlyUsd:10,yearlyUsd:40},
+      // Oferta de campaña vigente y de bienvenida de 1 hora desde el alta (ADR 092).
+      offer:{discountId:'dsc_01smokesmokesmokesmoke01',percent:40,months:3,regularUsd:5,endsAt:new Date(Date.now()+2*864e5),welcomeHours:1}},
     contact:{repository:new ContactRepository(sourcePool)},
     adminEmails:['admin@example.test'],aiPerUserPerMinute:100,aiPerIpPerMinute:100,config:{maxOutputTokens:1000,maxContextChars:1000,maxRepairs:0,timeoutMs:1000}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -183,6 +185,15 @@ try{
     const hook=(body,secret='smoke-webhook-secret')=>{const ts=Math.floor(Date.now()/1000);return fetch(`${origin}/v1/billing/webhook`,{method:'POST',headers:{'content-type':'application/json','paddle-signature':`ts=${ts};h1=${createHmac('sha256',secret).update(`${ts}:${body}`).digest('hex')}`},body});};
     const me=async()=>(await fetch(`${origin}/v1/auth/me`,{headers:as(alice.token)})).json();
     assert.equal((await me()).billing.plan,'free');assert.equal((await me()).storage.maxDocuments,3);
+    {
+      const offer=(await me()).billing.offer;
+      assert.ok(offer&&offer.percent===40&&offer.priceUsd===3&&offer.regularUsd===5&&offer.months===3,'una cuenta Free ve la oferta vigente: '+JSON.stringify(offer));
+      assert.ok(Date.parse(offer.endsAt)>Date.now(),'el vencimiento informado es futuro');
+      assert.deepEqual((await me()).billing.prices,{monthlyUsd:10,yearlyUsd:40},'la cuenta recibe los precios de lista, con el anual');
+      assert.equal((await me()).billing.interval,null);
+      const open=await(await fetch(`${origin}/v1/offer`,{headers:browserHeaders})).json();
+      assert.equal(open.available,true);assert.equal(open.offer.kind,'campaign');assert.equal(open.offer.priceUsd,3,'la landing ve sólo la campaña');
+    }
     assert.equal((await fetch(`${origin}/v1/billing/checkout`,{method:'POST',headers:browserHeaders})).status,401,'el pago exige cuenta');
     const t0=new Date(Date.now()-60_000).toISOString(),t1=new Date(Date.now()-30_000).toISOString(),t2=new Date(Date.now()-10_000).toISOString();
     assert.equal((await hook(subEvent('evt-bad','subscription.activated','active',t0),'otro-secreto')).status,400,'firma inválida');
@@ -190,6 +201,7 @@ try{
     {const r=await hook(subEvent('evt-1','subscription.activated','active',t1));const b=await r.json();assert.equal(b.result,'applied',r.status+' '+JSON.stringify(b));}
     assert.equal((await(await hook(subEvent('evt-1','subscription.activated','active',t1))).json()).result,'duplicate','el reenvío no cambia nada');
     const pro=await me();
+    assert.equal(pro.billing.offer,null,'quien ya es Pro no ve ofertas');
     assert.equal(pro.billing.plan,'pro');assert.equal(pro.billing.cancelUrl,'https://pay.example/cancel');assert.equal(pro.storage.maxDocuments,100);assert.equal(pro.credits.dailyLimit,40);assert.equal(pro.credits.monthlyLimit,400);
     assert.equal((await fetch(`${origin}/v1/billing/checkout`,{method:'POST',headers:as(alice.token)})).status,409,'quien ya es Pro no paga dos veces');
     assert.equal((await fetch(`${origin}/v1/auth/delete-account`,{method:'POST',headers:as(alice.token),body:JSON.stringify({confirm:'ELIMINAR'})})).status,409,'no se elimina una cuenta con cobro activo');

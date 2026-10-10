@@ -2,7 +2,13 @@ import type {Pool} from 'pg';
 
 /** Métricas sumables de un día UTC. Cada una es un conteo o un monto; los cocientes se calculan al mostrar. */
 export const DAILY_METRICS=['active','landing_visitors','landing_to_canvas','canvas_visitors','new_canvas_visitors','first_element','signups','useful_diagrams',
-  'ai_requests','ai_proposals','ai_failed','ai_blocked','ai_cost_usd','ai_applied','ai_discarded','ai_regenerated','ai_undo_after','feedback_up','feedback_down','js_errors','api_errors'] as const;
+  'ai_requests','ai_proposals','ai_failed','ai_blocked','ai_cost_usd','ai_applied','ai_discarded','ai_regenerated','ai_undo_after','feedback_up','feedback_down','js_errors','api_errors',
+  // Monetización (ADR 092): del aviso de Pro al pago.
+  'upgrade_prompts','offer_views','pro_cta_clicks','checkout_started','checkout_failed','checkout_completed','limit_hits',
+  // Uso del editor: sesiones con interacción, tiempo activo y qué porción usa IA o animaciones.
+  'sessions','session_active_seconds','session_changes','session_with_ai','session_with_animation','ai_questions_answered','ai_question_other','animations_created','animations_played','animations_finished',
+  // Recorrido de la landing: visitantes que llegaron a cada tramo.
+  'landing_reached_precios','landing_reached_cierre','landing_scrolled_75'] as const;
 export type DailyMetrics=Record<typeof DAILY_METRICS[number],number>;
 export type Indicator={id:string;label:string;unit:'ratio'|'minutes'|'number'|'usd';value:number|null;previous:number|null;detail:string};
 
@@ -27,7 +33,27 @@ const DAILY_SQL=`SELECT
   count(*) FILTER (WHERE name='ai_feedback' AND props->>'rating'='up') AS feedback_up,
   count(*) FILTER (WHERE name='ai_feedback' AND props->>'rating'='down') AS feedback_down,
   count(*) FILTER (WHERE name='js_error') AS js_errors,
-  count(*) FILTER (WHERE name='api_error') AS api_errors
+  count(*) FILTER (WHERE name='api_error') AS api_errors,
+  count(*) FILTER (WHERE name='upgrade_prompt_shown') AS upgrade_prompts,
+  count(*) FILTER (WHERE name='offer_viewed') AS offer_views,
+  count(*) FILTER (WHERE name='landing_cta_clicked' AND props->>'placement' IN ('pricing_pro','pricing_pro_year')) AS pro_cta_clicks,
+  count(*) FILTER (WHERE name='checkout_started') AS checkout_started,
+  count(*) FILTER (WHERE name='checkout_failed') AS checkout_failed,
+  count(*) FILTER (WHERE name='checkout_returned' AND props->>'result'='completed') AS checkout_completed,
+  count(*) FILTER (WHERE name='limit_reached') AS limit_hits,
+  count(*) FILTER (WHERE name='session_summary') AS sessions,
+  coalesce(sum((props->>'activeSeconds')::numeric) FILTER (WHERE name='session_summary'),0) AS session_active_seconds,
+  coalesce(sum((props->>'changes')::numeric) FILTER (WHERE name='session_summary'),0) AS session_changes,
+  count(*) FILTER (WHERE name='session_summary' AND (props->>'usedAi')::boolean) AS session_with_ai,
+  count(*) FILTER (WHERE name='session_summary' AND (props->>'usedAnimation')::boolean) AS session_with_animation,
+  count(*) FILTER (WHERE name='ai_question_answered') AS ai_questions_answered,
+  count(*) FILTER (WHERE name='ai_question_answered' AND props->>'via'='other') AS ai_question_other,
+  count(*) FILTER (WHERE name='animation_created') AS animations_created,
+  count(*) FILTER (WHERE name='animation_played') AS animations_played,
+  count(*) FILTER (WHERE name='animation_finished') AS animations_finished,
+  count(DISTINCT anonymous_id) FILTER (WHERE name='landing_section_viewed' AND props->>'section'='precios') AS landing_reached_precios,
+  count(DISTINCT anonymous_id) FILTER (WHERE name='landing_section_viewed' AND props->>'section'='cierre') AS landing_reached_cierre,
+  count(DISTINCT anonymous_id) FILTER (WHERE name='landing_scroll_depth' AND (props->>'percent')::int>=75) AS landing_scrolled_75
 FROM telemetry_facts WHERE day=$1::date`;
 
 const iso=(date:Date)=>date.toISOString().slice(0,10);
@@ -108,6 +134,19 @@ export class FounderDashboard{
     return {to,window:{from:currentFrom,to},previous:{from:previousFrom,to:previousTo},wau:w.active,previousWau:p.active,
       samples:{ttfv:w.ttfvSample,d7Cohort:w.d7Cohort},
       cost:{aiUsd:now.ai_cost_usd,previousAiUsd:before.ai_cost_usd,perActiveUser:ratio(now.ai_cost_usd,w.active),aiRequests:now.ai_requests,blocked:now.ai_blocked,failed:now.ai_failed},
+      monetization:{
+        upgradePrompts:now.upgrade_prompts,offerViews:now.offer_views,proCtaClicks:now.pro_cta_clicks,checkoutStarted:now.checkout_started,checkoutFailed:now.checkout_failed,checkoutCompleted:now.checkout_completed,limitHits:now.limit_hits,
+        previous:{checkoutStarted:before.checkout_started,upgradePrompts:before.upgrade_prompts},
+        promptToCheckout:ratio(now.checkout_started,now.upgrade_prompts+now.pro_cta_clicks),
+        landingToPricing:ratio(now.landing_reached_precios,now.landing_visitors),pricingToProClick:ratio(now.pro_cta_clicks,now.landing_reached_precios)
+      },
+      usage:{
+        sessions:now.sessions,avgActiveMinutes:ratio(now.session_active_seconds,now.sessions*60),avgChanges:ratio(now.session_changes,now.sessions),
+        aiShare:ratio(now.session_with_ai,now.sessions),animationShare:ratio(now.session_with_animation,now.sessions),
+        questionsAnswered:now.ai_questions_answered,questionOtherShare:ratio(now.ai_question_other,now.ai_questions_answered),
+        animationsCreated:now.animations_created,animationFinishRate:ratio(now.animations_finished,now.animations_played),
+        landingScrolled75:ratio(now.landing_scrolled_75,now.landing_visitors),landingReachedClosing:ratio(now.landing_reached_cierre,now.landing_visitors)
+      },
       friction:{jsErrorsPerActive:ratio(now.js_errors,w.active),apiErrors:now.api_errors,aiUndoAfterApply:ratio(now.ai_undo_after,now.ai_applied),aiRegenerations:ratio(now.ai_regenerated,now.ai_proposals)},
       indicators,days};
   }

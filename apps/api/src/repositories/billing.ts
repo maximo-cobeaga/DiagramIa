@@ -26,18 +26,23 @@ export async function isReadOnlyDocument(db:Db,projectId:string,storageId:string
   return !found.rows.some(row=>row.document_id===storageId);
 }
 
-export type BillingView={plan:PlanId;status:string|null;renewsAt:Date|null;cancelsAt:Date|null;updatePaymentUrl:string|null;cancelUrl:string|null};
+export type BillingView={plan:PlanId;status:string|null;priceId:string|null;renewsAt:Date|null;cancelsAt:Date|null;updatePaymentUrl:string|null;cancelUrl:string|null};
 
 export class BillingRepository{
   constructor(private readonly pool:Pool){}
 
+  async accountCreatedAt(userId:string):Promise<Date|null>{
+    const found=await this.pool.query<{created_at:Date}>('SELECT created_at FROM users WHERE id=$1',[userId]);
+    return found.rows[0]?.created_at??null;
+  }
+
   async view(userId:string):Promise<BillingView>{
-    const found=await this.pool.query<Row&{scheduled_cancel_at:Date|null;update_payment_url:string|null;cancel_url:string|null}>(
-      'SELECT status,current_period_end,scheduled_cancel_at,update_payment_url,cancel_url FROM subscriptions WHERE user_id=$1',[userId]);
+    const found=await this.pool.query<Row&{price_id:string|null;scheduled_cancel_at:Date|null;update_payment_url:string|null;cancel_url:string|null}>(
+      'SELECT status,price_id,current_period_end,scheduled_cancel_at,update_payment_url,cancel_url FROM subscriptions WHERE user_id=$1',[userId]);
     const row=found.rows[0];
-    if(!row)return {plan:'free',status:null,renewsAt:null,cancelsAt:null,updatePaymentUrl:null,cancelUrl:null};
+    if(!row)return {plan:'free',status:null,priceId:null,renewsAt:null,cancelsAt:null,updatePaymentUrl:null,cancelUrl:null};
     const plan=planOf({status:row.status!,currentPeriodEnd:row.current_period_end});
-    return {plan,status:row.status,renewsAt:row.current_period_end,cancelsAt:row.scheduled_cancel_at,updatePaymentUrl:row.update_payment_url,cancelUrl:row.cancel_url};
+    return {plan,status:row.status,priceId:row.price_id,renewsAt:row.current_period_end,cancelsAt:row.scheduled_cancel_at,updatePaymentUrl:row.update_payment_url,cancelUrl:row.cancel_url};
   }
 
   /**

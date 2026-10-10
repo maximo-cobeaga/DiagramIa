@@ -3,9 +3,11 @@ import {DiagramLayer} from '../canvas/DiagramLayer';
 import {useStore} from '../store/createStore';
 import {notify} from '../store/documentStore';
 import {viewStore} from '../store/viewStore';
+import {track} from '../telemetry';
 import {openTemplate,TEMPLATES} from './templates';
 
 export function askAssistant(){
+  track('welcome_choice',{choice:'ai'});
   viewStore.set({panel:'assistant',sideOpen:true,focusMode:false});
   requestAnimationFrame(()=>{
     const prompt=document.querySelector<HTMLTextAreaElement>('#chat-prompt');
@@ -14,6 +16,7 @@ export function askAssistant(){
   });
 }
 export function startDrawing(){
+  track('welcome_choice',{choice:'draw'});
   viewStore.set({startMode:'draw',tool:'node',template:{kind:'note',shape:'sticky',label:'Mi idea',size:{width:180,height:120},icon:'idea',style:{fill:'#fff3b0',stroke:'#e0cd6a',fontSize:17}}});
   notify('Hacé clic en el lienzo para poner tu primera idea. Después escribí su nombre.');
 }
@@ -42,7 +45,7 @@ export function Welcome(){
       <div className="start-choices">
         <button className="start-choice ai-choice" aria-label="Contame tu idea" onClick={askAssistant}><span aria-hidden="true">✦</span><strong>Contame tu idea</strong><small>Escribí lo que imaginás y pedí ayuda a la IA.</small></button>
         <button className="start-choice" aria-label="Dibujar" onClick={startDrawing}><span aria-hidden="true">✎</span><strong>Dibujar</strong><small>Una idea, una flecha y lo que venga después.</small></button>
-        <button className="start-choice" aria-label="Elegir un ejemplo" onClick={()=>viewStore.set({startMode:'examples'})}><span aria-hidden="true">▦</span><strong>Elegir un ejemplo</strong><small>Viajes, explicaciones y tareas para hacer tuyas.</small></button>
+        <button className="start-choice" aria-label="Elegir un ejemplo" onClick={()=>{track('welcome_choice',{choice:'examples'});viewStore.set({startMode:'examples'});}}><span aria-hidden="true">▦</span><strong>Elegir un ejemplo</strong><small>Viajes, explicaciones y tareas para hacer tuyas.</small></button>
       </div>
       <p className="start-reassurance">Podés cambiar de idea. Tu trabajo se guarda en este navegador.</p>
     </>}

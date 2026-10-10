@@ -1,7 +1,11 @@
 import {flush as flushTelemetry,track} from '../telemetry';
 import {createStore} from './createStore';
 
-export type Billing={available:boolean;plan:'free'|'pro';status?:string|null;renewsAt?:string|null;cancelsAt?:string|null;updatePaymentUrl?:string|null;cancelUrl?:string|null};
+/** Oferta vigente informada por el servidor. El vencimiento es real: pasada la hora, el pago se crea sin descuento. */
+export type Offer={kind:'campaign'|'welcome';percent:number;months:number;regularUsd:number;priceUsd:number;endsAt:string};
+/** Precios de lista en USD informados por el servidor; el anual es null si no está configurado. */
+export type Prices={monthlyUsd:number;yearlyUsd:number|null};
+export type Billing={available:boolean;plan:'free'|'pro';offer?:Offer|null;prices?:Prices|null;interval?:'month'|'year'|null;status?:string|null;renewsAt?:string|null;cancelsAt?:string|null;updatePaymentUrl?:string|null;cancelUrl?:string|null};
 export type Account={session:{email:string|null;emailVerified:boolean;projectId:string};storage:{documents:number;bytes:number;maxDocuments:number;maxBytes:number;maxDocumentBytes:number;maxOwnElements:number};credits:{daily:number;monthly:number;dailyLimit:number;monthlyLimit:number};billing:Billing};
 /** Tope de elementos propios según el plan: sin cuentas en el servidor no hay tope; un visitante cuenta como Free. */
 export function ownElementsLimit():number{const {auth,account}=accountStore.get();return auth==='signed-in'&&account?account.storage.maxOwnElements:auth==='guest'?5:Infinity;}
@@ -20,7 +24,7 @@ export async function refreshAccount(){
 }
 
 /** Lleva al login del proveedor. Antes se envían los eventos pendientes: la página se va. */
-export function signIn(trigger:'menu'|'cloud'|'ai'){
+export function signIn(trigger:'menu'|'cloud'|'ai'|'pro'){
   track('signup_started',{trigger});
   void flushTelemetry(true).finally(()=>window.location.assign('/api/v1/auth/login'));
 }

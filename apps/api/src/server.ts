@@ -11,6 +11,7 @@ import {AccountRepository,CreditError} from './repositories/accounts.js';
 import {BillingRepository} from './repositories/billing.js';
 import {ContactRepository,ContactSchema} from './repositories/contact.js';
 import {BillingError,createCheckout,translate,verifySignature,type PaddleConfig} from './billing/paddle.js';
+import {offerFor,type OfferConfig} from './billing/offer.js';
 import {OidcAuthenticator} from './auth/oidc.js';
 import {RemoteMcpService} from './mcp.js';
 import {RateLimiter,TelemetryRepository} from './repositories/telemetry.js';
@@ -18,7 +19,7 @@ import {FounderDashboard} from './repositories/dashboard.js';
 import {LinkPreviewCache,LinkPreviewError,checkUrl,fetchLinkPreview,type LinkPreview} from './linkPreview.js';
 
 /** Cobro de la suscripción Pro (ADR 089). Sin esta configuración, la cuenta sigue funcionando con el plan Free y el editor no ofrece el botón. */
-export type BillingOptions={repository:BillingRepository;paddle:PaddleConfig};
+export type BillingOptions={repository:BillingRepository;paddle:PaddleConfig;offer?:OfferConfig;/** Precios de lista en USD que se muestran; deben coincidir con los de Paddle. */prices?:{monthlyUsd:number;yearlyUsd:number|null}};
 export type AppOptions={billing?:BillingOptions;providers:Provider[];ledger:UsageLedger;config:AssistConfig;productPrompt:string;allowedOrigins:string[];token:string|null;documents?:PostgresDocumentRepository;documentToken?:string;localWorkspace?:boolean;accounts?:AccountRepository;oidc?:OidcAuthenticator;remoteMcp?:RemoteMcpService;
   /** IDs de proveedor que puede usar una cuenta (plan Free). Sin lista, todos los configurados. */
   accountProviders?:string[];
@@ -32,6 +33,8 @@ export type AppOptions={billing?:BillingOptions;providers:Provider[];ledger:Usag
   /** Dashboard y excepción de cuotas de IA: sólo para cuentas con email verificado incluido en adminEmails. */
   dashboard?:FounderDashboard;adminEmails?:string[];
   requireVerifiedEmail?:boolean;aiPerIpPerMinute?:number;
+  /** Tope general por IP y por minuto para todo el gateway (600 por defecto): un freno de último recurso, detrás de los límites de cada ruta. */
+  requestsPerIpPerMinute?:number;
   /** Vista previa de enlaces (P1.7). Reemplazable en pruebas; por defecto visita la página con protección SSRF. */
   linkPreview?:(url:string)=>Promise<LinkPreview>;aiPerUserPerMinute?:number;ready?:()=>Promise<boolean>;log?:(entry:{event:'http';method:string;path:string;status:number;durationMs:number})=>void};
 const MAX_BODY=4_000_000;
@@ -78,6 +81,12 @@ export function createApp(options:AppOptions):Server{
   const system=systemPrompt(options.productPrompt),createSystem=systemPrompt(options.productPrompt,true),eventLimiter=new RateLimiter(options.eventsPerMinute??60,60_000),contactLimiter=new RateLimiter(options.contact?.perHour??5,3_600_000);
   const aiPerIp=new RateLimiter(options.aiPerIpPerMinute??20,60_000),aiPerUser=new RateLimiter(options.aiPerUserPerMinute??6,60_000);
   const previewPerIp=new RateLimiter(20,60_000),previewPerUser=new RateLimiter(10,60_000),previews=new LinkPreviewCache();
+  // Frenos por ruta (ADR 094). Ninguno reemplaza a la autenticación: acotan el daño de un cliente roto, un bucle o un abuso.
+  const everyIp=new RateLimiter(options.requestsPerIpPerMinute??600,60_000),loginPerIp=new RateLimiter(30,60_000),webhookPerIp=new RateLimiter(300,60_000);
+  const checkoutPerUser=new RateLimiter(6,600_000),writesPerUser=new RateLimiter(240,60_000);
+  // Sin IP real (detrás de un proxy sin DIAGRAMIA_TRUST_PROXY, o en desarrollo) todos comparten la del proxy: el tope general no se aplica para no frenar a todos juntos.
+  const privateAddress=(ip:string)=>/^(::ffff:)?(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)||ip==='::1'||ip==='unknown';
+  const payable=Boolean(options.billing?.paddle.clientToken);
   // La telemetría nunca rompe el producto: un fallo al registrar queda en el log sin datos del pedido.
   const record=(event:ServerEvent,userId:string|null)=>{void options.telemetry?.record(event,userId).catch(error=>console.error('[telemetry] no se registró',event.name+':',error instanceof Error?error.name:'error'));};
   return createServer(async(req:IncomingMessage,res:ServerResponse)=>{
@@ -110,8 +119,21 @@ export function createApp(options:AppOptions):Server{
       }
       if(path==='/health'&&req.method==='GET')return send(200,{status:'ok',schemaVersion:SCHEMA_VERSION});
       if(path==='/ready'&&req.method==='GET')return await options.ready?.()===false?fail(503,'NOT_READY','La base de documentos no responde.'):send(200,{status:'ready',schemaVersion:SCHEMA_VERSION});
+      const ip=clientIp(req,options.trustProxy);
+      // Los frenos por IP sólo valen con la IP real: detrás de un proxy sin DIAGRAMIA_TRUST_PROXY todos comparten una y se frenarían entre sí.
+      const realIp=Boolean(options.trustProxy)||!privateAddress(ip);
+      if(realIp&&!everyIp.allow(ip))return fail(429,'RATE_LIMITED','Demasiados pedidos desde tu conexión. Esperá un minuto.');
+      if(realIp&&(path==='/v1/auth/login'||path==='/v1/auth/callback')&&!loginPerIp.allow(ip))return fail(429,'RATE_LIMITED','Demasiados intentos de inicio de sesión. Esperá un minuto y volvé a probar.');
       if(path==='/v1/auth/login'&&req.method==='GET'){
         if(!options.oidc||!options.accounts)return fail(503,'AUTH_UNAVAILABLE','Inicio de sesión no configurado.');
+        // El inicio de sesión guarda una cookie y el proveedor devuelve al host registrado. Si el editor se abrió con otro nombre
+        // (por ejemplo «localhost» en vez de «127.0.0.1»), la cookie no volvería y el login fallaría: primero se pasa al host registrado.
+        // Un solo salto (`canonical=1`): si un proxy cambia el Host, no se entra en bucle.
+        const asked=String(req.headers.host??'').toLowerCase(),registered=options.oidc.redirectUri.host.toLowerCase();
+        if(asked&&asked!==registered&&!new URL(req.url??'/','http://gateway').searchParams.has('canonical')){
+          const canonical=new URL(options.oidc.redirectUri.pathname.replace(/callback$/,'login')+'?canonical=1',options.oidc.redirectUri.origin);
+          res.writeHead(302,{location:canonical.href,'cache-control':'no-store'});return void res.end();
+        }
         let flow:Awaited<ReturnType<OidcAuthenticator['begin']>>;
         try{flow=await options.oidc.begin();}catch{return fail(503,'AUTH_UNAVAILABLE','No se pudo contactar al proveedor de identidad. Reintentá.');}
         const secure=options.oidc.redirectUri.protocol==='https:';
@@ -131,9 +153,10 @@ export function createApp(options:AppOptions):Server{
       if(path==='/v1/billing/webhook'&&req.method==='POST'){
         // Antes del header propio: Paddle no puede mandarlo. Sin sesión ni origen, lo autentica la firma del proveedor sobre el cuerpo exacto.
         if(!options.billing)return fail(503,'BILLING_UNAVAILABLE','El cobro no está configurado.');
+        if(realIp&&!webhookPerIp.allow(ip))return fail(429,'RATE_LIMITED','Demasiados avisos.');
         const raw=await readRaw(req,MAX_WEBHOOK_BODY);
         if(!verifySignature(raw,String(req.headers['paddle-signature']??''),options.billing.paddle.webhookSecret))return fail(400,'BAD_SIGNATURE','Firma inválida.');
-        const change=translate(raw,options.billing.paddle.priceId);
+        const change=translate(raw,[options.billing.paddle.priceId,options.billing.paddle.yearlyPriceId]);
         if(!change)return send(200,{received:true,ignored:true});
         const result=await options.billing.repository.apply(change,(JSON.parse(raw.toString('utf8')) as {event_type:string}).event_type);
         return send(200,{received:true,result});
@@ -162,7 +185,14 @@ export function createApp(options:AppOptions):Server{
       if(path==='/v1/auth/me'&&req.method==='GET'){
         const session=await options.accounts?.readSession(cookie(req,'diagramia_session'));
         if(!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para usar la nube.');
-        const billing=options.billing?{available:true,...await options.billing.repository.view(session.userId)}:{available:false,plan:'free' as const};
+        const view=options.billing?await options.billing.repository.view(session.userId):null;
+        // La oferta sólo se muestra a quien todavía no es Pro; el vencimiento lo decide el servidor.
+        const offer=options.billing&&view?.plan==='free'?offerFor(options.billing.offer,await options.billing.repository.accountCreatedAt(session.userId)):null;
+        const {priceId=null,...shown}=view??{plan:'free' as const};
+        const prices=options.billing?{monthlyUsd:options.billing.prices?.monthlyUsd??0,yearlyUsd:options.billing.paddle.yearlyPriceId?options.billing.prices?.yearlyUsd??null:null}:null;
+        const interval=view?.plan==='pro'&&priceId&&priceId===options.billing?.paddle.yearlyPriceId?'year' as const:view?.plan==='pro'?'month' as const:null;
+        // Sin el token público de Paddle.js no hay dónde pagar: no se ofrece un botón que no llevaría a ningún lado.
+        const billing=view?{available:payable,...shown,offer:payable?offer:null,prices,interval}:{available:false,plan:'free' as const,offer:null,prices:null,interval:null};
         return send(200,{session,storage:await options.accounts!.storage(session.projectId),credits:await options.accounts!.creditUsage(session.userId),billing});
       }
       if(path==='/v1/auth/delete-account'&&req.method==='POST'){
@@ -178,12 +208,31 @@ export function createApp(options:AppOptions):Server{
         return send(200,{deleted:true,documents:result.documents});
       }
       if(path==='/v1/billing/checkout'&&req.method==='POST'){
-        if(!options.billing)return fail(503,'BILLING_UNAVAILABLE','El cobro todavía no está disponible.');
+        if(!options.billing||!payable)return fail(503,'BILLING_UNAVAILABLE','El cobro todavía no está disponible.');
         const session=await options.accounts?.readSession(cookie(req,'diagramia_session'));
         if(!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para pasar a Pro.');
+        // Cada intento crea una transacción en Paddle: unos pocos por cuenta alcanzan para reintentar sin permitir un bucle.
+        if(!checkoutPerUser.allow(session.userId))return fail(429,'RATE_LIMITED','Abriste el pago varias veces seguidas. Esperá unos minutos y volvé a probar.');
         if(!session.emailVerified)return fail(403,'EMAIL_NOT_VERIFIED','Verificá tu email antes de suscribirte.');
         if((await options.billing.repository.view(session.userId)).plan==='pro')return fail(409,'ALREADY_SUBSCRIBED','Ya tenés el plan Pro.');
-        return send(200,{url:await createCheckout(options.billing.paddle,session.userId)});
+        // El intervalo es lo único que elige el navegador; el cuerpo es opcional (el botón mensual no lo manda).
+        const choice=z.object({interval:z.enum(['month','year']).default('month')}).safeParse(await readJson(req).catch(()=>({})));
+        const interval=choice.success?choice.data.interval:'month';
+        if(interval==='year'&&!options.billing.paddle.yearlyPriceId)return fail(400,'YEARLY_UNAVAILABLE','El plan anual todavía no está disponible.');
+        // El descuento se decide acá, no en el navegador: una oferta vencida no se aplica aunque la página siga abierta.
+        // La oferta es del plan mensual: el anual ya tiene su propio descuento.
+        const offer=interval==='month'?offerFor(options.billing.offer,await options.billing.repository.accountCreatedAt(session.userId)):null;
+        return send(200,{url:await createCheckout(options.billing.paddle,session.userId,fetch,offer?options.billing.offer!.discountId:undefined,interval),offerApplied:Boolean(offer),interval});
+      }
+      if(path==='/v1/offer'&&req.method==='GET'){
+        // Pública (la landing la consulta): sólo la campaña general. La oferta de bienvenida es de cada cuenta.
+        const offer=options.billing&&payable?offerFor(options.billing.offer,null):null;
+        return send(200,{available:payable,offer});
+      }
+      if(path==='/v1/billing/config'&&req.method==='GET'){
+        // Lo único de Paddle que ve el navegador: el entorno y el token público de Paddle.js. La clave de API nunca sale del servidor.
+        if(!options.billing||!payable)return fail(503,'BILLING_UNAVAILABLE','El cobro todavía no está disponible.');
+        return send(200,{env:options.billing.paddle.env,clientToken:options.billing.paddle.clientToken});
       }
       if(path==='/v1/auth/logout'&&req.method==='POST'){
         await options.accounts?.endSession(cookie(req,'diagramia_session'));
@@ -197,6 +246,7 @@ export function createApp(options:AppOptions):Server{
         const repo=options.documents,projectId=session.projectId;
         if(path==='/v1/cloud/usage'&&req.method==='GET')return send(200,await options.accounts.storage(projectId));
         if(path==='/v1/cloud/documents'&&req.method==='GET')return send(200,{documents:await options.accounts.listDocuments(projectId)});
+        if(req.method==='POST'&&!writesPerUser.allow(session.userId))return fail(429,'RATE_LIMITED','Demasiados guardados seguidos. Se reintenta en un momento.');
         if(path==='/v1/cloud/documents'&&req.method==='POST')return send(201,{document:await repo.createFrom(await readJson(req,MAX_DOCUMENT_BODY),session.userId,projectId)});
         const match=path.match(/^\/v1\/cloud\/documents\/([^/]+)(?:\/(batches|head|restore))?$/);
         if(!match)return fail(404,'NOT_FOUND','Ruta inexistente.');
