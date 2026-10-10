@@ -85,7 +85,9 @@ jobs:
             echo "::error::$1 no respondió como se esperaba después del despliegue. Para volver atrás: infra/DEPLOY.md, «Volver atrás»."; return 1
           }
           check "${APP_URL%/}/api/ready" '"status":"ready"'
-          check "${SITE_URL%/}/precios.html" 'USD 5'
+          # Textos que no dependen del precio vigente: un cambio de precio no debe marcar como fallido un despliegue sano.
+          check "${SITE_URL%/}/precios.html" 'Pasar a Pro'
+          check "${APP_URL%/}/pago.html" 'Pago seguro'
       - name: Limpiar la clave
         if: always()
         run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts
