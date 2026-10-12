@@ -406,3 +406,8 @@ Commit `97f6d15`; workflow `38286589354` aprobado (check, database, deploy). Tra
 ### Texto de elementos y checkout (12/10/2026, ADR 096)
 
 `npm run check` 176/176. Browser enfocado en arquitectura y barra contextual 2/2: A+ cambia 15→17, undo revierte y el campo aparece en Propiedades. `smoke:shared` aprobado con PostgreSQL. Una transacción real del sandbox creada con el adapter corregido devolvió `https://app.diagramia.app/pago.html?_ptxn=…` y la validación propia la aceptó; con override idéntico Paddle había respondido `transaction_checkout_url_domain_is_not_approved`. La regresión Chromium completa terminó 53/59: seis fallos en pruebas anteriores de selección/puntero/estado; el caso del lápiz falla aisladamente por no seleccionar un trazo con un clic puntual. Todavía no se efectuó un pago completo ni se comprobó el webhook con cuenta.
+
+
+### Publicación de texto y checkout (12/10/2026)
+
+Commit `85b235a`, workflow `38307886570`: check, database y deploy aprobados. Por HTTPS se confirmó el nuevo bundle con «Tamaño del nombre» y A+, CSS del control, `/api/ready` listo y token público de Paddle sandbox. La creación de transacción sandbox con el adapter se comprobó antes del despliegue. Abrir el checkout desde una sesión de usuario y completar un pago de prueba siguen pendientes.
