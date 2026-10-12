@@ -411,3 +411,5 @@ Commit `97f6d15`; workflow `38286589354` aprobado (check, database, deploy). Tra
 ### Publicación de texto y checkout (12/10/2026)
 
 Commit `85b235a`, workflow `38307886570`: check, database y deploy aprobados. Por HTTPS se confirmó el nuevo bundle con «Tamaño del nombre» y A+, CSS del control, `/api/ready` listo y token público de Paddle sandbox. La creación de transacción sandbox con el adapter se comprobó antes del despliegue. Abrir el checkout desde una sesión de usuario y completar un pago de prueba siguen pendientes.
+
+Sonda final con Chrome contra producción: `pago.html?_ptxn=…` de una transacción sandbox real cargó Paddle.js, un iframe de checkout y el estado «Modo de prueba: no se cobra dinero real». No se ingresaron datos de pago.

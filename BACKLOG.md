@@ -6,7 +6,7 @@ Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y
 
 - Implementado y desplegado (`85b235a`): A−/A+ para el nombre de nodos, control numérico visible, expansión de pieza y leyendas; Paddle usa el default payment link sin repetirlo en `checkout.url`, manteniendo validación propia.
 - Evidencia: `npm run check` 176/176, `smoke:shared` aprobado, navegador enfocado 2/2, transacción sandbox creada por el adapter con URL `_ptxn` válida. Regresión completa Chromium 53/59: seis casos previos de puntero/estado fallaron; revisión enfocada nueva aprobada.
-- Verificación externa: workflow check/database/deploy aprobado; app publicada con control de texto y API lista. Pendiente: prueba de pago y webhook con cuenta sandbox (VALIDATION 47–48); se requiere la sesión de la persona para completar el pago.
+- Verificación externa: workflow check/database/deploy aprobado; app publicada con control de texto y API lista. Paddle.js y el marco del checkout cargaron en Chrome con una transacción sandbox real; pendiente completar un pago de prueba y verificar el webhook con cuenta (VALIDATION 47–48).
 
 ## Rediseño UX/UI y checkout recuperable (12/10/2026; ADR 095)
 
