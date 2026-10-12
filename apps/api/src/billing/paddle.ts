@@ -86,7 +86,9 @@ export async function createCheckout(config:PaddleConfig,userId:string,fetcher:t
     // Para quien opera el servicio: el código de Paddle (nunca su mensaje ni datos del pedido) explica qué falta configurar.
     const code=typeof body?.error?.code==='string'&&/^[a-z0-9_]{1,80}$/.test(body.error.code)?body.error.code:response.ok?'unexpected_checkout_url':`http_${response.status}`;
     console.error('[billing] Paddle no creó el pago:',code);
-    throw new BillingError('PROVIDER_ERROR','El proveedor de pagos no devolvió la página de pago.');
+    if(code==='transaction_default_checkout_url_not_set')throw new BillingError('BILLING_UNAVAILABLE','El pago está pendiente de una configuración de Diagramia. Contactá a soporte; volver a intentarlo ahora no lo resolverá. Referencia: CHECKOUT_SETUP.');
+    if(response.status===401||response.status===403)throw new BillingError('BILLING_UNAVAILABLE','No podemos habilitar el pago en este momento. Contactá a soporte. Referencia: CHECKOUT_ACCESS.');
+    throw new BillingError('PROVIDER_ERROR','No pudimos preparar tu pago con Paddle. Esperá unos minutos o contactá a soporte si continúa.');
   }
   return url;
 }

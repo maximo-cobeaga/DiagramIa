@@ -39,6 +39,9 @@ const USABLE:Partial<Record<Shape,[number,number]>>={chevron:[.7,.9],ribbon:[.74
 export const SHAPE_INSET:Partial<Record<Shape,{top?:number;bottom?:number}>>={card:{top:30},browser:{top:24},folder:{top:10},bubble:{bottom:16},sticky:{top:6}};
 /** Formas que llevan el nombre debajo y tienen tamaño fijo, como un avatar. */
 export const LABEL_BELOW_SHAPES:readonly Shape[]=['actor','start','end','avatar','badge','map'];
+/** Un pie breve conserva el nombre completo en el documento y en el título accesible. */
+export const captionWidth=(width:number)=>Math.max(160,Math.min(240,width));
+export const CAPTION_LINES=2;
 /** Lado del círculo del icono en una píldora: ocupa la izquierda y corre el texto. */
 export const PILL_ICON=32;
 export const usableFraction=(shape:Shape):[number,number]=>USABLE[shape]??[1,1];

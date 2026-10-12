@@ -1,4 +1,5 @@
 export * from './schema.js';
+export * from './plans.js';
 export * from './errors.js';
 export * from './text.js';
 export * from './geometry.js';

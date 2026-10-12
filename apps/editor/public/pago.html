@@ -21,13 +21,18 @@
     a.button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
     small{display:block;margin-top:16px;color:var(--muted);font-size:13px}
   </style>
+  <link rel="stylesheet" href="/pago.css">
 </head>
 <body>
   <main>
-    <h1>Pago seguro de Diagramia Pro</h1>
+    <div class="payment-brand"><img src="/favicon.svg" alt=""/>diagramia</div>
+    <p class="payment-kicker">TU PRÓXIMA GRAN IDEA EMPIEZA ACÁ</p>
+    <h1>Más espacio.<br/>Más posibilidades.</h1>
+    <div class="payment-steps" aria-label="Pasos del pago"><span>01 · Elegís Pro</span><span class="active">02 · Pago seguro</span><span>03 · A crear</span></div>
     <p id="status" role="status" aria-live="polite">Preparando el pago…</p>
     <a class="button" id="back" href="/">Volver a Diagramia sin pagar</a>
     <small>El cobro lo procesa Paddle. Diagramia nunca ve los datos de tu tarjeta.</small>
+    <a class="payment-help" href="mailto:mcobeaga@diagramia.app?subject=Ayuda%20con%20el%20pago">¿Necesitás ayuda con el pago?</a>
     <noscript><p>Para pagar hace falta JavaScript activado.</p></noscript>
   </main>
   <script src="/pago.js"></script>

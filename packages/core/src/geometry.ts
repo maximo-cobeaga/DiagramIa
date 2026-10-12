@@ -1,6 +1,6 @@
 import type {DiagramDocument,DiagramEdge,DiagramNode,Port} from './schema.js';
 import {find} from './errors.js';
-import {LABEL_BELOW_SHAPES,edgeLabelLayout,shapeOf,textWidth,wrapLabel} from './text.js';
+import {CAPTION_LINES,captionWidth,LABEL_BELOW_SHAPES,edgeLabelLayout,shapeOf,textWidth,wrapLabel} from './text.js';
 
 export type Point={x:number;y:number};
 export type Rect={x:number;y:number;width:number;height:number};
@@ -12,10 +12,10 @@ export const nodeRect=(n:Pick<DiagramNode,'position'|'size'>):Rect=>({x:n.positi
 export function nodeVisualRect(n:DiagramNode):Rect{
   const rect=nodeRect(n);
   if(!n.assetId&&!LABEL_BELOW_SHAPES.includes(shapeOf(n)))return rect;
-  const width=Math.max(140,rect.width),size=n.style.fontSize??15;
+  const width=captionWidth(rect.width),size=n.style.fontSize??15;
   const x=n.style.align==='left'?rect.x+12:n.style.align==='right'?rect.x+rect.width-12-width:rect.x+(rect.width-width)/2;
   const left=Math.min(rect.x,x),right=Math.max(rect.x+rect.width,x+width);
-  return {x:left,y:rect.y,width:right-left,height:rect.height+Math.round(size*1.2)*wrapLabel(n.label,width,size,4).length+size*.18+6};
+  return {x:left,y:rect.y,width:right-left,height:rect.height+Math.round(size*1.2)*wrapLabel(n.label,width,size,CAPTION_LINES).length+size*.18+6};
 }
 export const contains=(outer:Rect,inner:Rect)=>inner.x>=outer.x&&inner.y>=outer.y&&inner.x+inner.width<=outer.x+outer.width&&inner.y+inner.height<=outer.y+outer.height;
 export const overlaps=(a:Rect,b:Rect)=>a.x<b.x+b.width&&b.x<a.x+a.width&&a.y<b.y+b.height&&b.y<a.y+a.height;

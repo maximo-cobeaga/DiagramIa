@@ -7,7 +7,7 @@ const flowStep=(nodes,edges,es,en,tone='normal')=>({nodes,edges,es,en,tone});
 const line=['M160 149H230','M360 149H430','M560 149H630'];
 
 const FLOW_SCENARIOS={
-  campaign:{width:780,height:300,duration:12500,zone:'MARKETING / CAMPAÑA',
+  campaign:{width:780,height:300,duration:12500,zone:'MARKETING / CAMPAÑA',zoneEn:'MARKETING / CAMPAIGN',
     description:{es:'Una idea se vuelve campaña. Si faltan cambios, vuelve al borrador.',en:'An idea becomes a campaign. If changes are needed, it goes back to draft.'},
     note:{es:'La rama punteada es el camino de vuelta.',en:'The dashed branch is the way back.'},
     nodes:[
@@ -30,7 +30,7 @@ const FLOW_SCENARIOS={
       flowStep(['publish'],['approve'],'Aprobada: se publica en el calendario.','Approved: it is published on the calendar.')
     ]
   },
-  hiring:{width:780,height:300,duration:10000,zone:'PERSONAS / PRIMER DÍA',
+  hiring:{width:780,height:300,duration:10000,zone:'PERSONAS / PRIMER DÍA',zoneEn:'PEOPLE / FIRST DAY',
     description:{es:'De la oferta aceptada al primer día, sin que nada se pierda.',en:'From accepted offer to first day, with nothing lost.'},
     note:{es:'Cada área sabe qué le toca y cuándo.',en:'Every team knows what is theirs and when.'},
     nodes:[
@@ -51,7 +51,7 @@ const FLOW_SCENARIOS={
       flowStep(['day1'],[],'Todo listo para su primer día.','Everything is ready for day one.')
     ]
   },
-  purchase:{width:780,height:300,duration:11000,zone:'OPERACIONES / COMPRA',
+  purchase:{width:780,height:300,duration:11000,zone:'OPERACIONES / COMPRA',zoneEn:'OPERATIONS / PURCHASE',
     description:{es:'Las compras chicas salen solas. Las grandes pasan por Finanzas.',en:'Small purchases go through. Large ones go to Finance.'},
     note:{es:'La rama punteada es el atajo para lo chico.',en:'The dashed branch is the shortcut for small ones.'},
     nodes:[

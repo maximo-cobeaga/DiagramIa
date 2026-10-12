@@ -1,3 +1,4 @@
+import {PLANS} from '@diagramia/core';
 import {useEffect,useState} from 'react';
 import type {ReactNode} from 'react';
 import type {Account,Offer} from '../store/accountStore';
@@ -80,29 +81,40 @@ export function PlanBox({account}:{account:Account}){
     else if(credits.daily>=credits.dailyLimit)trackSession('limit:credits_daily','limit_reached',{kind:'credits_daily'});
     if(storage.documents>=storage.maxDocuments)trackSession('limit:documents','limit_reached',{kind:'documents'});
   },[billing.plan,billing.available]);
-  if(billing.plan==='pro')return <div className="plan-box" aria-label="Plan Pro">
-    <p className="inline-note"><strong>Plan Pro ✓</strong> · {credits.monthlyLimit} créditos de IA por mes ({credits.dailyLimit} por día), hasta {storage.maxDocuments} diagramas en la nube y {storage.maxOwnElements} elementos propios.
-      {billing.cancelsAt?` Se cancela el ${day(billing.cancelsAt)}: hasta entonces seguís con Pro.`:billing.renewsAt?` Próximo cobro: ${day(billing.renewsAt)}.`:''}</p>
-    <div className="step-actions">
+  const pro=billing.plan==='pro';
+  const comparison=[
+    ['Créditos de IA / mes',PLANS.free.monthlyCredits,PLANS.pro.monthlyCredits],
+    ['Créditos de IA / día',PLANS.free.dailyCredits,PLANS.pro.dailyCredits],
+    ['Diagramas en la nube',PLANS.free.maxDocuments,PLANS.pro.maxDocuments],
+    ['Almacenamiento','30 MB','1 GB'],
+    ['Elementos propios',PLANS.free.maxOwnElements,PLANS.pro.maxOwnElements],
+    ['Editor, animaciones y exportaciones','Incluidos','Incluidos']
+  ];
+  return <div className="plan-box" aria-label={pro?'Plan Pro':'Plan Free'}>
+    {pro&&<section className="subscription-status"><span className="plan-badge pro">PRO ACTIVO</span><p>{billing.cancelsAt?`Tu plan sigue activo hasta el ${day(billing.cancelsAt)}.`:billing.renewsAt?`Próxima renovación: ${day(billing.renewsAt)}.`:'Tenés todo listo para seguir creando.'}</p><div className="step-actions">
       {billing.updatePaymentUrl&&<a className="button quiet" href={billing.updatePaymentUrl} target="_blank" rel="noopener noreferrer">Cambiar medio de pago</a>}
       {billing.cancelUrl&&!billing.cancelsAt&&<a className="button quiet" href={billing.cancelUrl} target="_blank" rel="noopener noreferrer">Cancelar suscripción</a>}
+    </div></section>}
+    {!pro&&atLimit&&<p className="inline-note warn" role="status">Llegaste a un límite de Free. Compará las opciones para seguir.</p>}
+    {!pro&&offer&&<OfferBanner offer={offer}/>}
+    {!pro&&yearly&&<div className="plan-frequency"><span>Elegí cómo pagar</span><div className="interval-toggle" role="group" aria-label="Frecuencia de pago">
+      <button aria-pressed={interval==='month'} className={interval==='month'?'chosen':''} onClick={()=>setInterval_('month')}>Mensual</button>
+      <button aria-pressed={interval==='year'} className={interval==='year'?'chosen':''} onClick={()=>setInterval_('year')}>Anual <small>−{Math.round((1-yearly/(monthly*12))*100)}%</small></button></div></div>}
+    <div className="plan-cards">
+      <section className="plan-card free"><div className="plan-card-top"><span className="eyebrow">PARA EMPEZAR</span>{!pro&&<span className="current-plan">Tu plan</span>}</div><h3>Free<span>↗</span></h3><p className="plan-description">De la primera idea a tu primer diagrama.</p><p className="plan-price"><strong>USD 0</strong><span>para siempre</span></p><ul className="benefits"><li>Canvas completo y editable</li><li>{PLANS.free.monthlyCredits} créditos de IA al mes</li><li>{PLANS.free.maxDocuments} diagramas en la nube</li></ul><div className="plan-card-foot">{!pro?'Tu espacio para empezar a crear.':'Al cancelar, volvés a Free sin borrar tus diagramas.'}</div></section>
+      <section className="plan-card pro" aria-label="Beneficios de Pro"><div className="plan-card-top"><span className="eyebrow">PARA IR MÁS LEJOS</span><span className="current-plan">{pro?'Tu plan':'20× más IA'}</span></div><h3>Pro<span>✳</span></h3><p className="plan-description">Más ideas, más espacio, más posibilidades.</p>
+        <p className="plan-price"><strong>{interval==='year'&&yearly?money(yearly):offer?money(offer.priceUsd):monthly?money(monthly):'USD 10'}</strong><span>{interval==='year'&&yearly?'por año':'por mes'}</span></p>
+        {offer&&<p className="plan-price-note">{offerTerms(offer)}; después {money(offer.regularUsd)}/mes.</p>}
+        {interval==='year'&&yearly&&<p className="plan-price-note">Equivale a {money(Math.round(yearly/12*100)/100)}/mes. Cobro anual.</p>}
+        <ProBenefits/>
+        {!pro&&<button className="primary big" disabled={!billing.available||state==='working'} onClick={()=>void subscribe()}>{state==='working'?'Abriendo el pago…':billing.available?'Pasar a Pro ↗':'Suscripción aún no disponible'}</button>}
+        <div className="plan-card-foot">{pro?'Gracias por darle espacio a tus ideas.':'Cancelás cuando quieras. Tus diagramas siguen siendo tuyos.'}</div>
+      </section>
     </div>
-  </div>;
-  return <div className="plan-box" aria-label="Plan Free">
-    <p className="inline-note"><strong>Plan Free</strong> · {credits.monthlyLimit} créditos de IA por mes ({credits.dailyLimit} por día), {storage.maxDocuments} diagramas en la nube y {storage.maxOwnElements} elementos propios.</p>
-    {!billing.available&&<p className="inline-note" role="status">Las suscripciones Pro todavía no están habilitadas. Podés seguir con Free y <a href="https://diagramia.app/precios.html" target="_blank" rel="noopener noreferrer">consultar los planes</a>.</p>}
-    {billing.available&&<>
-      {atLimit&&<p className="inline-note warn" role="status">Llegaste a un límite del plan Free. Con Pro seguís trabajando sin frenarte.</p>}
-      {offer&&<OfferBanner offer={offer}/>}
-      <section className="upgrade-card" aria-label="Beneficios de Pro"><span className="eyebrow">DIAGRAMIA PRO</span><h3>Más espacio para tus ideas.</h3>
-        {yearly&&<div className="interval-toggle" role="radiogroup" aria-label="Frecuencia de pago">
-          <button role="radio" aria-checked={interval==='month'} className={interval==='month'?'chosen':''} onClick={()=>setInterval_('month')}>Mensual</button>
-          <button role="radio" aria-checked={interval==='year'} className={interval==='year'?'chosen':''} onClick={()=>setInterval_('year')}>Anual <small>ahorrás {Math.round((1-yearly/(monthly*12))*100)}%</small></button></div>}
-        <p className="price">{interval==='year'&&yearly?<><strong>{money(yearly)}</strong> por año ({money(Math.round(yearly/12*100)/100)} por mes)</>:offer?<><s>{money(offer.regularUsd)}</s> <strong>{money(offer.priceUsd)}</strong> por mes {offerTerms(offer)}</>:<><strong>{money(monthly)}</strong> por mes</>} · cancelás cuando quieras</p><ProBenefits/>
-      {billing.status&&billing.status!=='canceled'&&<p className="inline-note warn" role="status">Tu suscripción figura como «{billing.status}»: mientras no esté activa, la cuenta usa el plan Free. Revisá el medio de pago.</p>}
-      <div className="step-actions"><button className="primary" disabled={state==='working'} onClick={()=>void subscribe()}>{state==='working'?'Abriendo el pago…':interval==='year'&&yearly?`Pasar a Pro · ${money(yearly)}/año`:offer?`Pasar a Pro · ${money(offer.priceUsd)}/mes`:`Pasar a Pro · ${money(monthly)}/mes`}</button></div>
-      {error&&<p className="inline-note warn" role="alert">{error}</p>}
-      <small>Si pasan menos de 48 horas desde el pago, te lo devolvemos. <a href="https://diagramia.app/reembolsos.html" target="_blank" rel="noopener noreferrer">Condiciones</a></small></section>
-    </>}
+    {error&&<div className="checkout-error" role="alert"><strong>No pudimos abrir el pago</strong><p>{error}</p><a href="mailto:mcobeaga@diagramia.app?subject=Ayuda%20con%20el%20pago%20de%20Pro">Contactar a soporte ↗</a></div>}
+    {!billing.available&&<p className="inline-note" role="status">Las suscripciones Pro todavía no están habilitadas. Podés seguir trabajando con Free.</p>}
+    {billing.status&&billing.status!=='canceled'&&!pro&&<p className="inline-note warn" role="status">Tu suscripción figura como «{billing.status}». La cuenta usa Free hasta que el pago esté al día.</p>}
+    <section className="plan-comparison"><h3>Cada detalle, a la vista.</h3><div className="comparison-scroll"><table><caption>Comparación de los planes Free y Pro</caption><thead><tr><th scope="col">Qué incluye</th><th scope="col">Free</th><th scope="col">Pro</th></tr></thead><tbody>{comparison.map(([label,free,paid])=><tr key={label}><th scope="row">{label}</th><td>{free}</td><td>{paid}</td></tr>)}</tbody></table></div></section>
+    <p className="plan-legal">Pago seguro con Paddle. Los impuestos dependen de tu país. <a href="https://diagramia.app/reembolsos.html" target="_blank" rel="noopener noreferrer">Condiciones de reembolso</a>.</p>
   </div>;
 }

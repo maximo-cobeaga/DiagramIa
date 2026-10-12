@@ -57,13 +57,15 @@ try{
   for(const width of [1440,1024,390,320])await check(`landing ${width}px: planes, ejemplos y diagramas legibles sin desborde`,async()=>{
     await send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<600});await navigate('/');
     assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'),'desborde del documento');
+    assert.equal(await js('document.documentElement.lang'),'en');
+    if(width===1440||width===390)await shot('ui-landing-hero-'+width);
     assert.equal(await js('document.querySelectorAll(".team-card").length'),6);
     assert.equal(await js('document.querySelectorAll(".price-card").length'),3);
     assert.ok(!(await js('document.body.textContent')).includes('manual de marca'));
     const pro=await js('document.querySelector(".price-card.pro a").href');assert.ok(pro.includes('?plan=pro'));
     await until(()=>js("!document.getElementById('offer-tag').hidden"),'oferta visible');
     const offerText=await js("document.getElementById('offer-tag').textContent");
-    assert.ok(/50% menos/.test(offerText)&&/USD 5 por mes/.test(offerText)&&/USD 10 por mes/.test(offerText)&&/primeros 3 meses/.test(offerText)&&/Termina en 0[23]:\d\d:\d\d/.test(offerText),'la oferta muestra porcentaje, precio, meses y cuenta regresiva: '+offerText);
+    assert.ok(/50% off/.test(offerText)&&/USD 5\/month/.test(offerText)&&/Regular price USD 10/.test(offerText)&&/first 3 months/.test(offerText)&&/Ends in 0[23]:\d\d:\d\d/.test(offerText),'la oferta muestra porcentaje, precio, meses y cuenta regresiva: '+offerText);
     for(const scenario of ['campaign','hiring','purchase']){
       await js(`document.querySelector('[data-scenario="${scenario}"]').click()`);
       assert.equal(await js('document.querySelectorAll(".p-node").length'),4);
@@ -75,9 +77,12 @@ try{
     await js("document.querySelector('#equipos').scrollIntoView()");await sleep(100);if(width===1440)await shot('ui-landing-equipos');
   });
   await check('reproductor: pausa, búsqueda temporal, escenarios e inglés',async()=>{
-    await js("document.querySelector('#play-toggle').click()");await sleep(300);assert.equal(await js("document.querySelector('#play-toggle').textContent"),'Pausar');
+    await js("document.querySelector('#play-toggle').click()");await sleep(300);assert.equal(await js("document.querySelector('#play-toggle').textContent"),'Pause');
     await js("document.querySelector('#play-toggle').click();document.querySelector('#scrubber').value='5000';document.querySelector('#scrubber').dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#language').click()");
-    assert.equal(await js('document.documentElement.lang'),'en');assert.equal(await js("document.querySelector('#play-toggle').textContent"),'Play');
+    assert.equal(await js('document.documentElement.lang'),'es');assert.equal(await js("document.querySelector('#play-toggle').textContent"),'Reproducir');
+    assert.ok((await js("document.getElementById('offer-tag').textContent")).includes('50% menos'),'la oferta también se traduce');
+    await send('Page.reload');await sleep(250);assert.equal(await js('document.documentElement.lang'),'es','idioma persistente');
+    await js("document.querySelector('#language').click()");assert.equal(await js('document.documentElement.lang'),'en');
   });
   for(const width of [1440,390,320])await check(`empresas ${width}px: formulario accesible sin desborde`,async()=>{
     await send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<600});await navigate('/empresas.html');

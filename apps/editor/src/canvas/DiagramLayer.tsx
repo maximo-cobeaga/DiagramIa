@@ -1,5 +1,5 @@
 import type {CSSProperties,ReactNode} from 'react';
-import {ICON_LARGE,LABEL_BELOW_SHAPES,detailBlock,PILL_ICON,SHAPE_INSET,assetDataUrl,detailLines,edgeLabelLayout,pointOnPolyline,routeAll,shapeOf,usableFraction,wrapLabel,type DiagramAnnotation,type DiagramDocument,type DiagramEdge,type DiagramNode,type Point} from '@diagramia/core';
+import {CAPTION_LINES,captionWidth,ICON_LARGE,LABEL_BELOW_SHAPES,detailBlock,PILL_ICON,SHAPE_INSET,assetDataUrl,detailLines,edgeLabelLayout,pointOnPolyline,routeAll,shapeOf,usableFraction,wrapLabel,type DiagramAnnotation,type DiagramDocument,type DiagramEdge,type DiagramNode,type Point} from '@diagramia/core';
 
 export {wrapLabel};
 type Shape=ReturnType<typeof shapeOf>;
@@ -224,7 +224,7 @@ export function nodeTitleLayout(n:DiagramNode,asset=false){
   const lead=shape==='pill'&&n.icon?PILL_ICON+10:0,inset=SHAPE_INSET[shape]??{};
   const align=n.style.align??'center',pad=(shape==='class'?10:12)+lead,tx=align==='left'?x+pad:align==='right'?x+w-12:x+lead+(w-lead)/2,anchorAt=align==='left'?'start':align==='right'?'end':'middle';
   const ownIcon=OWN_ICON.has(shape),bigIcon=Boolean(n.icon)&&n.style.iconSize==='large'&&!asset&&!below&&shape!=='class'&&!ownIcon,iconShift=bigIcon?(ICON_LARGE+8)/2:0;
-  const width=below?Math.max(w,140):Math.max(40,w*fw-lead-(n.icon&&!bigIcon&&!ownIcon?40:20)),lines=wrapLabel(n.label,width,size,shape==='class'?1:4);
+  const width=below?captionWidth(w):Math.max(40,w*fw-lead-(n.icon&&!bigIcon&&!ownIcon?40:20)),lines=wrapLabel(n.label,width,size,shape==='class'?1:below?CAPTION_LINES:4);
   const blockHeight=lines.length*lineHeight+(n.subtitle?15:0)+(shape==='class'?0:extra.length*16);
   const top=below?y+h+size+3:shape==='class'?y+size+6:y+h/2-blockHeight/2+size*.82+iconShift+((inset.top??0)-(inset.bottom??0))/2+(shape==='cylinder'?Math.min(12,h/5)/2:shape==='triangle'?h*.16:0);
   const textStyle:CSSProperties={fontWeight:n.style.bold?700:undefined,fontStyle:n.style.italic?'italic':undefined};
@@ -311,6 +311,7 @@ export function DiagramLayer({doc,selected,activeNodes,activeEdges,failed=false,
       return <g key={n.id} data-id={n.id} data-type="node" style={vars(n.style)} strokeDasharray={dash}
         className={`graph-node kind-${n.kind} shape-${shape}${has(selected,n.id)?' selected':''}${has(staged,n.id)?' staged':''}${active?' active':''}${active&&failed?' failed':''}`}
         {...(interactive?{role:'button',tabIndex:0,'aria-label':`${n.label}, ${n.kind}${n.zoneId?', en zona '+(doc.zones.find(z=>z.id===n.zoneId)?.label??n.zoneId):''}`}:{})}>
+        <title>{n.label}</title>
         {asset?<><rect className="node-shape bare" x={x} y={y} width={w} height={h}/><image href={assetDataUrl(asset)} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid meet"/></>:<>{parts.main}{parts.extra}</>}
         {!asset&&!n.shape&&n.kind==='cache'&&<path className="node-accent" d={`M${x+5} ${y+12}V${y+h-12}`}/>}
         {!asset&&!n.shape&&n.kind==='queue'&&<path className="node-detail" d={[12,22,32].map(o=>`M${x+w-o} ${y+10}V${y+h-10}`).join('')}/>}

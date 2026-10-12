@@ -1,6 +1,7 @@
 import {documentBounds,groupMembers,type DiagramDocument,type DiagramNode,type Rect} from '@diagramia/core';
 import {track,trackThrottled} from '../telemetry';
 import {createStore} from './createStore';
+import {DEFAULT_PREFERENCES,PREFERENCES_KEY,parsePreferences} from './preferences';
 
 export type Camera={x:number;y:number;zoom:number};
 export type Tool='select'|'pan'|'node'|'connect'|'line'|'arrow'|'freehand'|'guided'|'eraser'|'zone'|'frame';
@@ -18,6 +19,8 @@ export const MIN_ZOOM=.1,MAX_ZOOM=4,GRID=8;
 export const LEGIBLE_ZOOM=.45;
 
 const THEME_KEY='diagramia.theme';
+const preferences=(()=>{try{return parsePreferences(localStorage.getItem(PREFERENCES_KEY));}catch{return {...DEFAULT_PREFERENCES};}})();
+function initialThemeMode():'system'|Theme{try{const saved=localStorage.getItem(THEME_KEY);return saved==='light'||saved==='dark'?saved:'system';}catch{return 'system';}}
 function initialTheme():Theme{
   try{const saved=localStorage.getItem(THEME_KEY);if(saved==='light'||saved==='dark')return saved;}catch{/* sin almacenamiento se usa la preferencia del sistema */}
   return typeof matchMedia==='function'&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
@@ -26,7 +29,7 @@ function initialTheme():Theme{
 // Estado de interfaz: nunca forma parte del documento ni del historial de cambios.
 export const viewStore=createStore({
   camera:{x:-40,y:-20,zoom:1} as Camera,viewport:{width:1000,height:600},
-  tool:'select' as Tool,template:{kind:'service',shape:null,label:'Nuevo componente',size:{width:160,height:80}} as NodeTemplate,snap:true,
+  tool:'select' as Tool,template:{kind:'service',shape:null,label:'Nuevo componente',size:{width:160,height:80}} as NodeTemplate,...preferences,themeMode:initialThemeMode(),
   // El panel lateral abre en IA: es el primer recorrido del producto.
   panel:'assistant' as Panel,accountOpen:false,accountSection:'resumen' as AccountSection,sideOpen:true,timelineOpen:false,timelineHeight:300,presenting:false,tutorial:false,theme:initialTheme(),
   startMode:'choose' as 'choose'|'draw'|'examples',focusMode:false,connectFromId:null as string|null,connectFromAnchor:null as {x:number;y:number}|null,
@@ -60,15 +63,24 @@ viewStore.subscribe(()=>{
   });
 }
 
-export function setTheme(theme:Theme){
-  viewStore.set({theme});
-  try{localStorage.setItem(THEME_KEY,theme);}catch{/* la preferencia vale para esta sesión */}
+export function setTheme(mode:Theme|'system'){
+  const theme=mode==='system'?(typeof matchMedia==='function'&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):mode;
+  viewStore.set({theme,themeMode:mode});
+  try{localStorage.setItem(THEME_KEY,mode);}catch{/* la preferencia vale para esta sesión */}
 }
+if(typeof matchMedia==='function')matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(viewStore.get().themeMode==='system')setTheme('system');});
+let savedPreferences=JSON.stringify(preferences);
+viewStore.subscribe(()=>{
+  const {showGrid,snap,reduceMotion,paletteLayout}=viewStore.get(),next=JSON.stringify({showGrid,snap,reduceMotion,paletteLayout});
+  if(next===savedPreferences)return;savedPreferences=next;
+  try{localStorage.setItem(PREFERENCES_KEY,next);}catch{/* sólo para esta sesión */}
+  if(reduceMotion)cancelCameraMove();
+});
 
 /** Concentración conserva las preferencias de paneles: sólo cambia qué superficies se muestran. */
 export function setFocusMode(focusMode:boolean){viewStore.set({focusMode});}
 // El tema se aplica al documento entero para que también cambien el fondo de página y los controles nativos.
-const applyTheme=()=>{if(typeof document!=='undefined')document.documentElement.dataset.theme=viewStore.get().theme;};
+const applyTheme=()=>{if(typeof document!=='undefined'){document.documentElement.dataset.theme=viewStore.get().theme;document.documentElement.dataset.motion=viewStore.get().reduceMotion?'reduce':'system';}};
 applyTheme();viewStore.subscribe(applyTheme);
 
 export const clampZoom=(zoom:number)=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,zoom));
@@ -98,7 +110,7 @@ export function fit(bounds:Rect|null):boolean{
 }
 export const snap=(value:number)=>viewStore.get().snap?Math.round(value/GRID)*GRID:Math.round(value);
 
-const reducedMotion=()=>typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reducedMotion=()=>viewStore.get().reduceMotion||(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches);
 /** Curva que arranca y frena suave: el viaje se lee como un movimiento de cámara, no como un salto. */
 export const easeCamera=(t:number)=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
 /**

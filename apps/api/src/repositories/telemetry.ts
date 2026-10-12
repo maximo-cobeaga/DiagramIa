@@ -43,6 +43,10 @@ export class TelemetryRepository{
 export class RateLimiter{
   private hits=new Map<string,number[]>();
   constructor(private readonly limit:number,private readonly windowMs:number,private readonly now:()=>number=Date.now){}
+  retryAfterSeconds(key:string):number{
+    const now=this.now(),recent=(this.hits.get(key)??[]).filter(at=>now-at<this.windowMs);
+    return recent.length>=this.limit?Math.max(1,Math.ceil((recent[0]!+this.windowMs-now)/1000)):0;
+  }
   allow(key:string):boolean{
     const now=this.now(),recent=(this.hits.get(key)??[]).filter(at=>now-at<this.windowMs);
     if(recent.length>=this.limit){this.hits.set(key,recent);return false;}

@@ -8,6 +8,7 @@ import {createSharedDocument,detachSharedDocument,listSharedDocuments,openShared
 import {browserOptOut,flush as flushTelemetry,setTelemetryEnabled,telemetryEnabled} from '../telemetry';
 import {PlanBox,ProBenefits} from './PlanBox';
 import {startCheckout} from './checkout';
+import {EditorPreferences} from './EditorPreferences';
 
 type Entry={id:string;title:string;revision:number};
 const authHeaders={'x-diagramia-client':'editor'};
@@ -76,7 +77,7 @@ function Diagrams({account,cloud,loading,refresh}:{account:Account;cloud:Entry[]
   </>;
 }
 
-function Settings({account,onChange}:{account:Account;onChange:()=>Promise<void>}){
+function AccountSettings({account,onChange}:{account:Account;onChange:()=>Promise<void>}){
   const shared=useStore(sharedStore);
   const [enabled,setEnabled]=useState(telemetryEnabled()),blocked=browserOptOut();
   const [deleting,setDeleting]=useState<'closed'|'open'|'working'>('closed'),[confirmation,setConfirmation]=useState(''),[deleteError,setDeleteError]=useState(''),[signOutError,setSignOutError]=useState('');
@@ -98,7 +99,7 @@ function Settings({account,onChange}:{account:Account;onChange:()=>Promise<void>
     setDeleting('closed');setConfirmation('');close();await onChange();
   };
   return <>
-    <h2>Configuración</h2>
+    <h3 className="settings-section-title">Cuenta y privacidad</h3>
     <section aria-label="Sesión"><h3>Sesión</h3><p className="inline-note">{account.session.email??'Cuenta activa'}{account.session.emailVerified?' ✓ verificado':''}</p>
       <div className="step-actions"><button disabled={pendingCloud} onClick={()=>void signOut()}>Cerrar sesión</button></div>
       {pendingCloud&&<p className="inline-note warn" role="status">Hay cambios pendientes de guardar. Reintentá el guardado desde Mis diagramas antes de cerrar sesión.</p>}
@@ -152,20 +153,20 @@ export function AccountPage(){
     if(event.shiftKey&&document.activeElement===first&&last){event.preventDefault();last.focus();}
     else if(!event.shiftKey&&document.activeElement===last&&first){event.preventDefault();first.focus();}
   }}>
-    <header><button onClick={close}>← Volver al canvas</button><strong>Mi cuenta</strong></header>
+    <header><button onClick={close}>← Volver al canvas</button><a className="brand" href="#" onClick={event=>{event.preventDefault();close();}}><img src="/favicon.svg" alt=""/>diagramia</a><span className="account-header-note">TU ESPACIO PERSONAL</span></header>
     <div className="account-body">
-      {account&&<nav aria-label="Secciones de la cuenta">{SECTIONS.map(([id,label])=><button key={id} className={accountSection===id?'chosen':''} aria-current={accountSection===id?'page':undefined} onClick={()=>pick(id)}>{label}</button>)}</nav>}
+      <nav aria-label="Secciones de la cuenta"><div className="account-nav-identity"><span className="eyebrow">MI CUENTA</span><strong>{account?.session.email??'Tu espacio'}</strong><span className="plan-badge">{account?.billing.plan==='pro'?'Pro':'Free'}</span></div>{(account?SECTIONS:SECTIONS.filter(([id])=>id==='resumen'||id==='ajustes')).map(([id,label],i)=><button key={id} aria-label={label} className={accountSection===id?'chosen':''} aria-current={accountSection===id?'page':undefined} onClick={()=>pick(id)}><span className="nav-index" aria-hidden="true">0{i+1}</span>{label}<span className="nav-arrow" aria-hidden="true">↗</span></button>)}<p className="account-nav-foot">Un poco de orden.<br/>Mucho espacio para crear.</p></nav>
       <main>
         {auth==='loading'&&<p className="inline-note">Comprobando la sesión…</p>}
         {auth==='unavailable'&&<><p className="inline-note" role="alert">La cuenta no está disponible en este momento.</p><button onClick={()=>void refresh()}>Reintentar</button></>}
-        {auth==='guest'&&<section className="account-pitch"><h2>Guardá tus diagramas en la nube</h2>
+        {auth==='guest'&&accountSection!=='ajustes'&&<section className="account-pitch"><h2>Guardá tus diagramas en la nube</h2>
           <p>Creá tu cuenta gratis y tené tus diagramas en cualquier dispositivo, con IA incluida cada mes.</p>
           <ul className="benefits"><li>3 diagramas en la nube</li><li>20 créditos de IA por mes</li><li>Exportá a JSON, SVG, PNG, Mermaid, PDF y más</li></ul>
           <button className="primary big" onClick={()=>signIn('menu')}>Crear cuenta o iniciar sesión</button></section>}
         {account&&accountSection==='resumen'&&<Summary account={account}/>}
         {account&&accountSection==='diagramas'&&<>{cloudError?<><h2>Mis diagramas</h2><p className="inline-note warn" role="alert">{cloudError}</p><button disabled={loading} onClick={()=>void refresh()}>Actualizar</button></>:<Diagrams account={account} cloud={cloud} loading={loading} refresh={refresh}/>}</>}
-        {account&&accountSection==='plan'&&<><h2>Plan y facturación</h2><PlanBox account={account}/></>}
-        {account&&accountSection==='ajustes'&&<Settings account={account} onChange={refresh}/>}
+        {account&&accountSection==='plan'&&<><div className="settings-intro"><span className="eyebrow">ELEGÍ TU PRÓXIMO PASO</span><h2>Más posibilidades.<br/>El mismo canvas.</h2><p>Empezá con Free. Elegí Pro cuando tus ideas pidan más.</p></div><PlanBox account={account}/></>}
+        {accountSection==='ajustes'&&<><EditorPreferences/>{account&&<AccountSettings account={account} onChange={refresh}/>}</>}
       </main>
     </div>
   </dialog>;

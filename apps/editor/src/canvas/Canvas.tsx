@@ -430,7 +430,7 @@ export function Canvas(){
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setGhostAt(null)} onPointerCancel={cancelGesture}
       onKeyDown={e=>{if(e.key==='Escape'){cancelGesture();return;}const target=hit(e.target);if(target&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();if(viewStore.get().connectFromId&&target.type==='node'&&!staging){connectTo(target.id);return;}const unit=e.altKey?[target.id]:selectionUnit(doc,target.id);select(e.shiftKey?[...ids,...unit]:unit);}}}>
       <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" className="grid-dot"/></pattern><marker id="connection-preview-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M1 1L9 5L1 9Z" fill="var(--blue)"/></marker></defs>
-      <rect x={camera.x} y={camera.y} width={viewport.width/camera.zoom} height={viewport.height/camera.zoom} fill="url(#grid)" pointerEvents="none"/>
+      {viewStore.get().showGrid&&<rect data-canvas-grid x={camera.x} y={camera.y} width={viewport.width/camera.zoom} height={viewport.height/camera.zoom} fill="url(#grid)" pointerEvents="none"/>}
       <DiagramLayer doc={visible} selected={staging?undefined:selected} staged={stagedIds} interactive showAnnotations editing={editing?.id} states={showing?statesAt(animation!,sampled.index):undefined}
         activeNodes={showing?new Set([...sampled.step.nodeIds,...(effects?.nodeIds??[])]):undefined} activeEdges={showing?new Set([...sampled.step.edgeIds,...(effects?.edgeIds??[])]):undefined}
         failed={sampled?.step.tone==='failure'} progress={showing?sampled.progress:null}/>

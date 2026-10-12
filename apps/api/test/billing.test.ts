@@ -3,8 +3,20 @@ import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
 import {BillingError,createCheckout,translate,verifySignature} from '../src/billing/paddle.js';
 import {PLANS,planOf} from '../src/billing/plans.js';
+import {RateLimiter} from '../src/repositories/telemetry.js';
 
 const SECRET='pdl_ntfset_test_secret',PRICE='pri_pro_monthly';
+test('checkout: explica configuración pendiente sin filtrar datos del proveedor',async()=>{
+  const config={env:'sandbox' as const,apiKey:'private-key',webhookSecret:'secret',priceId:'price'};
+  const response:typeof fetch=async()=>new Response(JSON.stringify({error:{code:'transaction_default_checkout_url_not_set',detail:'private account data'}}),{status:400});
+  await assert.rejects(createCheckout(config,'account',response),(error:unknown)=>error instanceof BillingError&&error.code==='BILLING_UNAVAILABLE'&&error.message.includes('CHECKOUT_SETUP')&&!error.message.includes('private'));
+});
+test('el plazo de reintento del pago disminuye y no se extiende al consultar',()=>{
+  let now=0;const limiter=new RateLimiter(2,600_000,()=>now);
+  assert.ok(limiter.allow('a'));now=1000;assert.ok(limiter.allow('a'));assert.equal(limiter.allow('a'),false);
+  assert.equal(limiter.retryAfterSeconds('a'),599);assert.equal(limiter.retryAfterSeconds('b'),0);
+  now=599_001;assert.equal(limiter.retryAfterSeconds('a'),1);now=600_000;assert.equal(limiter.retryAfterSeconds('a'),0);assert.ok(limiter.allow('a'));
+});
 const sign=(body:string,ts:number,secret=SECRET)=>`ts=${ts};h1=${createHmac('sha256',secret).update(`${ts}:${body}`).digest('hex')}`;
 const event=(overrides:Record<string,unknown>={},type='subscription.activated')=>JSON.stringify({
   event_id:'evt_1',event_type:type,occurred_at:'2026-10-08T12:00:00.000Z',

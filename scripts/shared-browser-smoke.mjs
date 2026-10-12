@@ -53,12 +53,12 @@ try{
   mkdirSync('evidencias',{recursive:true});
   const shot=async name=>{const {data}=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join('evidencias',name+'.png'),Buffer.from(data,'base64'));};
   await shot('ui-cuenta-saas');
-  await js("[...document.querySelectorAll('.account-page nav button')].find(b=>b.textContent==='Mis diagramas').click()");
+  await js("[...document.querySelectorAll('.account-page nav button')].find(b=>b.getAttribute('aria-label')==='Mis diagramas').click()");
   assert.ok(await js("!![...document.querySelectorAll('button')].find(b=>b.textContent.includes('Guardar el diagrama abierto en la nube'))"),'aparece el guardado cloud');
   // Abrimos un ejemplo complejo real antes de guardar, sin modificar los ejemplos del usuario.
   await js("document.querySelector('.account-page header button').click();document.querySelector('[aria-label=\"Cargar ejemplo\"]').value='0';document.querySelector('[aria-label=\"Cargar ejemplo\"]').dispatchEvent(new Event('change',{bubbles:true}))");await sleep(600);
   await js("document.querySelector('.account-chip').click()");await sleep(300);
-  await js("[...document.querySelectorAll('.account-page nav button')].find(b=>b.textContent==='Mis diagramas').click()");await sleep(150);
+  await js("[...document.querySelectorAll('.account-page nav button')].find(b=>b.getAttribute('aria-label')==='Mis diagramas').click()");await sleep(150);
   await js("[...document.querySelectorAll('.account-page button')].find(b=>b.textContent.includes('Guardar el diagrama abierto en la nube')).click()");
   await until(()=>js("document.querySelector('.account-page')?.textContent.includes('Guardado en tu nube')"),'documento cloud');
   await js("document.querySelector('.account-page header button').click()");
@@ -98,8 +98,9 @@ try{
   await send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Delete',code:'Delete',windowsVirtualKeyCode:46});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Delete',code:'Delete',windowsVirtualKeyCode:46});
   assert.equal(JSON.stringify(await saved()),accountBefore,'Delete en Cuenta no borra la selección');
-  await js("[...document.querySelectorAll('.account-page nav button')].find(b=>b.textContent==='Plan y facturación').click()");await sleep(200);
+  await js("[...document.querySelectorAll('.account-page nav button')].find(b=>b.getAttribute('aria-label')==='Plan y facturación').click()");await sleep(200);
   assert.ok(await js("document.querySelector('.account-page').textContent.includes('400 créditos')"),'beneficios de Pro visibles');
+  assert.equal(await js("document.querySelectorAll('.plan-comparison tbody tr').length"),6);
   await shot('ui-cuenta-plan');
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await sleep(300);
   assert.ok(await js("document.documentElement.scrollWidth<=innerWidth&&document.querySelector('.account-body main').scrollWidth<=document.querySelector('.account-body main').clientWidth"),'cuenta móvil sin desborde');await shot('ui-cuenta-saas-movil');
@@ -107,11 +108,11 @@ try{
   assert.equal(await js("!!document.querySelector('.account-page')"),false);
   assert.ok(await js("document.activeElement.matches('.account-chip')"),'el foco vuelve a Cuenta');
   await send('Page.navigate',{url:origin+'/?plan=pro'});
-  await until(()=>js("document.querySelector('.account-page')?.textContent.includes('Plan y facturación')&&document.querySelector('.account-page nav button[aria-current=page]')?.textContent==='Plan y facturación'"),'intención Pro desde landing');
+  await until(()=>js("document.querySelector('.account-page')?.textContent.includes('Plan y facturación')&&document.querySelector('.account-page nav button[aria-current=page]')?.getAttribute('aria-label')==='Plan y facturación'"),'intención Pro desde landing');
   assert.equal(await js("new URL(location.href).searchParams.has('plan')"),false,'la intención se consume');
   // Vuelta de la página de pago sin pagar: se dice que no hubo cobro, se muestra el plan y el parámetro no queda en la URL.
   await send('Page.navigate',{url:origin+'/?pro=cancel'});
-  await until(()=>js("document.querySelector('.account-page nav button[aria-current=page]')?.textContent==='Plan y facturación'&&!new URL(location.href).searchParams.has('pro')"),'vuelta del pago cancelado');
+  await until(()=>js("document.querySelector('.account-page nav button[aria-current=page]')?.getAttribute('aria-label')==='Plan y facturación'&&!new URL(location.href).searchParams.has('pro')"),'vuelta del pago cancelado');
   assert.ok(await js("document.body.textContent.includes('No se hizo ningún cobro')"),'cancelar el pago lo dice con claridad');
   // La página de pago propia rechaza un enlace sin transacción válida y no carga nada de terceros.
   await send('Page.navigate',{url:origin+'/pago.html?_ptxn=<script>'});
@@ -119,9 +120,22 @@ try{
   assert.equal(await js("document.querySelectorAll('script[src*=paddle]').length"),0,'sin transacción válida no se carga Paddle.js');
   await send('Page.navigate',{url:origin+'/'});await until(()=>js("!!document.querySelector('.account-chip')"),'volver al editor');
   await js("document.querySelector('.account-chip').click()");await until(()=>js("!!document.querySelector('.account-page')"),'cuenta abierta');
-  await js("[...document.querySelectorAll('.account-page nav button')].find(b=>b.textContent==='Configuración').click()");await sleep(150);
+  await js("[...document.querySelectorAll('.account-page nav button')].find(b=>b.getAttribute('aria-label')==='Configuración').click()");await sleep(150);
   assert.ok(await js("document.querySelector('.account-page').textContent.includes('Cerrar sesión')"),'configuración disponible');
   for(let i=0;i<12;i++){await send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9});assert.ok(await js("!!document.activeElement.closest('.account-page')"),'el foco no escapa de Cuenta, Tab '+i);}
+  const beforePreferences=JSON.stringify(await saved());
+  await js("document.querySelector('[aria-label=\"Vista del catálogo\"]').value='grid';document.querySelector('[aria-label=\"Vista del catálogo\"]').dispatchEvent(new Event('change',{bubbles:true}));document.querySelectorAll('.setting-switch')[0].click();document.querySelectorAll('.setting-switch')[2].click();document.querySelector('input[name=editor-theme][value=dark]').click()");
+  assert.equal(await js("document.documentElement.dataset.motion"),'reduce');
+  assert.equal(await js("document.documentElement.dataset.theme"),'dark');
+  assert.equal(JSON.stringify(await saved()),beforePreferences,'las preferencias no cambian el documento');
+  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});await shot('ui-ajustes-dark');
+  await send('Page.reload');await until(()=>js("!!document.querySelector('.canvas')"),'preferencias después de recarga');
+  assert.equal(await js("document.documentElement.dataset.theme"),'dark');
+  assert.equal(await js("document.querySelectorAll('[data-canvas-grid]').length"),0,'cuadrícula oculta después de recarga');
+  assert.ok(await js("!!document.querySelector('.palette.catalog-grid')"),'vista de catálogo persistida');
+  await js("document.querySelector('[aria-label=\"Configuración del editor\"]').click()");await sleep(150);
+  await js("[...document.querySelectorAll('button')].find(b=>b.textContent==='Restablecer preferencias').click()");await shot('ui-ajustes-light');
+  await send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
   // Telemetría de punta a punta: el navegador envía por lotes, el gateway valida y PostgreSQL guarda sin contenido.
   let rows=[];
   for(let i=0;i<120;i++){

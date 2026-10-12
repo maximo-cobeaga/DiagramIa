@@ -1,0 +1,13 @@
+@font-face{font-family:Manrope;src:url('/fonts/Manrope.ttf');font-weight:200 800;font-display:swap}
+@font-face{font-family:Plex;src:url('/fonts/IBMPlexMono-Regular.ttf');font-display:swap}
+body{font-family:Manrope,Arial,sans-serif;background:#f2f3ee;color:#141619;padding:24px}
+main{position:relative;overflow:hidden;max-width:620px;width:100%;padding:48px;border:1px solid #141619;border-radius:22px;box-shadow:9px 9px 0 #d4f246;background:#fffefa;text-align:left}
+.payment-brand{display:flex;align-items:center;gap:8px;font-size:23px;font-weight:750;letter-spacing:-1px;margin-bottom:48px}.payment-brand img{width:30px;height:30px}
+.payment-kicker{font:11px Plex,monospace;letter-spacing:.13em;color:#606958;margin:0 0 12px}
+h1{font-size:clamp(32px,6vw,48px);letter-spacing:-.06em;line-height:1.1;margin:0 0 24px;max-width:430px}
+.payment-steps{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;margin-bottom:28px;color:#626b5b}.payment-steps span{padding:6px 9px;border-radius:999px;background:#edf0e6}.payment-steps .active{color:#fff;background:#245cf6}
+#status{line-height:1.7;color:#394331;font-size:14px;margin-bottom:28px;padding:16px;background:#f0f3e8;border-radius:12px;min-height:0}#status[data-tone=warn]{color:#754409;background:#fff4df}
+a.button{background:#141619;color:#fff;border-color:#141619;border-radius:999px;padding:11px 20px;font-size:13px}
+small{font-size:11px;line-height:1.7;max-width:400px;color:#606958;margin-top:24px}
+.payment-help{display:block;color:#245cf6;margin-top:18px;font-size:12px;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:500px){body{padding:20px}main{padding:28px 22px}.payment-brand{margin-bottom:34px}.payment-steps{gap:5px;font-size:10px}}

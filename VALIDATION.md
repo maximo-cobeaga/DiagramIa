@@ -392,3 +392,7 @@ Hallazgos de la propia prueba: la primera versión de la landing rompía todo el
 48. **Plan anual:** en Plan y facturación, elegir Anual muestra USD 40 por año y abre el pago con ese precio; la oferta no se aplica.
 49. **Panel:** `/#fundador` muestra el recorrido de la semana y las ocho tendencias; pasar el mouse muestra fecha y valor.
 
+
+### Rediseño UX/UI (12/10/2026, ADR 095)
+
+`npm run check` y los smokes de landing, cuenta compartida y editor ejecutados al cerrar esta sesión; ver `DEVELOPMENT_STATE.md` para resultados. Revisadas capturas landing escritorio/móvil y ajustes claro/oscuro. El flujo de pago real sigue sin validarse porque falta cargar el default payment link de Paddle.

@@ -7,13 +7,22 @@ type Source='plan_box'|'offer'|'limit'|'landing'|'header';
 export type Interval='month'|'year';
 
 /** Abre el pago de Pro en Paddle. Si sale bien la página se va y no devuelve nada; si no, devuelve el mensaje para mostrar. */
-export async function startCheckout(source:Source='plan_box',interval:Interval='month'):Promise<string|null>{
+let checkoutPending:Promise<string|null>|null=null;
+let retryAt=0;
+export function startCheckout(source:Source='plan_box',interval:Interval='month'):Promise<string|null>{
+  if(checkoutPending)return checkoutPending;
+  if(Date.now()<retryAt)return Promise.resolve(`Podés volver a abrir el pago en ${Math.ceil((retryAt-Date.now())/1000)} segundos.`);
+  checkoutPending=requestCheckout(source,interval).finally(()=>{checkoutPending=null;});
+  return checkoutPending;
+}
+async function requestCheckout(source:Source,interval:Interval):Promise<string|null>{
   // La oferta es del plan mensual: el anual ya viene con su propio descuento.
   const offered=interval==='month'&&Boolean(accountStore.get().account?.billing.offer);
   track('checkout_started',{source,offer:offered,interval});
   const response=await fetch('/api/v1/billing/checkout',{method:'POST',headers:{'x-diagramia-client':'editor','content-type':'application/json'},body:JSON.stringify({interval})}).catch(()=>null);
   const body=await response?.json().catch(()=>null) as {url?:string;error?:{message?:string}}|null;
   if(!response?.ok||!body?.url){
+    if(response?.status===429){const seconds=Number(response.headers.get('Retry-After'));if(Number.isFinite(seconds)&&seconds>0)retryAt=Date.now()+Math.min(seconds,600)*1000;}
     track('checkout_failed',{status:response?.status??0});
     return body?.error?.message??'No se pudo abrir el pago. Probá de nuevo en unos minutos.';
   }

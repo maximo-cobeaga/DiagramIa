@@ -89,13 +89,14 @@
   if(offerUrl&&card&&tag)safely(()=>fetch(offerUrl,{mode:'cors',credentials:'omit',headers:{'x-diagramia-client':'editor'}}).then(r=>r.ok?r.json():null).then(body=>{
     const offer=body&&body.available&&body.offer;if(!offer)return;
     const end=Date.parse(offer.endsAt);if(!(end>Date.now()))return;
-    const en=document.documentElement.lang==='en',money=value=>'USD '+(Number.isInteger(value)?value:value.toFixed(2));
+    const translate=()=>{const en=document.documentElement.lang==='en',money=value=>'USD '+(Number.isInteger(value)?value:value.toFixed(2));
     document.getElementById('offer-headline').textContent=en?`${offer.percent}% off — ${money(offer.priceUsd)}/month`:`${offer.percent}% menos — ${money(offer.priceUsd)} por mes`;
     document.getElementById('offer-detail').textContent=en?(offer.months>1?`For your first ${offer.months} months. Regular price ${money(offer.regularUsd)}.`:`On your first month. Regular price ${money(offer.regularUsd)}.`)
       :(offer.months>1?`Durante tus primeros ${offer.months} meses. Después, ${money(offer.regularUsd)} por mes.`:`En tu primer mes. Después, ${money(offer.regularUsd)} por mes.`);
+    };translate();document.addEventListener('diagramia-language',translate);
     const clock=document.getElementById('offer-clock'),pad=n=>String(n).padStart(2,'0');
     const tick=()=>{
-      const left=end-Date.now();
+      const en=document.documentElement.lang==='en',left=end-Date.now();
       if(left<=0){tag.hidden=true;card.classList.remove('has-offer');clearInterval(timer);return;}
       const d=Math.floor(left/86400000),h=Math.floor(left%86400000/3600000),m=Math.floor(left%3600000/60000),s=Math.floor(left%60000/1000);
       clock.textContent=(en?'Ends in ':'Termina en ')+(d?d+(en?'d ':' d '):'')+pad(h)+':'+pad(m)+':'+pad(s);

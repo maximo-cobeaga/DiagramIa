@@ -2,6 +2,12 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Rediseño UX/UI y checkout recuperable (12/10/2026; ADR 095)
+
+- Implementado localmente: landing inglesa por defecto y bilingüe persistente; workspace/editor con etiquetas compactas, paleta lista/grilla y preferencias de tema/accesibilidad; cuenta con ajustes y comparación Free/Pro; mensajes y reintento claros del checkout; catálogo de planes compartido.
+- Evidencia: `npm run check` 173/173, `smoke:landing` 10/10, `smoke:shared` y regresión Chromium `smoke` 59/59 (ambos aprobados); capturas nuevas/revisadas en `evidencias/ui-landing-hero-*` y `ui-ajustes-*`.
+- Sin cierre de P8.1/P4.6: checkout depende de que Paddle tenga default payment link, webhook y credenciales reales configurados; el usuario autorizó el despliegue el 12/10/2026, en curso por CI/CD. Próximo: configurar el sandbox con acceso al panel y correr VALIDATION 47–48 end-to-end.
+
 ## Seguridad, solidez, precios y panel con gráficas (09/10/2026; ADR 093–094)
 
 - **Implementado, local:** Pro USD 10/mes, oferta 50% × 3 meses y anual USD 40 (P4.6); página de pago propia con Paddle.js, frenos por ruta y degradación (P4.6/P8.3); límite de errores del editor y enlaces robustos en la landing (P8.1/P8.2); recorrido y tendencias de 28 días en el panel del fundador (P7.3).

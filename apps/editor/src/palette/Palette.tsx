@@ -146,20 +146,21 @@ const EMPTY_DRAG=typeof Image==='function'?Object.assign(new Image(),{src:'data:
 const normalize=(text:string)=>text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 
 export function Palette(){
-  const {tool,template}=useStore(viewStore),[query,setQuery]=useState('');
+  const {tool,template,paletteLayout}=useStore(viewStore),[query,setQuery]=useState('');
   const wanted=normalize(query.trim());
   // Al buscar, los resultados de todos los grupos se ven juntos y sin desplegables.
   const groups=wanted?[{title:`Resultados para «${query.trim()}»`,open:true,items:PALETTE.flatMap(g=>g.items.filter(i=>normalize(`${i.name} ${i.keywords??''} ${g.title}`).includes(wanted)))}]:PALETTE;
   const button=(group:string,{name,keywords:_keywords,...shape}:Item)=>{
     const chosen=tool==='node'&&template.kind===shape.kind&&template.shape===shape.shape&&template.label===shape.label&&template.icon===shape.icon;
-    return <button key={group+name} className={'palette-item'+(chosen?' chosen':'')} aria-pressed={chosen} title={`${name}: clic y después clic en el canvas, o arrastrala`} draggable
+    return <button key={group+name} className={'palette-item'+(chosen?' chosen':'')} aria-label={name} aria-pressed={chosen} title={`${name}: clic y después clic en el canvas, o arrastrala`} draggable
       onClick={()=>viewStore.set({tool:'node',template:shape})}
       onDragStart={e=>{e.dataTransfer.setData(SHAPE_MIME,JSON.stringify(shape));e.dataTransfer.effectAllowed='copy';if(EMPTY_DRAG)e.dataTransfer.setDragImage(EMPTY_DRAG,0,0);viewStore.set({dragTemplate:shape});}}
       onDragEnd={()=>viewStore.set({dragTemplate:null})}>
       <Thumb template={shape}/><span>{name}</span>
     </button>;
   };
-  return <div className="palette">
+  return <div className={'palette catalog-'+paletteLayout}>
+    <div className="catalog-heading"><span className="eyebrow">TU CAJA DE IDEAS</span><button className="quiet" aria-label={paletteLayout==='list'?'Ver elementos en cuadrícula':'Ver elementos en lista'} title="Cambiar vista del catálogo" onClick={()=>viewStore.set({paletteLayout:paletteLayout==='list'?'grid':'list'})}>{paletteLayout==='list'?'▦':'☰'}</button></div>
     <input type="search" className="palette-search" placeholder="Buscar elementos…" aria-label="Buscar elementos" value={query} onChange={e=>setQuery(e.target.value)}/>
     {groups.map(group=>wanted
       ?<div key={group.title}><p className="palette-results">{group.items.length?group.title:'Nada coincide. Probá con otra palabra.'}</p><div className="palette-grid">{group.items.map(i=>button(group.title,i))}</div></div>

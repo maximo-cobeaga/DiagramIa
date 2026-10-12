@@ -27,6 +27,7 @@ import {sharedStore} from './store/sharedStore';
 import {accountStore,refreshAccount,signIn} from './store/accountStore';
 import {setSessionProbe,startTelemetry,track,trackReopened} from './telemetry';
 import './styles.css';
+import './workspace.css';
 
 // Iconos de 16 × 16 dibujados con trazo.
 const TOOLS:[Tool,string,string,string][]=[
@@ -65,6 +66,7 @@ function Header(){
       </select>
       <UpgradeAction source="header">⚡ Pasar a Pro</UpgradeAction>
       <AccountButton/>
+      <button className="icon-button" aria-label="Configuración del editor" title="Configuración del editor" onClick={()=>viewStore.set({accountOpen:true,accountSection:'ajustes'})}>⚙</button>
       <button className="icon-button" onClick={()=>setTheme(theme==='dark'?'light':'dark')} aria-label={theme==='dark'?'Cambiar a modo claro':'Cambiar a modo oscuro'} title={theme==='dark'?'Modo claro':'Modo oscuro'}>{theme==='dark'?'☀':'☾'}</button>
       <button className="icon-button" onClick={()=>viewStore.set({tutorial:true})} aria-label="Abrir el tutorial" title="Tutorial">?</button>
       <button className="focus-toggle" aria-pressed={focusMode} onClick={()=>setFocusMode(!focusMode)} title="Modo concentración (Shift + F)">{focusMode?'← Volver al editor':'Concentrarme'}</button>

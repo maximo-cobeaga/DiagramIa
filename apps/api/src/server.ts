@@ -212,7 +212,10 @@ export function createApp(options:AppOptions):Server{
         const session=await options.accounts?.readSession(cookie(req,'diagramia_session'));
         if(!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para pasar a Pro.');
         // Cada intento crea una transacción en Paddle: unos pocos por cuenta alcanzan para reintentar sin permitir un bucle.
-        if(!checkoutPerUser.allow(session.userId))return fail(429,'RATE_LIMITED','Abriste el pago varias veces seguidas. Esperá unos minutos y volvé a probar.');
+        if(!checkoutPerUser.allow(session.userId)){
+          const seconds=checkoutPerUser.retryAfterSeconds(session.userId);res.setHeader('Retry-After',String(seconds));
+          return fail(429,'RATE_LIMITED',`Abriste el pago varias veces seguidas. Podés volver a probar en ${Math.ceil(seconds/60)} minuto(s).`);
+        }
         if(!session.emailVerified)return fail(403,'EMAIL_NOT_VERIFIED','Verificá tu email antes de suscribirte.');
         if((await options.billing.repository.view(session.userId)).plan==='pro')return fail(409,'ALREADY_SUBSCRIBED','Ya tenés el plan Pro.');
         // El intervalo es lo único que elige el navegador; el cuerpo es opcional (el botón mensual no lo manda).
