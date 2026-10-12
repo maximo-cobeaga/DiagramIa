@@ -401,3 +401,8 @@ Hallazgos de la propia prueba: la primera versión de la landing rompía todo el
 ### Publicación del rediseño (12/10/2026)
 
 Commit `97f6d15`; workflow `38286589354` aprobado (check, database, deploy). Tras desplegar se verificaron por HTTPS: landing en inglés con CTA a producción; design.css idéntico al local; bundle y CSS del editor con preferencias nuevas; `/api/ready` con status ready; página de pago y su CSS. Sin cobros ni cambios de configuración de Paddle durante esta verificación.
+
+
+### Texto de elementos y checkout (12/10/2026, ADR 096)
+
+`npm run check` 176/176. Browser enfocado en arquitectura y barra contextual 2/2: A+ cambia 15→17, undo revierte y el campo aparece en Propiedades. `smoke:shared` aprobado con PostgreSQL. Una transacción real del sandbox creada con el adapter corregido devolvió `https://app.diagramia.app/pago.html?_ptxn=…` y la validación propia la aceptó; con override idéntico Paddle había respondido `transaction_checkout_url_domain_is_not_approved`. La regresión Chromium completa terminó 53/59: seis fallos en pruebas anteriores de selección/puntero/estado; el caso del lápiz falla aisladamente por no seleccionar un trazo con un clic puntual. Todavía no se efectuó un pago completo ni se comprobó el webhook con cuenta.

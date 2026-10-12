@@ -76,7 +76,9 @@ export async function createCheckout(config:PaddleConfig,userId:string,fetcher:t
   const response=await fetcher(`${API[config.env]}/transactions`,{
     method:'POST',signal:AbortSignal.timeout(10_000),
     headers:{authorization:`Bearer ${config.apiKey}`,'content-type':'application/json'},
-    body:JSON.stringify({items:[{price_id:priceId,quantity:1}],custom_data:{diagramia_user_id:userId},...(discountId?{discount_id:discountId}:{}),...(config.checkoutUrl?{checkout:{url:config.checkoutUrl}}:{})})
+    // Paddle ya usa el enlace predeterminado. Enviarlo de nuevo como override puede ser rechazado
+    // aunque sea la misma URL; conservamos checkoutUrl para validar estrictamente la respuesta.
+    body:JSON.stringify({items:[{price_id:priceId,quantity:1}],custom_data:{diagramia_user_id:userId},...(discountId?{discount_id:discountId}:{})})
   }).catch(()=>null);
   if(!response)throw new BillingError('PROVIDER_ERROR','No se pudo contactar al proveedor de pagos.');
   const body=await response.json().catch(()=>null) as {data?:{checkout?:{url?:unknown}};error?:{code?:unknown}}|null;
@@ -87,6 +89,7 @@ export async function createCheckout(config:PaddleConfig,userId:string,fetcher:t
     const code=typeof body?.error?.code==='string'&&/^[a-z0-9_]{1,80}$/.test(body.error.code)?body.error.code:response.ok?'unexpected_checkout_url':`http_${response.status}`;
     console.error('[billing] Paddle no creó el pago:',code);
     if(code==='transaction_default_checkout_url_not_set')throw new BillingError('BILLING_UNAVAILABLE','El pago está pendiente de una configuración de Diagramia. Contactá a soporte; volver a intentarlo ahora no lo resolverá. Referencia: CHECKOUT_SETUP.');
+    if(code==='transaction_checkout_url_domain_is_not_approved')throw new BillingError('BILLING_UNAVAILABLE','El dominio del pago todavía no está aprobado en Paddle. Contactá a soporte; volver a intentarlo ahora no lo resolverá. Referencia: CHECKOUT_DOMAIN.');
     if(response.status===401||response.status===403)throw new BillingError('BILLING_UNAVAILABLE','No podemos habilitar el pago en este momento. Contactá a soporte. Referencia: CHECKOUT_ACCESS.');
     throw new BillingError('PROVIDER_ERROR','No pudimos preparar tu pago con Paddle. Esperá unos minutos o contactá a soporte si continúa.');
   }

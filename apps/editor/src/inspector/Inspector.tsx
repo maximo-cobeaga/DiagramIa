@@ -9,6 +9,7 @@ import {Annotations} from './Annotations';
 import {IconPicker,SaveAsElement,StylePresets} from './Appearance';
 import {LinkPreview} from './LinkPreview';
 import {ARROW_LABELS,ColorField,EdgeStyleFields,LINE_LABELS,NodeStyleFields,ZoneStyleFields} from './StyleFields';
+import {textSizeActions} from '../commands/textSize';
 
 const SHAPE_LABELS:Record<typeof SHAPES[number],string>={rectangle:'Rectángulo',rounded:'Redondeado',ellipse:'Elipse',circle:'Círculo',diamond:'Rombo',triangle:'Triángulo',hexagon:'Hexágono',parallelogram:'Paralelogramo',trapezoid:'Trapecio',star:'Estrella',cloud:'Nube',cylinder:'Cilindro',note:'Nota',text:'Sólo texto',terminator:'Inicio / fin',document:'Documento',predefined:'Subproceso','manual-input':'Entrada manual',delay:'Espera',actor:'Actor (figura)',class:'Clase UML',package:'Paquete',component:'Componente',start:'Inicio (punto)',end:'Fin (diana)',sticky:'Nota adhesiva',card:'Tarjeta con encabezado',bubble:'Globo de diálogo',pill:'Píldora',avatar:'Avatar',badge:'Insignia',ribbon:'Cinta',folder:'Carpeta',browser:'Ventana',chevron:'Paso (chevron)',map:'Mapa'};
 const SHAPE_OPTIONS=[['','Según el tipo'] as const,...SHAPES.map(shape=>[shape,SHAPE_LABELS[shape]] as const)];
@@ -35,6 +36,9 @@ function NodeInspector({doc,node,focusToken}:{doc:DiagramDocument;node:DiagramNo
   return <>
     <TextField label="Nombre" value={node.label} focusToken={focusToken} maxLength={200} onCommit={label=>update({label},'Nombre cambiado')}/>
     <TextField label="Subtítulo" value={node.subtitle} allowEmpty maxLength={120} onCommit={subtitle=>update({subtitle},'Subtítulo cambiado')}/>
+    <div className="text-size-control"><NumberField label="Tamaño del nombre" value={node.style.fontSize??15} min={8} max={48} onCommit={size=>transact(textSizeActions([node],size),'Tamaño del nombre cambiado')}/>
+      <div className="text-size-actions"><button aria-label="Achicar texto" disabled={(node.style.fontSize??15)<=8} onClick={()=>transact(textSizeActions([node],size=>size-2),'Texto achicado')}>A−</button><button aria-label="Agrandar texto" disabled={(node.style.fontSize??15)>=48} onClick={()=>transact(textSizeActions([node],size=>size+2),'Texto agrandado')}>A+</button></div>
+    </div>
     {asset?<p className="inline-note">Imagen «{asset.label}» · {asset.mediaType.replace('image/','').replace('+xml','').toUpperCase()} · {asset.width} × {asset.height} px · {Math.max(1,Math.round(assetBytes(asset.data)/1024))} KB. Viaja dentro del documento; al eliminar el nodo, la imagen se va con él.</p>
       :<><SelectField label="Tipo" value={node.kind} options={kinds} onChange={kind=>update({kind},'Tipo cambiado')}/>
       <SelectField label="Forma" value={node.shape??''} options={SHAPE_OPTIONS} onChange={shape=>update({shape:shape||null},'Forma cambiada')}/>

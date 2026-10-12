@@ -9,6 +9,7 @@ import {viewStore} from '../store/viewStore';
 import {ColorPicker,readableText} from '../palette/ColorPicker';
 import {HandwritingText} from './HandwritingText';
 import {ArrangeSelection} from './ArrangeSelection';
+import {textSizeActions} from '../commands/textSize';
 
 /** Acciones pequeñas cerca de la selección. Los cambios siguen pasando por el motor canónico. */
 export function SelectionToolbar({busy}:{busy:boolean}){
@@ -59,6 +60,7 @@ export function SelectionToolbar({busy}:{busy:boolean}){
     }}>
     <div className="selection-actions">
       {textTarget&&<button onClick={()=>{pause();viewStore.set({editingId:textTarget.id});}}>Escribir</button>}
+      {nodes.length>0&&<><button aria-label="Achicar texto de la selección" title="Achicar texto" disabled={nodes.every(n=>(n.style.fontSize??15)<=8)} onClick={()=>{pause();transact(textSizeActions(nodes,size=>size-2),'Texto achicado');}}>A−</button><button aria-label="Agrandar texto de la selección" title="Agrandar texto" disabled={nodes.every(n=>(n.style.fontSize??15)>=48)} onClick={()=>{pause();transact(textSizeActions(nodes,size=>size+2),'Texto agrandado');}}>A+</button></>}
       {nodes.length+edges.length+drawings.length+zones.length>0&&<button aria-expanded={colorsOpen} onClick={()=>{setColorsOpen(!colorsOpen);setTextOpen(false);setArrangeOpen(false);}}>Color</button>}
       {editable>0&&<><button onClick={()=>{pause();duplicate();}}>Duplicar</button><button onClick={copy}>Copiar</button></>}
       {nodes.length+drawings.length>1&&unitCount>1&&<button onClick={()=>{pause();group();}}>Agrupar</button>}

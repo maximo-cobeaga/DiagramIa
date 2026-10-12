@@ -24,7 +24,6 @@ export function NodeStyleFields({node,onStyle}:{node:DiagramNode;onStyle:(style:
     <div className="field-grid">
       <NumberField label="Grosor del borde" value={s.strokeWidth??1.5} min={0} max={8} step={.5} onCommit={v=>set('strokeWidth',v)}/>
       <SelectField label="Línea" value={s.dash??'solid'} options={DASH_OPTIONS} onChange={v=>set('dash',v==='solid'?undefined:v)}/>
-      <NumberField label="Tamaño de letra" value={s.fontSize??15} min={8} max={48} onCommit={v=>set('fontSize',Math.round(v))}/>
       <SelectField label="Alineación" value={s.align??'center'} options={[['left','Izquierda'],['center','Centro'],['right','Derecha']] as const} onChange={v=>set('align',v==='center'?undefined:v)}/>
     </div>
     <div className="button-grid two">

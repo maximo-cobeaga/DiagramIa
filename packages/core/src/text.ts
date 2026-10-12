@@ -40,7 +40,7 @@ export const SHAPE_INSET:Partial<Record<Shape,{top?:number;bottom?:number}>>={ca
 /** Formas que llevan el nombre debajo y tienen tamaño fijo, como un avatar. */
 export const LABEL_BELOW_SHAPES:readonly Shape[]=['actor','start','end','avatar','badge','map'];
 /** Un pie breve conserva el nombre completo en el documento y en el título accesible. */
-export const captionWidth=(width:number)=>Math.max(160,Math.min(240,width));
+export const captionWidth=(width:number,size=15)=>Math.min(480,Math.max(160,Math.min(240,width))*Math.max(1,size/15));
 export const CAPTION_LINES=2;
 /** Lado del círculo del icono en una píldora: ocupa la izquierda y corre el texto. */
 export const PILL_ICON=32;

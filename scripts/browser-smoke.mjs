@@ -420,6 +420,9 @@ try{
     await clickText('Color','.selection-toolbar');await tap('[aria-label="Color Lima"]');
     let doc=await saved();expect(doc.nodes.find(n=>n.id==='user').style.fill==='#d4f246','no cambió el color');
     expect(JSON.stringify(doc.nodes.filter(n=>n.id!=='user'))===JSON.stringify(before.nodes.filter(n=>n.id!=='user')),'el color tocó otros nodos');await key('z',CTRL);
+    await tap('[aria-label="Agrandar texto de la selección"]');
+    doc=await saved();expect(doc.nodes.find(n=>n.id==='user').style.fontSize===17,'A+ no agrandó la letra del elemento');
+    await key('z',CTRL);expect((await saved()).nodes.find(n=>n.id==='user').style.fontSize===undefined,'undo no restauró la letra');
     await clickText('Escribir','.selection-toolbar');await send('Input.insertText',{text:'Mi usuario'});await key('Enter');
     expect((await saved()).nodes.find(n=>n.id==='user').label==='Mi usuario','no escribió en el lugar');await key('z',CTRL);
     await clickText('Duplicar','.selection-toolbar');doc=await saved();
@@ -433,6 +436,7 @@ try{
     doc=await saved();expect(JSON.stringify(doc.nodes)===JSON.stringify(before.nodes)&&JSON.stringify(doc.edges)===JSON.stringify(before.edges),'undo no restauró el contenido');
     await clickText('Color','.selection-toolbar');await shot('28-controles-contextuales');await clickText('Más','.selection-toolbar');await sleep(100);
     expect(await js(`document.querySelector('.tabs [aria-selected="true"]').textContent`)==='Propiedades','Más no abrió las propiedades');
+    expect(await js(`Boolean([...document.querySelectorAll('.text-size-control label')].find(label=>label.textContent==='Tamaño del nombre'))`),'el tamaño del nombre no está visible en Propiedades');
     await key('Escape');await key('1');await clickText('IA','.tabs');return 'color, texto, IDs nuevos, dos formas de conectar, cancelar y undo';
   });
   await check('concentración amplía el lienzo y conserva documento, paneles y reproducción',async()=>{

@@ -2,6 +2,12 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Texto legible y corrección de checkout (12/10/2026; ADR 096)
+
+- Implementado local: A−/A+ para el nombre de nodos, control numérico visible, expansión de pieza y leyendas; Paddle usa el default payment link sin repetirlo en `checkout.url`, manteniendo validación propia.
+- Evidencia: `npm run check` 176/176, `smoke:shared` aprobado, navegador enfocado 2/2, transacción sandbox creada por el adapter con URL `_ptxn` válida. Regresión completa Chromium 53/59: seis casos previos de puntero/estado fallaron; revisión enfocada nueva aprobada.
+- Pendiente: desplegar y verificar checkout en producción; después prueba de pago y webhook con cuenta sandbox (VALIDATION 47–48).
+
 ## Rediseño UX/UI y checkout recuperable (12/10/2026; ADR 095)
 
 - Implementado y desplegado: landing inglesa por defecto y bilingüe persistente; workspace/editor con etiquetas compactas, paleta lista/grilla y preferencias de tema/accesibilidad; cuenta con ajustes y comparación Free/Pro; mensajes y reintento claros del checkout; catálogo de planes compartido.

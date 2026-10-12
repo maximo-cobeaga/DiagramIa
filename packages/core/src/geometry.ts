@@ -12,7 +12,7 @@ export const nodeRect=(n:Pick<DiagramNode,'position'|'size'>):Rect=>({x:n.positi
 export function nodeVisualRect(n:DiagramNode):Rect{
   const rect=nodeRect(n);
   if(!n.assetId&&!LABEL_BELOW_SHAPES.includes(shapeOf(n)))return rect;
-  const width=captionWidth(rect.width),size=n.style.fontSize??15;
+  const size=n.style.fontSize??15,width=captionWidth(rect.width,size);
   const x=n.style.align==='left'?rect.x+12:n.style.align==='right'?rect.x+rect.width-12-width:rect.x+(rect.width-width)/2;
   const left=Math.min(rect.x,x),right=Math.max(rect.x+rect.width,x+width);
   return {x:left,y:rect.y,width:right-left,height:rect.height+Math.round(size*1.2)*wrapLabel(n.label,width,size,CAPTION_LINES).length+size*.18+6};

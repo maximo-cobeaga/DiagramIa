@@ -224,7 +224,7 @@ export function nodeTitleLayout(n:DiagramNode,asset=false){
   const lead=shape==='pill'&&n.icon?PILL_ICON+10:0,inset=SHAPE_INSET[shape]??{};
   const align=n.style.align??'center',pad=(shape==='class'?10:12)+lead,tx=align==='left'?x+pad:align==='right'?x+w-12:x+lead+(w-lead)/2,anchorAt=align==='left'?'start':align==='right'?'end':'middle';
   const ownIcon=OWN_ICON.has(shape),bigIcon=Boolean(n.icon)&&n.style.iconSize==='large'&&!asset&&!below&&shape!=='class'&&!ownIcon,iconShift=bigIcon?(ICON_LARGE+8)/2:0;
-  const width=below?captionWidth(w):Math.max(40,w*fw-lead-(n.icon&&!bigIcon&&!ownIcon?40:20)),lines=wrapLabel(n.label,width,size,shape==='class'?1:below?CAPTION_LINES:4);
+  const width=below?captionWidth(w,size):Math.max(40,w*fw-lead-(n.icon&&!bigIcon&&!ownIcon?40:20)),lines=wrapLabel(n.label,width,size,shape==='class'?1:below?CAPTION_LINES:4);
   const blockHeight=lines.length*lineHeight+(n.subtitle?15:0)+(shape==='class'?0:extra.length*16);
   const top=below?y+h+size+3:shape==='class'?y+size+6:y+h/2-blockHeight/2+size*.82+iconShift+((inset.top??0)-(inset.bottom??0))/2+(shape==='cylinder'?Math.min(12,h/5)/2:shape==='triangle'?h*.16:0);
   const textStyle:CSSProperties={fontWeight:n.style.bold?700:undefined,fontStyle:n.style.italic?'italic':undefined};

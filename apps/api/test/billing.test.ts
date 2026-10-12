@@ -11,6 +11,11 @@ test('checkout: explica configuración pendiente sin filtrar datos del proveedor
   const response:typeof fetch=async()=>new Response(JSON.stringify({error:{code:'transaction_default_checkout_url_not_set',detail:'private account data'}}),{status:400});
   await assert.rejects(createCheckout(config,'account',response),(error:unknown)=>error instanceof BillingError&&error.code==='BILLING_UNAVAILABLE'&&error.message.includes('CHECKOUT_SETUP')&&!error.message.includes('private'));
 });
+test('checkout: informa dominio no aprobado sin pedir reintentos inútiles',async()=>{
+  const config={env:'sandbox' as const,apiKey:'private-key',webhookSecret:'secret',priceId:'price'};
+  const response:typeof fetch=async()=>new Response(JSON.stringify({error:{code:'transaction_checkout_url_domain_is_not_approved',detail:'private account data'}}),{status:400});
+  await assert.rejects(createCheckout(config,'account',response),(error:unknown)=>error instanceof BillingError&&error.code==='BILLING_UNAVAILABLE'&&error.message.includes('CHECKOUT_DOMAIN')&&!error.message.includes('private'));
+});
 test('el plazo de reintento del pago disminuye y no se extiende al consultar',()=>{
   let now=0;const limiter=new RateLimiter(2,600_000,()=>now);
   assert.ok(limiter.allow('a'));now=1000;assert.ok(limiter.allow('a'));assert.equal(limiter.allow('a'),false);
@@ -68,11 +73,11 @@ test('checkout: sends the price and the account, uses the right host, and fails 
   assert.deepEqual(sent,{items:[{price_id:PRICE,quantity:1}],custom_data:{diagramia_user_id:'user-1'}});
   assert.equal((seen[0]!.init.headers as Record<string,string>).authorization,'Bearer pdl_sdbx_key');
   await createCheckout({...config,env:'live'},'user-1',ok);assert.equal(seen[1]!.url,'https://api.paddle.com/transactions');
-  // Página de pago propia: viaja al crear la transacción y es la única dirección a la que se acepta redirigir.
+  // Paddle usa el enlace predeterminado. Sólo se acepta redirigir a nuestra página de pago.
   const own={...config,checkoutUrl:'https://app.example/pago.html'};
   const back=(url:string):typeof fetch=>async(_u,init)=>{seen.push({url:'',init:init!});return new Response(JSON.stringify({data:{checkout:{url}}}),{status:201});};
   assert.equal(await createCheckout(own,'user-4',back('https://app.example/pago.html?_ptxn=txn_1')),'https://app.example/pago.html?_ptxn=txn_1');
-  assert.deepEqual(JSON.parse(String(seen.at(-1)!.init.body)).checkout,{url:'https://app.example/pago.html'});
+  assert.equal(JSON.parse(String(seen.at(-1)!.init.body)).checkout,undefined,'enviar un override idéntico al enlace predeterminado hace que Paddle rechace el dominio');
   await assert.rejects(createCheckout(own,'user-4',back('https://otro-sitio.example/pago.html?_ptxn=txn_1')),BillingError,'una dirección ajena no se devuelve al navegador');
   await assert.rejects(createCheckout(own,'user-4',back('https://app.example/pago.html.evil.example/?_ptxn=txn_1')),BillingError,'ni una que sólo empieza parecido');
   assert.ok(await createCheckout({...config,checkoutUrl:'http://localhost:5173/pago.html'},'user-4',back('http://localhost:5173/pago.html?_ptxn=txn_1')),'en desarrollo, la página local propia vale');
