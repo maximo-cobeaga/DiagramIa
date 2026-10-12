@@ -2,6 +2,32 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Auditoría, seguridad y preparación del cobro real (12/10/2026; ADR 098–099)
+
+- **Hecho:** correcciones de seguridad del gateway, de nginx y de las reglas de suscripción; script de pase a live y marca de entorno en las suscripciones; doctor y ejemplos de configuración alineados con el despliegue real; documentación corregida. Detalle en `docs/SEGURIDAD.md`, `infra/DEPLOY.md` y `DEVELOPMENT_STATE.md`.
+- **Evidencia:** check 182/182; editor Chromium 59/59; repository, shared, landing 10/10 y dashboard con PostgreSQL real; ensayo de producción local; script verificado contra el sandbox real en sólo lectura.
+- **Bloqueado por acceso (usuario):** cuenta live de Paddle aprobada, dominio aprobado, default payment link y clave live; después, dos comandos en el VPS. P4.6 sigue parcial hasta un pago real completo; P8.3 sigue parcial sin revisión externa.
+- **Pendiente del usuario, no técnico:** revisión legal de privacidad, términos y reembolsos (siguen como «Borrador»; Paddle los mira para aprobar la cuenta); decidir el modelo de IA de lanzamiento (hoy DeepSeek; ADR 045 dice Luna); desactivar el destino de avisos del sandbox al pasar a live.
+- **Pendiente técnico menor:** HSTS con `includeSubDomains` y límite de pedidos en el proxy del VPS (viven en la carpeta de ReservApp); capacidades mínimas del contenedor `web`; procesar reembolsos/contracargos de Paddle; MANIFEST.json sigue describiendo el ZIP original.
+
+## Activar Paddle live (12/10/2026)
+
+- **Actualización (ADR 098):** el pase ya no requiere crear recursos ni copiar IDs a mano; ver la sección de arriba y `infra/DEPLOY.md`. Lo que sigue es el registro de la sesión anterior.
+
+- Pedido autorizado. La app de producción aún usa sandbox; el backend ya admite `env=live`. No se activó sin recursos/credenciales live porque los IDs son distintos y dejaría el checkout fallando.
+- Bloqueado por acceso: sólo hay API key sandbox local, el panel Paddle no está accesible desde el navegador de esta sesión y el SSH al VPS expiró. La secuencia detallada está en `infra/DEPLOY.md`, «Pasar la tienda de sandbox a live».
+- Próximo: desde el panel live aprobar `app.diagramia.app`, crear producto y precios USD 10/mes y USD 40/año con cantidad 1–1, crear default payment link y webhook, y generar API key/client token live. Cargar recursos y secretos en `.env.production` del VPS; validar con doctor y abrir/cerrar checkout live sin finalizar un cargo. La oferta queda apagada hasta crear/configurar un descuento live equivalente.
+
+## Reporte de consumo tras subir a Pro (12/10/2026)
+
+- El usuario confirmó pago de prueba y Pro activo, pero vio el consumo de créditos aparentemente reiniciado. La regresión PostgreSQL de Free → Pro → nueva sesión de la misma identidad conserva 6 créditos usados y sube sólo los límites; `smoke:repository` y `npm run check` 176/176 aprobados. Sin cambio de cómputo porque no se reprodujo la pérdida.
+- Próximo: con los valores exactos y la pantalla afectada, comparar `/v1/auth/me` antes/después y el historial de recibos de esa cuenta en producción sin exponer prompts; comprobar si la identidad OIDC es la misma. Si los recibos realmente faltan, identificar la operación que los perdió y reparar los datos afectados antes de cerrar P4.6.
+
+## Cantidad de Pro en Paddle (12/10/2026; ADR 097)
+
+- Corregidos en sandbox los precios mensual y anual: mínimo=1, máximo=1. Antes admitían hasta 100 y el checkout podía multiplicar el importe sin dar beneficios adicionales. Paddle devolvió HTTP 200 con los nuevos límites para ambos.
+- Al crear precios de producción o de reemplazo, configurar y verificar 1–1 antes de publicarlos. P4.6 sigue parcial: falta completar el pago de prueba con una cuenta y confirmar el webhook (VALIDATION 47–48).
+
 ## Texto legible y corrección de checkout (12/10/2026; ADR 096)
 
 - Implementado y desplegado (`85b235a`): A−/A+ para el nombre de nodos, control numérico visible, expansión de pieza y leyendas; Paddle usa el default payment link sin repetirlo en `checkout.url`, manteniendo validación propia.

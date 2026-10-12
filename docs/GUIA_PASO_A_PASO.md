@@ -223,7 +223,7 @@ El detalle técnico, cómo actualizar y cómo volver atrás está en `infra/DEPL
    - Dejarlo así, o hacer el repositorio **privado** en GitHub: Settings → Danger Zone → Change visibility. Es lo más simple si querés que sea un producto comercial.
    - Una licencia abierta (MIT o Apache-2.0): otros pueden usar y copiar el código.
    - Decime cuál preferís y la agrego.
-2. **Aviso de privacidad:** el borrador está en `apps/editor/public/privacidad.html` y describe exactamente lo que hace el sistema. Completá las partes `[COMPLETAR]` (tu nombre o empresa, email de contacto, plazos) y que lo revise un abogado antes de publicar.
+2. **Aviso de privacidad:** el borrador está en `apps/editor/public/privacidad.html` y describe exactamente lo que hace el sistema. Los datos ya están completos (08/10/2026) y está publicado con el cartel «Borrador»: hacelo revisar por un abogado, junto con los términos y la política de reembolsos, y avisame para quitar el cartel.
 3. **Visitantes de Europa:** si vas a buscar usuarios en la UE, preguntale al abogado si hace falta un aviso de consentimiento para la medición anónima. Si dice que sí, lo agrego.
 4. **Subir los cambios a GitHub:** decime «hacé push» y lo hago. Así también corre la verificación automática (CI) en GitHub.
 
@@ -231,9 +231,9 @@ El detalle técnico, cómo actualizar y cómo volver atrás está en `infra/DEPL
 
 ## Paso 8. Suscripciones (plan Pro)
 
-**Estado al 08/10/2026:** el cobro está construido (ADR 089) y apagado. Plan Pro de USD 5 por mes: 400 créditos de IA, 100 diagramas, 1 GB y 200 elementos propios. Reembolso en las primeras 48 horas. Faltan las claves de Paddle en el servidor y probarlo de punta a punta en el sandbox. El orden importa: Paddle no aprueba una cuenta real sin un sitio publicado con precios, términos y reembolsos, así que **el paso 6 va primero**.
+**Estado al 12/10/2026:** Pro cuesta USD 10 por mes o USD 40 por año; incluye 400 créditos de IA mensuales, 100 diagramas, 1 GB y 200 elementos propios. La app de producción usa Paddle sandbox. El usuario completó un pago de prueba y observó Pro activo. Para cobrar de verdad faltan tres cosas que sólo podés hacer vos en el panel de Paddle (cuenta real aprobada con el dominio `app.diagramia.app`, el «default payment link» y una clave de API live) y dos comandos en el servidor que crean todo lo demás y lo cargan solos. Están en `infra/DEPLOY.md`, «Pasar la tienda de sandbox a live».
 
-**Para encender el cobro en el sandbox** (después de desplegar): creá el destino de webhook y el default payment link como dice `infra/DEPLOY.md`, «Cobro: webhook de Paddle», cargá las cuatro variables `DIAGRAMIA_PADDLE_*` en `.env.production` y corré `infra/deploy.sh`. El producto y el precio ya existen en el sandbox.
+**Sandbox:** producto, precios y checkout ya están configurados; el precio mensual y el anual tienen cantidad fija 1–1. El pago de prueba fue confirmado por el usuario. Los IDs del sandbox no sirven en live: `scripts/paddle-live.mjs` recrea producto, precios, descuento, destino de avisos y token en la cuenta real y reemplaza las variables de `.env.production`. Para revisar cualquiera de los dos entornos: `npm run paddle -- check`.
 
 Lo que sigue más abajo es la lista original de decisiones y cuentas; las decisiones 8.1 ya están tomadas salvo lo indicado en el informe del 08/10.
 

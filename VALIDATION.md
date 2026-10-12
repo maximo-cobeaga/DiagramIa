@@ -413,3 +413,32 @@ Commit `97f6d15`; workflow `38286589354` aprobado (check, database, deploy). Tra
 Commit `85b235a`, workflow `38307886570`: check, database y deploy aprobados. Por HTTPS se confirmó el nuevo bundle con «Tamaño del nombre» y A+, CSS del control, `/api/ready` listo y token público de Paddle sandbox. La creación de transacción sandbox con el adapter se comprobó antes del despliegue. Abrir el checkout desde una sesión de usuario y completar un pago de prueba siguen pendientes.
 
 Sonda final con Chrome contra producción: `pago.html?_ptxn=…` de una transacción sandbox real cargó Paddle.js, un iframe de checkout y el estado «Modo de prueba: no se cobra dinero real». No se ingresaron datos de pago.
+
+### Cantidad fija en el checkout de Paddle (12/10/2026, ADR 097)
+
+Consulta `GET /prices/{price_id}` al sandbox: el precio mensual USD 10 y el anual USD 40 estaban activos con cantidad mínima 1 y máxima 100. Se aplicó `PATCH /prices/{price_id}` a cada uno con `{ "quantity": { "minimum": 1, "maximum": 1 } }`; ambas respuestas fueron HTTP 200 y devolvieron cantidad 1–1. Según la documentación de Paddle, ese límite impide que el comprador cambie la cantidad en el checkout overlay. No se completó un pago de prueba ni se revisó visualmente el badge después del cambio; VALIDATION 47–48 permanece abierta.
+
+### Reporte de créditos al activar Pro (12/10/2026)
+
+El usuario informó que completó el pago de prueba y obtuvo Pro, pero que el consumo anterior pareció reiniciarse. No se tuvo acceso a su respuesta de `/v1/auth/me` ni a los recibos de esa cuenta. Regresión con PostgreSQL real: Free 6/20 (6/6 hoy), webhook firmado activa Pro 6/400 (6/40 hoy), nueva sesión de la misma identidad conserva 6/400. `npm run smoke:repository` aprobado y `npm run check` 176/176. Pendiente reproducir con los valores y la identidad reales; **no se certifica resuelto el incidente del usuario**.
+
+### Auditoría de seguridad y preparación del cobro real (12/10/2026, ADR 098–099)
+
+`npm run check` **182/182** (+6: páginas hostiles en la vista previa, poda del limitador, límites por /64 y token de varios bytes, y tres del pase a live). `npm audit` y `npm audit --omit=dev`: 0 vulnerabilidades. Búsqueda de claves en todo el historial de Git: sin hallazgos.
+
+- **Vista previa de enlaces:** antes del cambio, `readHead` tardó 9.775 ms con `<meta "` repetido en 256 KB y 3.416 ms con `<title` repetido (medido sobre el build anterior). Después, siete páginas hostiles se leen en menos de 1 s cada una y las páginas reales dan el mismo resultado (mayúsculas, atributos sin comillas, `>` dentro de un valor, charset latin1).
+- **PostgreSQL real (`smoke:repository`):** aviso de otra suscripción → `other-subscription` y el plan sigue Pro; cobro vencido → Free y eliminación de cuenta rechazada (409); en `live`, la suscripción de prueba se quita y una real se conserva; migración 009 aplicada. Aprobado, junto con el resto de la regresión de cuentas, cuotas y backup/restore.
+- **Navegador (`smoke:shared`):** con la suscripción vencida, Plan y facturación muestra «No pudimos cobrar tu suscripción» con «Cambiar medio de pago» y «Cancelar suscripción» (https, `noopener noreferrer`). Captura revisada: `evidencias/ui-cuenta-cobro-vencido.png`. `smoke:landing` 10/10 y `smoke:dashboard` aprobados.
+- **Editor:** regresión Chromium **59/59** sin errores de consola, contra un editor (5176) y un gateway de demostración (8795) aislados, sin IA paga. Las seis fallas anotadas el 12/10 (53/59) no se reprodujeron; no se identificó su causa en aquella corrida.
+- **Ensayo de producción local** (`compose.prod.yml`, proyecto `diagramia-rehearsal`, puerto 18080, claves de prueba): tres servicios sanos; 9 migraciones y columna `environment`; `nginx -t` correcto; `/api/v1/documents`, `/api/v1/documents/<id>`, `/api/v1/local` y sus subrutas responden 404 desde afuera aun con el token del servidor, y la nube del editor sigue pidiendo sesión; `/api/v1/billing/config` informa `live` sin exponer la clave; un aviso con firma ajena se rechaza y uno bien firmado se acepta y, reenviado, se reconoce como duplicado; CSP estricta en el editor y la propia de `pago.html`; origen ajeno 403; gateway sin root y con sistema de archivos de sólo lectura. Proyecto, volúmenes e imágenes eliminados.
+- **`scripts/paddle-live.mjs` contra el sandbox real, con escrituras bloqueadas:** `check` aprobó clave/entorno, precio mensual USD 10 y anual USD 40 con cantidad 1–1, oferta 50 % × 3 meses sólo mensual y token público activo; marcó como problema el secreto del webhook porque se le pasó uno inventado (el real vive en el VPS). `setup` reconoció como existentes el producto, los dos precios, el descuento, el destino de avisos y el token que usa producción, y no intentó crear nada. La creación en una cuenta vacía se probó con un doble de la API (`paddleLive.test.ts`).
+- **`npm run doctor`:** con un archivo de producción de prueba (DeepSeek con tarifa, Paddle live) termina sin problemas y con avisos; sin tarifa o sin el proveedor habilitado, marca error.
+
+**Sin verificar:** nada contra la cuenta live de Paddle (no existe acceso); `setup` contra una cuenta real; el primer pago real y los orígenes de Paddle en modo live; las correcciones bajo carga real o con IPv6 (el dominio no publica AAAA).
+
+Revisión manual pendiente del usuario:
+
+50. **Pase a live:** seguir «Pasar la tienda de sandbox a live» de `infra/DEPLOY.md`; `check --probe` debe terminar sin ✖ y `/api/v1/billing/config` responder `live`.
+51. **Primer pago real:** pagar Pro con una tarjeta propia, ver Pro activo, cancelar desde la cuenta y pedir el reembolso en Paddle. Mirar la consola del navegador por orígenes bloqueados.
+52. **Cuenta de prueba tras el pase:** la cuenta que quedó Pro con un pago del sandbox debe volver a Free sin perder diagramas.
+53. **Cobro vencido:** con una suscripción en `past_due`, la cuenta muestra los dos enlaces y «Eliminar cuenta» pide cancelar primero.

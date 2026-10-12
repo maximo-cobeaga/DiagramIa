@@ -53,6 +53,19 @@ test('a page gives back its title, description and site as plain text, read from
     assert.deepEqual(preview,{url:s.url+'/guia',title:'Playa & sol en Mar del Plata',description:'Guía “completa” para ir en verano',site:'Turismo MdP'});
   }finally{await s.close();}
   assert.deepEqual(readHead(Buffer.from('<title>Peña</title>','latin1'),'text/html; charset=iso-8859-1'),{title:'Peña',description:null,site:null});
+  // Formas habituales del HTML real: mayúsculas, sin comillas, cierre con barra, `>` dentro de un valor y nombres parecidos.
+  assert.deepEqual(readHead(Buffer.from(`<HEAD><metadata name="description" content="no"><META NAME=description CONTENT=Corta /><meta content="a > b" property="og:title"/><TITLE lang=es>Otro</TITLE>`)),{title:'a > b',description:'Corta',site:null});
+});
+
+test('a page built to stall the parser is read in bounded time',()=>{
+  // El gateway atiende en un solo hilo: con el tope de 256 KB, cada una de estas páginas lo dejaba sin responder varios segundos.
+  const size=256*1024,fill=(piece:string)=>Buffer.from(piece.repeat(Math.ceil(size/piece.length)).slice(0,size));
+  const hostile=[fill('<meta "'),fill('<title'),fill('<meta a'),Buffer.from('<meta '+'a'.repeat(size)),Buffer.from('<meta content="'+'&'.repeat(size)),Buffer.from('<title>'+'<'.repeat(size)),fill('<meta name=description content=<<<<&amp')];
+  for(const page of hostile){
+    const started=performance.now();
+    assert.deepEqual(Object.keys(readHead(page)),['title','description','site']);
+    assert.ok(performance.now()-started<1000,`se leyó en ${Math.round(performance.now()-started)} ms`);
+  }
 });
 
 test('every redirect is checked again, and redirects, slow pages and non-HTML are bounded',async()=>{

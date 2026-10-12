@@ -78,7 +78,9 @@ async function start(){
     const checkoutUrl=env.DIAGRAMIA_OIDC_HOME_URL?new URL('pago.html',env.DIAGRAMIA_OIDC_HOME_URL).href:null;
     let offer:ReturnType<typeof parseOffer>;
     try{offer=paddleConfigured.length?parseOffer(env,PRO_PRICE_USD):undefined;}catch(error){console.error('OFERTA APAGADA:',error instanceof Error?error.message:String(error));}
-    const billing=paddleConfigured.length&&pool?{repository:new BillingRepository(pool),paddle:{env:paddleEnv as 'live'|'sandbox',apiKey:env.DIAGRAMIA_PADDLE_API_KEY!,webhookSecret:env.DIAGRAMIA_PADDLE_WEBHOOK_SECRET!,priceId:env.DIAGRAMIA_PADDLE_PRICE_PRO!,yearlyPriceId:env.DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY||null,clientToken,checkoutUrl},offer,prices:{monthlyUsd:PRO_PRICE_USD,yearlyUsd:PRO_YEARLY_USD}}:undefined;
+    const billing=paddleConfigured.length&&pool?{repository:new BillingRepository(pool,paddleEnv),paddle:{env:paddleEnv as 'live'|'sandbox',apiKey:env.DIAGRAMIA_PADDLE_API_KEY!,webhookSecret:env.DIAGRAMIA_PADDLE_WEBHOOK_SECRET!,priceId:env.DIAGRAMIA_PADDLE_PRICE_PRO!,yearlyPriceId:env.DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY||null,clientToken,checkoutUrl},offer,prices:{monthlyUsd:PRO_PRICE_USD,yearlyUsd:PRO_YEARLY_USD}}:undefined;
+    // Pase a cobros reales (ADR 098): lo que se pagó con tarjetas de prueba no sigue dando Pro.
+    if(billing){const dropped=await billing.repository.dropTestSubscriptions();if(dropped)console.warn(`[billing] cobro en modo live: se quitaron ${dropped} suscripción(es) de prueba del sandbox.`);}
     const remoteMcp=mcpConfigured.length&&documents&&accounts?new RemoteMcpService({resourceUrl:env.DIAGRAMIA_MCP_RESOURCE_URL!,issuer:env.DIAGRAMIA_OIDC_ISSUER!,jwksUrl:env.DIAGRAMIA_MCP_JWKS_URL!},accounts,documents):undefined;
     const server=createApp({
       providers,ledger,productPrompt,token,documents,

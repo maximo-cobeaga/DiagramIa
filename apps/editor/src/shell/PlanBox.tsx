@@ -82,6 +82,12 @@ export function PlanBox({account}:{account:Account}){
     if(storage.documents>=storage.maxDocuments)trackSession('limit:documents','limit_reached',{kind:'documents'});
   },[billing.plan,billing.available]);
   const pro=billing.plan==='pro';
+  // La suscripción sigue viva en Paddle aunque no dé Pro (cobro vencido, en pausa): hay que poder ponerla al día o cancelarla.
+  const pending=!pro&&Boolean(billing.status)&&billing.status!=='canceled';
+  const manage=<>
+    {billing.updatePaymentUrl&&<a className="button quiet" href={billing.updatePaymentUrl} target="_blank" rel="noopener noreferrer">Cambiar medio de pago</a>}
+    {billing.cancelUrl&&!billing.cancelsAt&&<a className="button quiet" href={billing.cancelUrl} target="_blank" rel="noopener noreferrer">Cancelar suscripción</a>}
+  </>;
   const comparison=[
     ['Créditos de IA / mes',PLANS.free.monthlyCredits,PLANS.pro.monthlyCredits],
     ['Créditos de IA / día',PLANS.free.dailyCredits,PLANS.pro.dailyCredits],
@@ -91,10 +97,7 @@ export function PlanBox({account}:{account:Account}){
     ['Editor, animaciones y exportaciones','Incluidos','Incluidos']
   ];
   return <div className="plan-box" aria-label={pro?'Plan Pro':'Plan Free'}>
-    {pro&&<section className="subscription-status"><span className="plan-badge pro">PRO ACTIVO</span><p>{billing.cancelsAt?`Tu plan sigue activo hasta el ${day(billing.cancelsAt)}.`:billing.renewsAt?`Próxima renovación: ${day(billing.renewsAt)}.`:'Tenés todo listo para seguir creando.'}</p><div className="step-actions">
-      {billing.updatePaymentUrl&&<a className="button quiet" href={billing.updatePaymentUrl} target="_blank" rel="noopener noreferrer">Cambiar medio de pago</a>}
-      {billing.cancelUrl&&!billing.cancelsAt&&<a className="button quiet" href={billing.cancelUrl} target="_blank" rel="noopener noreferrer">Cancelar suscripción</a>}
-    </div></section>}
+    {pro&&<section className="subscription-status"><span className="plan-badge pro">PRO ACTIVO</span><p>{billing.cancelsAt?`Tu plan sigue activo hasta el ${day(billing.cancelsAt)}.`:billing.renewsAt?`Próxima renovación: ${day(billing.renewsAt)}.`:'Tenés todo listo para seguir creando.'}</p><div className="step-actions">{manage}</div></section>}
     {!pro&&atLimit&&<p className="inline-note warn" role="status">Llegaste a un límite de Free. Compará las opciones para seguir.</p>}
     {!pro&&offer&&<OfferBanner offer={offer}/>}
     {!pro&&yearly&&<div className="plan-frequency"><span>Elegí cómo pagar</span><div className="interval-toggle" role="group" aria-label="Frecuencia de pago">
@@ -113,7 +116,7 @@ export function PlanBox({account}:{account:Account}){
     </div>
     {error&&<div className="checkout-error" role="alert"><strong>No pudimos abrir el pago</strong><p>{error}</p><a href="mailto:mcobeaga@diagramia.app?subject=Ayuda%20con%20el%20pago%20de%20Pro">Contactar a soporte ↗</a></div>}
     {!billing.available&&<p className="inline-note" role="status">Las suscripciones Pro todavía no están habilitadas. Podés seguir trabajando con Free.</p>}
-    {billing.status&&billing.status!=='canceled'&&!pro&&<p className="inline-note warn" role="status">Tu suscripción figura como «{billing.status}». La cuenta usa Free hasta que el pago esté al día.</p>}
+    {pending&&<section className="subscription-status"><p className="inline-note warn" role="status">{billing.status==='past_due'?'No pudimos cobrar tu suscripción.':billing.status==='paused'?'Tu suscripción está en pausa.':`Tu suscripción figura como «${billing.status}».`} La cuenta usa Free hasta que el pago esté al día.</p><div className="step-actions">{manage}</div></section>}
     <section className="plan-comparison"><h3>Cada detalle, a la vista.</h3><div className="comparison-scroll"><table><caption>Comparación de los planes Free y Pro</caption><thead><tr><th scope="col">Qué incluye</th><th scope="col">Free</th><th scope="col">Pro</th></tr></thead><tbody>{comparison.map(([label,free,paid])=><tr key={label}><th scope="row">{label}</th><td>{free}</td><td>{paid}</td></tr>)}</tbody></table></div></section>
     <p className="plan-legal">Pago seguro con Paddle. Los impuestos dependen de tu país. <a href="https://diagramia.app/reembolsos.html" target="_blank" rel="noopener noreferrer">Condiciones de reembolso</a>.</p>
   </div>;

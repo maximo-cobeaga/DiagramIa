@@ -7,7 +7,7 @@ import {join} from 'node:path';
 import type {AddressInfo} from 'node:net';
 import {applyBatch,emptyDocument,findOverlaps} from '@diagramia/core';
 import {anthropicProvider,openAICompatibleProvider,openAIProvider,mockProvider,providersFromEnv,ProviderError,type Provider,type ProviderRequest} from '@diagramia/providers';
-import {createApp} from '../src/server.js';
+import {createApp,rateKey} from '../src/server.js';
 import {strictSchemaFor} from '../src/assist.js';
 import {UsageLedger} from '../src/usage.js';
 
@@ -760,3 +760,23 @@ test('the general per-IP brake works behind a trusted proxy and never throttles 
   }finally{await closeApp(proxied);await closeApp(direct);}
 });
 
+
+test('per-IP limits group an IPv6 /64, and a token with multibyte characters is refused instead of failing',async()=>{
+  assert.equal(rateKey('203.0.113.7'),'203.0.113.7');
+  assert.equal(rateKey('::ffff:203.0.113.7'),'203.0.113.7','IPv4 mapeada: la misma clave que la IPv4');
+  assert.equal(rateKey('2001:db8:1:2:aaaa:bbbb:cccc:dddd'),rateKey('2001:0DB8:0001:0002::1'),'todo el /64 comparte cupo');
+  assert.notEqual(rateKey('2001:db8:1:2::1'),rateKey('2001:db8:1:3::1'));
+  assert.equal(rateKey('2001:db8::1'),'2001:db8:0:0::/64');
+  assert.equal(rateKey('unknown'),'unknown');
+  // Diez direcciones del mismo /64 detrás del proxy cuentan como un solo cliente.
+  const proxied=bareApp({trustProxy:true,requestsPerIpPerMinute:3}),a=await listen(proxied);
+  const guarded=bareApp({token:'secreto-abcd'}),b=await listen(guarded);
+  try{
+    const statuses:number[]=[];
+    for(let i=0;i<5;i++)statuses.push((await fetch(a+'/v1/auth/status',{headers:{...client,'x-forwarded-for':`2001:db8:9:9::${i+1}`}})).status);
+    assert.deepEqual(statuses,[200,200,200,429,429]);
+    // Mismo largo en caracteres que el token real, distinto en bytes: antes respondía 500.
+    assert.equal((await fetch(b+'/v1/providers',{headers:{...client,authorization:'Bearer secreto-abc\u00f1'}})).status,401);
+    assert.equal((await fetch(b+'/v1/providers',{headers:{...client,authorization:'Bearer secreto-abcd'}})).status,200);
+  }finally{await closeApp(proxied);await closeApp(guarded);}
+});

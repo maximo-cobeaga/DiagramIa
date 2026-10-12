@@ -60,8 +60,10 @@ export function translate(rawBody:Buffer,priceIds:string|readonly (string|null|u
   const price=data.items.map(item=>item.price?.id).find(id=>typeof id==='string'&&known.has(id));
   if(!price)return null;
   const cancel=data.scheduled_change?.action==='cancel'?data.scheduled_change.effective_at:null;
+  // Estas direcciones terminan como enlaces en la cuenta: sólo https, aunque el aviso venga firmado.
+  const https=(url:string|null|undefined)=>url?.startsWith('https://')?url:null;
   return {eventId:event.event_id,occurredAt:new Date(event.occurred_at),userId,providerCustomerId:data.customer_id??null,providerSubscriptionId:data.id,priceId:price,status:data.status,
-    currentPeriodEnd:data.current_billing_period?.ends_at??null,scheduledCancelAt:cancel,updatePaymentUrl:data.management_urls?.update_payment_method??null,cancelUrl:data.management_urls?.cancel??null};
+    currentPeriodEnd:data.current_billing_period?.ends_at??null,scheduledCancelAt:cancel,updatePaymentUrl:https(data.management_urls?.update_payment_method),cancelUrl:https(data.management_urls?.cancel)};
 }
 
 /**

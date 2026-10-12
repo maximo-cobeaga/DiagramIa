@@ -4,6 +4,8 @@ import type {Identity} from '../repositories/accounts.js';
 
 export type OidcSettings={issuer:string;clientId:string;clientSecret:string;redirectUri:string;homeUrl:string};
 type Flow={verifier:string;nonce:string;cookie:string;expiresAt:number};
+// Inicios de sesión abiertos a la vez (10 minutos cada uno). ~300 bytes por entrada.
+const MAX_FLOWS=5000;
 const isLocal=(url:URL)=>url.protocol==='http:'&&['127.0.0.1','localhost','::1'].includes(url.hostname);
 const checkUrl=(input:string,label:string)=>{const url=new URL(input);if(url.protocol!=='https:'&&!isLocal(url))throw new Error(`${label} debe usar HTTPS o HTTP en loopback.`);return url;};
 
@@ -30,7 +32,9 @@ export class OidcAuthenticator{
     const config=await this.configuration(),verifier=oidc.randomPKCECodeVerifier(),nonce=oidc.randomNonce(),state=oidc.randomState(),cookie=randomBytes(32).toString('base64url');
     const challenge=await oidc.calculatePKCECodeChallenge(verifier);
     for(const [key,value] of this.flows)if(value.expiresAt<Date.now())this.flows.delete(key);
-    if(this.flows.size>=1000)throw new Error('Hay demasiados inicios de sesión pendientes.');
+    // Con el cupo lleno se descarta el más viejo en lugar de rechazar el nuevo: quien abre inicios sin terminarlos
+    // (cada uno cuesta un pedido, frenado por IP) no deja al resto sin poder entrar.
+    while(this.flows.size>=MAX_FLOWS)this.flows.delete(this.flows.keys().next().value!);
     this.flows.set(state,{verifier,nonce,cookie,expiresAt:Date.now()+600_000});
     const redirect=oidc.buildAuthorizationUrl(config,{redirect_uri:this.redirectUri.href,scope:'openid email',code_challenge:challenge,code_challenge_method:'S256',state,nonce});
     return {redirect,cookie};

@@ -41,7 +41,7 @@ export class TelemetryRepository{
 
 /** Límite de pedidos por clave (IP) en una ventana deslizante, en memoria del proceso. */
 export class RateLimiter{
-  private hits=new Map<string,number[]>();
+  private hits=new Map<string,number[]>();private prunedAt=0;
   constructor(private readonly limit:number,private readonly windowMs:number,private readonly now:()=>number=Date.now){}
   retryAfterSeconds(key:string):number{
     const now=this.now(),recent=(this.hits.get(key)??[]).filter(at=>now-at<this.windowMs);
@@ -51,8 +51,9 @@ export class RateLimiter{
     const now=this.now(),recent=(this.hits.get(key)??[]).filter(at=>now-at<this.windowMs);
     if(recent.length>=this.limit){this.hits.set(key,recent);return false;}
     recent.push(now);this.hits.set(key,recent);
-    // Poda ocasional para que claves viejas no crezcan sin límite.
-    if(this.hits.size>10_000)for(const [k,list] of this.hits)if(!list.some(at=>now-at<this.windowMs))this.hits.delete(k);
+    // Poda ocasional para que claves viejas no crezcan sin límite. A lo sumo una cada 5 s: con muchas claves vigentes,
+    // recorrer el mapa en cada pedido convertiría una ráfaga en un costo por pedido proporcional a la cantidad de clientes.
+    if(this.hits.size>10_000&&now-this.prunedAt>=5_000){this.prunedAt=now;for(const [k,list] of this.hits)if(!list.some(at=>now-at<this.windowMs))this.hits.delete(k);}
     return true;
   }
 }

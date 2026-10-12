@@ -1,5 +1,6 @@
 import {createServer,type IncomingMessage,type Server,type ServerResponse} from 'node:http';
 import {createHash,timingSafeEqual} from 'node:crypto';
+import {isIPv6} from 'node:net';
 import {z} from 'zod';
 import {DiagramError,SCHEMA_VERSION,TelemetryBatchSchema,describeError,type ServerEvent} from '@diagramia/core';
 import type {Provider} from '@diagramia/providers';
@@ -8,7 +9,7 @@ import {resolveAutoMode} from './intent.js';
 import {UsageError,UsageLedger} from './usage.js';
 import {PostgresDocumentRepository,RepositoryError} from './repositories/postgres.js';
 import {AccountRepository,CreditError} from './repositories/accounts.js';
-import {BillingRepository} from './repositories/billing.js';
+import {BillingRepository,billable} from './repositories/billing.js';
 import {ContactRepository,ContactSchema} from './repositories/contact.js';
 import {BillingError,createCheckout,translate,verifySignature,type PaddleConfig} from './billing/paddle.js';
 import {offerFor,type OfferConfig} from './billing/offer.js';
@@ -52,7 +53,8 @@ async function readJson(req:IncomingMessage,maxBytes=MAX_BODY):Promise<unknown>{
   }
   try{return JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new AssistError('INVALID_JSON','El cuerpo del pedido no es JSON válido.',400);}
 }
-const sameToken=(given:string,expected:string)=>given.length===expected.length&&timingSafeEqual(Buffer.from(given),Buffer.from(expected));
+// Se comparan bytes: con caracteres de varios bytes, dos textos del mismo largo pueden ocupar distinto y timingSafeEqual lanzaría.
+const sameToken=(given:string,expected:string)=>{const a=Buffer.from(given),b=Buffer.from(expected);return a.length===b.length&&timingSafeEqual(a,b);};
 const loopback=(address:string|undefined)=>address==='127.0.0.1'||address==='::1'||address==='::ffff:127.0.0.1';
 async function readRaw(req:IncomingMessage,maxBytes:number):Promise<Buffer>{
   const chunks:Buffer[]=[];let size=0;
@@ -68,6 +70,18 @@ function cookie(req:IncomingMessage,name:string){
 function clientIp(req:IncomingMessage,trustProxy=false){
   const forwarded=trustProxy?String(req.headers['x-forwarded-for']??'').split(',').map(part=>part.trim()).filter(Boolean).at(-1):undefined;
   return forwarded??req.socket.remoteAddress??'unknown';
+}
+/**
+ * Clave de los límites por IP. Una conexión IPv6 dispone de un /64 entero: se agrupa por ese prefijo para que cambiar de
+ * dirección dentro del rango no multiplique los cupos. IPv4 (también la mapeada en IPv6) queda como está.
+ */
+export function rateKey(ip:string):string{
+  const mapped=/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip);
+  if(mapped)return mapped[1]!;
+  if(!isIPv6(ip))return ip;
+  const [head='',tail='']=ip.toLowerCase().split('::'),left=head?head.split(':'):[],right=tail?tail.split(':'):[];
+  const groups=ip.includes('::')?[...left,...Array<string>(Math.max(0,8-left.length-right.length)).fill('0'),...right]:left;
+  return groups.slice(0,4).map(group=>group.replace(/^0+(?=.)/,'')).join(':')+'::/64';
 }
 const sessionCookie=(token:string,secure:boolean,maxAge:number)=>`diagramia_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure?'; Secure':''}`;
 const flowCookie=(token:string,secure:boolean,maxAge:number)=>`diagramia_oidc_flow=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure?'; Secure':''}`;
@@ -119,9 +133,9 @@ export function createApp(options:AppOptions):Server{
       }
       if(path==='/health'&&req.method==='GET')return send(200,{status:'ok',schemaVersion:SCHEMA_VERSION});
       if(path==='/ready'&&req.method==='GET')return await options.ready?.()===false?fail(503,'NOT_READY','La base de documentos no responde.'):send(200,{status:'ready',schemaVersion:SCHEMA_VERSION});
-      const ip=clientIp(req,options.trustProxy);
+      const address=clientIp(req,options.trustProxy),ip=rateKey(address);
       // Los frenos por IP sólo valen con la IP real: detrás de un proxy sin DIAGRAMIA_TRUST_PROXY todos comparten una y se frenarían entre sí.
-      const realIp=Boolean(options.trustProxy)||!privateAddress(ip);
+      const realIp=Boolean(options.trustProxy)||!privateAddress(address);
       if(realIp&&!everyIp.allow(ip))return fail(429,'RATE_LIMITED','Demasiados pedidos desde tu conexión. Esperá un minuto.');
       if(realIp&&(path==='/v1/auth/login'||path==='/v1/auth/callback')&&!loginPerIp.allow(ip))return fail(429,'RATE_LIMITED','Demasiados intentos de inicio de sesión. Esperá un minuto y volvé a probar.');
       if(path==='/v1/auth/login'&&req.method==='GET'){
@@ -159,20 +173,21 @@ export function createApp(options:AppOptions):Server{
         const change=translate(raw,[options.billing.paddle.priceId,options.billing.paddle.yearlyPriceId]);
         if(!change)return send(200,{received:true,ignored:true});
         const result=await options.billing.repository.apply(change,(JSON.parse(raw.toString('utf8')) as {event_type:string}).event_type);
+        // Dos suscripciones para una misma cuenta es un cobro doble a revisar en Paddle: queda en el log, sin datos de la persona.
+        if(result==='other-subscription')console.warn('[billing] aviso de otra suscripción de una cuenta que ya tiene Pro; revisar en Paddle:',change.providerSubscriptionId);
         return send(200,{received:true,result});
       }
       // El header propio obliga a un preflight CORS: una página ajena no puede disparar pedidos «simples» contra el gateway local.
       if(req.headers['x-diagramia-client']!=='editor')return fail(400,'MISSING_CLIENT_HEADER','Falta el header x-diagramia-client.');
       if(path==='/v1/events'&&req.method==='POST'){
         if(!options.telemetry)return fail(503,'TELEMETRY_UNAVAILABLE','La telemetría no está configurada en este gateway.');
-        if(!eventLimiter.allow(clientIp(req,options.trustProxy)))return fail(429,'RATE_LIMITED','Demasiados envíos de eventos. Se reintenta más tarde.');
+        if(!eventLimiter.allow(ip))return fail(429,'RATE_LIMITED','Demasiados envíos de eventos. Se reintenta más tarde.');
         const batch=TelemetryBatchSchema.parse(await readJson(req,MAX_EVENTS_BODY));
         const session=options.accounts?await options.accounts.readSession(cookie(req,'diagramia_session')):null;
         return send(202,await options.telemetry.ingest(batch,session?.userId??null));
       }
       if(path==='/v1/contact'&&req.method==='POST'){
         if(!options.contact)return fail(503,'CONTACT_UNAVAILABLE','El formulario no está disponible en este momento. Escribinos por email.');
-        const ip=clientIp(req,options.trustProxy);
         if(!contactLimiter.allow(ip))return fail(429,'RATE_LIMITED','Ya recibimos varias consultas desde tu conexión. Probá de nuevo más tarde o escribinos por email.');
         const input=ContactSchema.parse(await readJson(req,MAX_EVENTS_BODY));
         // Trampa para bots: se responde igual que a una persona, pero no se guarda ni se avisa.
@@ -198,8 +213,8 @@ export function createApp(options:AppOptions):Server{
       if(path==='/v1/auth/delete-account'&&req.method==='POST'){
         const session=await options.accounts?.readSession(cookie(req,'diagramia_session'));
         if(!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para eliminar tu cuenta.');
-        // Con Pro activo hay un cobro recurrente: eliminar la cuenta no lo cancelaría y seguiría cobrando.
-        if(options.billing&&(await options.billing.repository.view(session.userId)).plan==='pro')return fail(409,'ACTIVE_SUBSCRIPTION','Cancelá tu suscripción Pro antes de eliminar la cuenta. Se cancela desde «Cancelar suscripción» en tu cuenta.');
+        // Con una suscripción viva hay un cobro recurrente (también si está vencida o en pausa: el proveedor reintenta): eliminar la cuenta no lo cancelaría.
+        if(options.billing&&billable((await options.billing.repository.view(session.userId)).status))return fail(409,'ACTIVE_SUBSCRIPTION','Cancelá tu suscripción Pro antes de eliminar la cuenta. Se cancela desde «Cancelar suscripción» en tu cuenta.');
         // Confirmación explícita en el cuerpo: un clic accidental o un pedido reenviado sin ella no borra nada.
         const input=z.strictObject({confirm:z.literal('ELIMINAR')}).safeParse(await readJson(req));
         if(!input.success)return fail(400,'CONFIRMATION_REQUIRED','Para eliminar la cuenta, confirmá escribiendo ELIMINAR.');
@@ -332,7 +347,7 @@ export function createApp(options:AppOptions):Server{
       if(path==='/v1/link-preview'&&req.method==='POST'){
         // Con cuentas configuradas, como la IA y la nube, pide sesión: el servidor visita una página por el usuario.
         if(options.accounts&&!session)return fail(401,'SESSION_REQUIRED','Iniciá sesión para traer la vista previa de un enlace.');
-        if(!previewPerIp.allow(clientIp(req,options.trustProxy))||(session&&!previewPerUser.allow(session.userId)))return fail(429,'RATE_LIMITED','Demasiadas vistas previas seguidas. Probá en un minuto.');
+        if(!previewPerIp.allow(ip)||(session&&!previewPerUser.allow(session.userId)))return fail(429,'RATE_LIMITED','Demasiadas vistas previas seguidas. Probá en un minuto.');
         // La URL viaja en el cuerpo y no en la ruta: el log HTTP no la registra.
         const input=z.strictObject({url:z.string().min(1).max(2000)}).safeParse(await readJson(req,8_000));
         if(!input.success)return fail(400,'INVALID_REQUEST','Falta el enlace.');
@@ -370,7 +385,7 @@ export function createApp(options:AppOptions):Server{
         };
         // Límites antes de cualquier reserva: por IP y por cuenta, salvo administradores verificados. Un rechazo no gasta créditos.
         // Un admin no tiene límites por minuto ni créditos; el tope global de gasto del gateway (ledger) sigue valiendo.
-        if(!admin&&(!aiPerIp.allow(clientIp(req,options.trustProxy))||(session&&!aiPerUser.allow(session.userId)))){
+        if(!admin&&(!aiPerIp.allow(ip)||(session&&!aiPerUser.allow(session.userId)))){
           track({blocked:'RATE_LIMITED'});return fail(429,'RATE_LIMITED','Demasiados pedidos seguidos. Esperá un minuto y volvé a intentar.');
         }
         if(session&&options.requireVerifiedEmail!==false&&!session.emailVerified){

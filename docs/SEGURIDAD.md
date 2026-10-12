@@ -34,10 +34,37 @@ Revisión hecha el 02/10/2026 sobre el código y la configuración de despliegue
 
 Sin comprobar: los orígenes de Paddle en modo real (`buy.paddle.com`, `cdn.paddle.com`) se asumen simétricos a los del sandbox; verificar con el primer pago real mirando la consola. El tope general por IP no reemplaza un límite en el proxy del VPS ante un ataque volumétrico.
 
+## Auditoría del 12/10/2026 (ADR 098–099)
+
+Revisión del gateway, el cobro, el login, la configuración de nginx y el frontend antes de cobrar de verdad. `npm audit`: 0 vulnerabilidades (producción y desarrollo). Historial de Git sin claves (patrones de Paddle, OpenAI, Anthropic, AWS, GitHub, Slack, claves privadas y secretos de variables).
+
+| Hallazgo | Gravedad | Corrección | Evidencia |
+|---|---|---|---|
+| **El gateway se podía dejar sin responder con la vista previa de enlaces.** El `<head>` de la página visitada se leía con expresiones regulares de costo cuadrático: una página de 256 KB armada a propósito ocupaba el único hilo unos 10 s por pedido (medido), y una sola cuenta gratuita podía repetirlo 10 veces por minuto. | Alta | Lectura lineal con tope de largo por etiqueta y de etiquetas revisadas; entidades y texto acotados. | `linkPreview.test.ts`: siete páginas hostiles en menos de 1 s cada una |
+| **Los límites por IP se multiplicaban con IPv6.** Cada dirección de un /64 contaba como un cliente distinto, y con más de 10.000 claves vigentes el limitador recorría todo su mapa en cada pedido. Hoy el dominio no publica IPv6; quedaría expuesto al activarlo. | Media | Los límites agrupan IPv6 por /64 y la poda del limitador corre a lo sumo cada 5 s. | `gateway.test.ts`, `billing.test.ts` |
+| **El inicio de sesión se podía bloquear para todos.** Con 1.000 inicios pendientes, los nuevos se rechazaban durante 10 minutos; cuatro direcciones alcanzaban para sostenerlo. | Media | Tope de 5.000 y, lleno, se descarta el más viejo en lugar de rechazar el nuevo. | `oidc.test.ts` sigue aprobando |
+| **Rutas internas publicadas.** `/api/v1/documents` (token del servidor, acceso a cualquier documento por ID) y `/api/v1/local` eran alcanzables desde internet a través de nginx. No había forma de usarlas sin el token, pero un token filtrado exponía todos los diagramas. | Media | nginx responde 404 a ambas; siguen disponibles sólo dentro de la red del servidor. | Ensayo de producción local |
+| **Una suscripción vieja podía quitar un Pro pago.** Si una cuenta tenía una suscripción vencida y pagaba otra, la cancelación definitiva de la primera pisaba a la vigente. | Media (cobro) | Un aviso de otra suscripción no modifica la que hoy da Pro; queda una línea en el log para revisar el posible cobro doble. | `smoke:repository` |
+| **Se podía eliminar la cuenta con un cobro pendiente.** Con la suscripción vencida o en pausa la cuenta figura Free, se dejaba eliminar y Paddle seguía reintentando el cobro. Además, en ese estado la cuenta no mostraba cómo cambiar el medio de pago ni cancelar. | Media (cobro) | La eliminación exige cancelar toda suscripción viva; la cuenta muestra «Cambiar medio de pago» y «Cancelar suscripción» también con el cobro vencido. | `smoke:repository` |
+| **Pagos de prueba que seguirían dando Pro al cobrar de verdad.** Las suscripciones del sandbox no se distinguían de las reales. | Media (cobro) | Cada suscripción guarda su entorno (migración 009) y, en `live`, las de prueba se quitan al arrancar. | `smoke:repository` |
+| Un token con caracteres de varios bytes del mismo largo que el real hacía fallar la comparación y respondía 500 en lugar de 401. Sin fuga ni acceso. | Baja | La comparación usa el largo en bytes. | `gateway.test.ts` |
+| Los enlaces de gestión que llegan en los avisos de Paddle se guardaban con cualquier esquema. Vienen firmados, pero terminan como enlaces en la cuenta. | Baja | Sólo se guardan si son `https`. | `billing.test.ts` |
+
+**Revisado sin hallazgos:** aislamiento de documentos por proyecto, CSRF (header propio con preflight, cookie `SameSite=Lax`), verificación de firma y antigüedad del webhook, redirecciones del login y del pago (sin redirección abierta), protección SSRF de la vista previa (direcciones mapeadas y redirecciones incluidas), ausencia de HTML del modelo en el editor (sin `dangerouslySetInnerHTML`; el Markdown propio no interpreta HTML), enlaces de nodos sólo `http(s)`, secretos fuera del bundle y de las imágenes.
+
+**Riesgos que quedan y por qué:**
+
+- **Enlace de pago ajeno.** Quien recibe un enlace `pago.html?_ptxn=…` creado por otra cuenta pagaría el Pro de esa cuenta. No se ata el enlace al navegador que lo creó porque Paddle usa el mismo formato en sus correos de recuperación y en «Cambiar medio de pago». El importe y el destinatario se ven en el formulario de Paddle.
+- **HSTS sin `includeSubDomains`** y terminación TLS: los pone el proxy del VPS (carpeta de ReservApp), fuera de este repositorio.
+- **Contenedor `web`:** nginx corre con las capacidades por defecto de la imagen oficial; el gateway sí corre sin root, sin capacidades y con sistema de archivos de sólo lectura.
+- **Ataque volumétrico:** los límites del gateway viven en memoria de un proceso; no reemplazan un límite en el proxy del VPS o un servicio delante.
+- **Reembolsos y contracargos:** el gateway sólo procesa avisos de suscripción. Un reembolso hecho en Paddle no baja el plan hasta que la suscripción se cancele.
+- **Textos legales:** privacidad, términos y reembolsos siguen marcados como borrador y sin revisión profesional; Paddle los revisa para aprobar la cuenta real.
+
 ## Pendiente antes de lanzar
 
 - **Auth0 real:** configurar el tenant, exigir el email verificado, revisar la pantalla de login con la marca y probar el login completo en HTTPS.
-- **Privacidad:** completar y hacer revisar el borrador `apps/editor/public/privacidad.html`, y decidir sobre el consentimiento de visitantes de la UE (ADR 051). Retención mínima y eliminación de cuenta ya implementadas (ADR 056).
+- **Privacidad y textos legales:** `privacidad.html`, `terminos.html` y `reembolsos.html` ya tienen los datos completos (08/10) pero están publicados con el cartel «Borrador»: falta la revisión profesional para quitarlo. Decidir sobre el consentimiento de visitantes de la UE (ADR 051). Retención mínima y eliminación de cuenta ya implementadas (ADR 056).
 - **Licencia del código:** el repositorio es público y todavía no tiene licencia elegida (ADR 043).
 - **Alerta de gasto:** fijar `DIAGRAMIA_ALERT_WEBHOOK_URL` en producción (guía, paso 5).
 - **Revisión externa:** al tener tráfico real o antes de cobrar, una revisión independiente de autenticación y del MCP remoto.

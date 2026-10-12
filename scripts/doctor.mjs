@@ -41,6 +41,7 @@ if(!production){
 }
 
 section('2. Inteligencia artificial (GPT-6 Luna para el plan Free)');
+const allowed=(get('DIAGRAMIA_ACCOUNT_PROVIDERS')||'openai').split(',').map(s=>s.trim());
 if(get('OPENAI_API_KEY')){
   if(!/^sk-/.test(get('OPENAI_API_KEY')))warn(`OPENAI_API_KEY ${secret('OPENAI_API_KEY')} no empieza con «sk-».`,'Revisá que hayas copiado la clave completa, sin espacios ni comillas.');
   else ok(`OPENAI_API_KEY ${secret('OPENAI_API_KEY')}`);
@@ -57,14 +58,18 @@ if(get('OPENAI_API_KEY')){
       else warn(`OpenAI respondió ${response.status}.`);
     }catch{warn('No se pudo contactar a OpenAI.','Revisá tu conexión a internet.');}
   }
-}else if(!production&&get('DIAGRAMIA_COMPAT_API_KEY')&&get('DIAGRAMIA_COMPAT_MODEL')){
-  // Un proveedor compatible (DeepSeek u otro) sirve para probar en local; no reemplaza a Luna. El tope en USD sólo lo cubre con su tarifa cargada.
+}else if(get('DIAGRAMIA_COMPAT_API_KEY')&&get('DIAGRAMIA_COMPAT_MODEL')){
+  // Un proveedor compatible (DeepSeek u otro) no reemplaza a Luna (ADR 045). El tope en USD sólo lo cubre con su tarifa cargada.
   const rate=name=>{const raw=get(name);return raw!==''&&Number.isFinite(Number(raw))&&Number(raw)>=0;},priced=rate('DIAGRAMIA_COMPAT_INPUT_USD_PER_MTOK')&&rate('DIAGRAMIA_COMPAT_OUTPUT_USD_PER_MTOK');
-  warn(`Probando con ${get('DIAGRAMIA_COMPAT_LABEL')||'un servidor compatible'} (${get('DIAGRAMIA_COMPAT_MODEL')}); falta OPENAI_API_KEY para GPT-6 Luna.`,priced
+  const compat=`${get('DIAGRAMIA_COMPAT_LABEL')||'un servidor compatible'} (${get('DIAGRAMIA_COMPAT_MODEL')})`;
+  // En producción se revisa lo que de verdad corta el gasto y lo que deja a las cuentas sin IA; elegir el modelo de lanzamiento es una decisión de producto.
+  if(production&&!allowed.includes('compatible'))bad(`La IA es ${compat}, pero las cuentas no lo tienen habilitado: nadie puede usar la IA.`,'Poné DIAGRAMIA_ACCOUNT_PROVIDERS=compatible o cargá OPENAI_API_KEY.');
+  else if(production&&!priced)bad(`La IA es ${compat} y no tiene tarifa cargada: el tope en USD no la limita.`,'Copiá sus precios en DIAGRAMIA_COMPAT_INPUT_USD_PER_MTOK y DIAGRAMIA_COMPAT_OUTPUT_USD_PER_MTOK.');
+  else if(production)warn(`La IA incluida usa ${compat}, no GPT-6 Luna.`,'Funciona y los topes en USD la limitan. Si querés lanzar con Luna (ADR 045), cargá OPENAI_API_KEY y DIAGRAMIA_ACCOUNT_PROVIDERS=openai.');
+  else warn(`Probando con ${get('DIAGRAMIA_COMPAT_LABEL')||'un servidor compatible'} (${get('DIAGRAMIA_COMPAT_MODEL')}); falta OPENAI_API_KEY para GPT-6 Luna.`,priced
     ?'Tarifa cargada: los topes en USD también limitan a este proveedor. Para Luna seguí el paso 1 de la guía.'
     :'Sin tarifa cargada, el tope en USD no limita a este proveedor: copiá sus precios en DIAGRAMIA_COMPAT_INPUT_USD_PER_MTOK y DIAGRAMIA_COMPAT_OUTPUT_USD_PER_MTOK, y poné un límite en su panel.');
 }else bad('Falta OPENAI_API_KEY: la IA incluida no funciona.','Seguí docs/GUIA_PASO_A_PASO.md, paso 1.');
-const allowed=(get('DIAGRAMIA_ACCOUNT_PROVIDERS')||'openai').split(',').map(s=>s.trim());
 ok(`Las cuentas usan: ${allowed.join(', ')}`);
 if(get('DIAGRAMIA_ENABLE_MOCK')==='1')production?bad('El proveedor de demostración está activado en producción.','Borrá DIAGRAMIA_ENABLE_MOCK.'):warn('El proveedor de demostración está activado (está bien sólo para probar la interfaz).');
 
@@ -137,7 +142,7 @@ section('Cobro de la suscripción Pro (Paddle)');
     else if(/^pdl_/.test(clientToken))bad('DIAGRAMIA_PADDLE_CLIENT_TOKEN tiene una clave de API. Esa clave es secreta y este valor llega al navegador.','Revocá esa clave en Paddle ya mismo y poné acá un client-side token (test_… o live_…).');
     else if(!new RegExp(`^${live?'live':'test'}_[a-z0-9]{20,60}$`).test(clientToken))bad(`DIAGRAMIA_PADDLE_CLIENT_TOKEN no es un token ${live?'live_':'test_'}… del entorno elegido.`,'El token y la clave de API tienen que ser del mismo entorno (sandbox o live).');
     else ok('Página de pago lista: token público de Paddle.js cargado.');
-    warn('Recordá el «default payment link» en Paddle (Checkout → Checkout settings).',`Tiene que ser ${get('DIAGRAMIA_OIDC_HOME_URL')?new URL('pago.html',get('DIAGRAMIA_OIDC_HOME_URL')).href:'https://app.<dominio>/pago.html'}. Sin eso Paddle no crea ningún pago; no se puede comprobar desde acá.`);
+    warn('Esto revisa el archivo, no la cuenta de Paddle (precios, webhook, token y «default payment link»).',`Para compararlo con Paddle: npm run paddle -- check --env ${envFile} --probe. El enlace de pago tiene que ser ${get('DIAGRAMIA_OIDC_HOME_URL')?new URL('pago.html',get('DIAGRAMIA_OIDC_HOME_URL')).href:'https://app.<dominio>/pago.html'}.`);
     if(get('DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY')&&!/^pri_[a-z0-9]{20,}$/.test(get('DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY')))bad('DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY no parece un ID de precio (pri_…).','Copialo desde Catalog → Prices, o dejalo vacío para no ofrecer el plan anual.');
     if(!get('DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY'))warn('Sin plan anual: falta DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY.','Es opcional. La landing y los términos ya lo anuncian: cargalo o quitá esa mención.');
   }

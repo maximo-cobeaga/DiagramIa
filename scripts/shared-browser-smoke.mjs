@@ -136,6 +136,16 @@ try{
   await js("document.querySelector('[aria-label=\"Configuración del editor\"]').click()");await sleep(150);
   await js("[...document.querySelectorAll('button')].find(b=>b.textContent==='Restablecer preferencias').click()");await shot('ui-ajustes-light');
   await send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  // Cobro vencido: la cuenta usa Free, pero la suscripción sigue viva en Paddle y tiene que poder ponerse al día o cancelarse desde acá.
+  assert.equal(await new BillingRepository(pool).apply({eventId:`evt-due-${suffix}`,occurredAt:new Date(),userId:alice.session.userId,providerCustomerId:'ctm_smoke',providerSubscriptionId:'sub_smoke_due',priceId:'pri_smoke',status:'past_due',currentPeriodEnd:null,scheduledCancelAt:null,updatePaymentUrl:'https://pay.example/update',cancelUrl:'https://pay.example/cancel'},'subscription.past_due'),'applied');
+  await send('Page.reload');await until(()=>js("!!document.querySelector('.account-chip')"),'editor tras el cobro vencido');
+  await js("document.querySelector('.account-chip').click()");await until(()=>js("!!document.querySelector('.account-page')"),'cuenta con cobro vencido');
+  await js("[...document.querySelectorAll('.account-page nav button')].find(b=>b.getAttribute('aria-label')==='Plan y facturación').click()");
+  await until(()=>js("document.querySelector('.plan-box')?.textContent.includes('No pudimos cobrar tu suscripción')"),'aviso de cobro vencido');
+  assert.deepEqual(await js("[...document.querySelectorAll('.plan-box .subscription-status a')].map(a=>[a.textContent,a.href,a.rel])"),[['Cambiar medio de pago','https://pay.example/update','noopener noreferrer'],['Cancelar suscripción','https://pay.example/cancel','noopener noreferrer']],'con el cobro vencido se puede cambiar el medio de pago o cancelar');
+  assert.equal(await js("document.querySelector('.plan-box').getAttribute('aria-label')"),'Plan Free');
+  await shot('ui-cuenta-cobro-vencido');
+  await send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await sleep(150);
   // Telemetría de punta a punta: el navegador envía por lotes, el gateway valida y PostgreSQL guarda sin contenido.
   let rows=[];
   for(let i=0;i<120;i++){

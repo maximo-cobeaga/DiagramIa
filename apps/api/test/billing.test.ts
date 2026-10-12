@@ -30,6 +30,16 @@ const event=(overrides:Record<string,unknown>={},type='subscription.activated')=
     management_urls:{update_payment_method:'https://pay.example/update',cancel:'https://pay.example/cancel'},...overrides}
 });
 
+test('the limiter prunes idle keys without walking every key on every request',()=>{
+  let now=0;const limiter=new RateLimiter(1,1000,()=>now);
+  for(let i=0;i<10_001;i++)limiter.allow('k'+i);
+  const size=()=>(limiter as unknown as {hits:Map<string,number[]>}).hits.size;
+  assert.equal(size(),10_001,'con todas las claves vigentes no hay nada que podar');
+  now=6000;limiter.allow('nueva');
+  assert.equal(size(),1,'pasada la ventana, las claves sin uso se descartan');
+  assert.equal(limiter.allow('nueva'),false);
+});
+
 test('webhook signature: accepts the exact body, rejects tampering, old timestamps and malformed headers',()=>{
   const body=event(),now=Date.UTC(2026,9,8,12,0,0),ts=now/1000;
   assert.equal(verifySignature(Buffer.from(body),sign(body,ts),SECRET,now),true);
@@ -51,6 +61,8 @@ test('translate: turns a subscription event into an internal change and ignores 
   assert.equal(translate(Buffer.from(event({items:[{price:{id:'pri_year'}}]})),[PRICE,'pri_year'])?.priceId,'pri_year','el plan anual también concede Pro');
   assert.equal(translate(Buffer.from(event({items:[{price:{id:'pri_year'}}]})),[PRICE,null]),null,'sin precio anual configurado, el anual no se reconoce');
   assert.equal(translate(Buffer.from(event({custom_data:{}})),PRICE),null,'sin cuenta de Diagramia no hay a quién asignar');
+  const odd=translate(Buffer.from(event({management_urls:{update_payment_method:'javascript:alert(1)',cancel:'http://pay.example/cancel'}})),PRICE)!;
+  assert.equal(odd.updatePaymentUrl,null);assert.equal(odd.cancelUrl,null,'los enlaces de gestión sólo se guardan si son https');
   assert.throws(()=>translate(Buffer.from('no es json'),PRICE),BillingError);
   assert.throws(()=>translate(Buffer.from('{"event_id":1}'),PRICE),BillingError);
 });

@@ -185,6 +185,8 @@ try{
     const hook=(body,secret='smoke-webhook-secret')=>{const ts=Math.floor(Date.now()/1000);return fetch(`${origin}/v1/billing/webhook`,{method:'POST',headers:{'content-type':'application/json','paddle-signature':`ts=${ts};h1=${createHmac('sha256',secret).update(`${ts}:${body}`).digest('hex')}`},body});};
     const me=async()=>(await fetch(`${origin}/v1/auth/me`,{headers:as(alice.token)})).json();
     assert.equal((await me()).billing.plan,'free');assert.equal((await me()).storage.maxDocuments,3);
+    const creditsBeforeUpgrade=(await me()).credits;
+    assert.equal(creditsBeforeUpgrade.daily,6);assert.equal(creditsBeforeUpgrade.monthly,6);
     {
       const offer=(await me()).billing.offer;
       assert.ok(offer&&offer.percent===40&&offer.priceUsd===3&&offer.regularUsd===5&&offer.months===3,'una cuenta Free ve la oferta vigente: '+JSON.stringify(offer));
@@ -203,6 +205,13 @@ try{
     const pro=await me();
     assert.equal(pro.billing.offer,null,'quien ya es Pro no ve ofertas');
     assert.equal(pro.billing.plan,'pro');assert.equal(pro.billing.cancelUrl,'https://pay.example/cancel');assert.equal(pro.storage.maxDocuments,100);assert.equal(pro.credits.dailyLimit,40);assert.equal(pro.credits.monthlyLimit,400);
+    assert.equal(pro.credits.daily,creditsBeforeUpgrade.daily,'activar Pro conserva los créditos usados hoy');
+    assert.equal(pro.credits.monthly,creditsBeforeUpgrade.monthly,'activar Pro conserva los créditos usados este mes');
+    const sameIdentity=await accounts.signIn({issuer:'https://oidc.example',subject:'alice',email:'alice@example.test'});
+    assert.equal(sameIdentity.session.userId,alice.session.userId,'volver del pago con la misma identidad conserva la cuenta');
+    const returned=(await(await fetch(`${origin}/v1/auth/me`,{headers:as(sameIdentity.token)})).json());
+    assert.equal(returned.billing.plan,'pro');
+    assert.equal(returned.credits.monthly,creditsBeforeUpgrade.monthly,'otra sesión de la misma cuenta conserva el consumo previo');
     assert.equal((await fetch(`${origin}/v1/billing/checkout`,{method:'POST',headers:as(alice.token)})).status,409,'quien ya es Pro no paga dos veces');
     assert.equal((await fetch(`${origin}/v1/auth/delete-account`,{method:'POST',headers:as(alice.token),body:JSON.stringify({confirm:'ELIMINAR'})})).status,409,'no se elimina una cuenta con cobro activo');
     assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(alice.token),body:JSON.stringify(aiBody(6))})).status,200,'con Pro, el séptimo crédito del día pasa');
@@ -212,6 +221,14 @@ try{
     assert.equal((await me()).billing.plan,'pro');
     assert.equal((await(await hook(subEvent('evt-ghost','subscription.activated','active',t1,{custom_data:{diagramia_user_id:'user-que-no-existe'}}))).json()).result,'unknown-user');
     assert.equal((await(await hook(subEvent('evt-other','subscription.activated','active',t1,{items:[{price:{id:'pri_otro'}}]}))).json()).ignored,true,'otro producto no concede nada');
+    // Una suscripción anterior de la misma cuenta que se cancela después no le quita el Pro que da la vigente.
+    assert.equal((await(await hook(subEvent('evt-otra-sub','subscription.canceled','canceled',t2,{id:'sub_smoke_vieja'}))).json()).result,'other-subscription');
+    assert.equal((await me()).billing.plan,'pro','el aviso de otra suscripción no baja el plan');
+    // Con el cobro vencido la cuenta usa Free, pero la suscripción sigue viva en el proveedor: no se elimina la cuenta sin cancelarla.
+    const t15=new Date(Date.now()-20_000).toISOString();
+    assert.equal((await(await hook(subEvent('evt-due','subscription.past_due','past_due',t15))).json()).result,'applied');
+    assert.equal((await me()).billing.plan,'free');
+    assert.equal((await fetch(`${origin}/v1/auth/delete-account`,{method:'POST',headers:as(alice.token),body:JSON.stringify({confirm:'ELIMINAR'})})).status,409,'no se elimina una cuenta con una suscripción vencida sin cancelar');
     assert.equal((await(await hook(subEvent('evt-2','subscription.canceled','canceled',t2))).json()).result,'applied');
     const free=await me();
     assert.equal(free.billing.plan,'free');assert.equal(free.storage.maxDocuments,3);assert.equal(free.storage.documents,4,'al bajar a Free no se borra nada');
@@ -222,7 +239,21 @@ try{
     assert.equal((await edit(cloudId,'ok-edit')).status,200,'los tres primeros siguen editables');
     assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(alice.token),body:JSON.stringify(aiBody(7))})).status,429,'de vuelta en Free rige el tope diario');
     assert.equal((await fetch(cloud,{method:'POST',headers:as(alice.token),body:JSON.stringify(emptyDocument(`cloud-${suffix}-5`,'Quinto'))})).status,409);
-    console.log('  suscripción Pro: firma, duplicados, desorden, subida y bajada de límites OK');
+    // Pase a cobros reales: una suscripción pagada en el sandbox no sigue dando Pro; con el sandbox configurado no se toca nada.
+    assert.equal((await(await hook(subEvent('evt-3','subscription.activated','active',new Date().toISOString(),{id:'sub_smoke_prueba'}))).json()).result,'applied');
+    assert.equal((await me()).billing.plan,'pro');
+    assert.equal(await new BillingRepository(sourcePool).dropTestSubscriptions(),0,'en sandbox no se quita nada');
+    assert.equal((await me()).billing.plan,'pro');
+    const live=new BillingRepository(sourcePool,'live');
+    assert.equal(await live.dropTestSubscriptions(),1,'en live se quita la suscripción de prueba');
+    assert.equal((await me()).billing.plan,'free','lo pagado con tarjeta de prueba no da Pro al cobrar de verdad');
+    const realChange={eventId:`evt-live-${suffix}`,occurredAt:new Date(),userId:alice.session.userId,providerCustomerId:'ctm_live',providerSubscriptionId:`sub_live_${suffix}`,priceId:'pri_smoke_pro',status:'active',currentPeriodEnd:null,scheduledCancelAt:null,updatePaymentUrl:null,cancelUrl:null};
+    assert.equal(await live.apply(realChange,'subscription.activated'),'applied');
+    assert.equal(await live.dropTestSubscriptions(),0,'una suscripción real se conserva');
+    assert.equal((await me()).billing.plan,'pro');
+    assert.equal(await live.apply({...realChange,eventId:`evt-live-end-${suffix}`,occurredAt:new Date(Date.now()+1000),status:'canceled'},'subscription.canceled'),'applied');
+    assert.equal((await me()).billing.plan,'free');
+    console.log('  suscripción Pro: firma, duplicados, desorden, otra suscripción, cobro vencido, pase a live, subida y bajada de límites OK');
     // Telemetría (P7.1): ingesta idempotente, vínculo anónimo → cuenta, reloj desfasado y pedidos de IA medidos sin su texto.
     const anonymousId=randomUUID(),eventId=n=>`${suffix.padEnd(8,'0').slice(0,8)}-0000-4000-8000-${String(n).padStart(12,'0')}`;
     const telemetryBatch=events=>({v:1,anonymousId,sessionId:randomUUID(),context:{app:'editor',appVersion:'smoke',utmSource:'smoke',utmMedium:null,utmCampaign:null,referrerHost:null,landingPath:'/',device:'desktop',browser:'chrome',os:'linux',language:'es',viewport:{width:1280,height:800}},events});

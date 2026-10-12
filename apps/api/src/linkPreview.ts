@@ -107,12 +107,49 @@ export async function fetchLinkPreview(raw:string,options:Options={}):Promise<Li
 }
 
 const ENTITIES:Record<string,string>={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' ',ntilde:'ñ',Ntilde:'Ñ',aacute:'á',eacute:'é',iacute:'í',oacute:'ó',uacute:'ú',uuml:'ü',Aacute:'Á',Eacute:'É',Iacute:'Í',Oacute:'Ó',Uacute:'Ú',iexcl:'¡',iquest:'¿',mdash:'—',ndash:'–',hellip:'…',laquo:'«',raquo:'»'};
-const decode=(text:string)=>text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,(whole,name:string)=>{
+// Largos acotados: una entidad sin cerrar no hace recorrer el texto una y otra vez.
+const decode=(text:string)=>text.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z]{1,10});/gi,(whole,name:string)=>{
   if(name[0]==='#'){const code=name[1]==='x'||name[1]==='X'?parseInt(name.slice(2),16):Number(name.slice(1));return code>0&&code<0x110000&&!(code>=0xd800&&code<=0xdfff)?String.fromCodePoint(code):'';}
   return ENTITIES[name]??whole;
 });
 // Texto plano de una línea: sin etiquetas, sin caracteres de control y acotado.
-const clean=(text:string|undefined,max:number)=>{if(!text)return null;const value=decode(text).replace(/<[^>]*>/g,' ').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').replace(/\s+/g,' ').trim();return value?value.slice(0,max):null;};
+const MAX_TEXT=2000;
+const clean=(text:string|undefined,max:number)=>{if(!text)return null;const value=decode(text.slice(0,MAX_TEXT)).replace(/<[^>]*>/g,' ').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').replace(/\s+/g,' ').trim();return value?value.slice(0,max):null;};
+
+// La página es de un tercero y puede estar armada para trabar un patrón (miles de etiquetas sin cerrar): el <head> se lee
+// en recorridos lineales, con tope de largo por etiqueta y de etiquetas revisadas. El gateway atiende en un solo hilo.
+const MAX_TAG=4096,MAX_TAGS=300;
+const space=(char:string|undefined)=>char===' '||char==='\t'||char==='\n'||char==='\r'||char==='\f';
+/** Interior de las etiquetas `<name …>`. `lower` es el mismo texto en minúsculas ASCII (mismo largo). Un `>` entre comillas no cierra la etiqueta. */
+function tagBodies(html:string,lower:string,name:string,limit=MAX_TAGS):{body:string;end:number}[]{
+  const found:{body:string;end:number}[]=[];let from=0;
+  for(let tries=0;tries<limit;tries++){
+    const at=lower.indexOf('<'+name,from);if(at<0)break;
+    const start=at+name.length+1,next=lower[start];from=start;
+    if(next!==undefined&&!space(next)&&next!=='/'&&next!=='>')continue;
+    const stop=Math.min(lower.length,at+MAX_TAG);let i=start,quote='';
+    for(;i<stop;i++){const char=lower[i]!;if(quote){if(char===quote)quote='';}else if(char==='"'||char==="'")quote=char;else if(char==='>')break;}
+    if(i<stop){found.push({body:html.slice(start,i),end:i+1});from=i+1;}
+  }
+  return found;
+}
+/** Atributos de una etiqueta en un solo recorrido; ante un nombre repetido vale el primero, como en HTML. */
+function attributes(tag:string):Map<string,string>{
+  const attrs=new Map<string,string>(),n=tag.length;let i=0;
+  while(i<n){
+    while(i<n&&(space(tag[i])||tag[i]==='/'))i++;
+    const start=i;while(i<n&&!space(tag[i])&&tag[i]!=='='&&tag[i]!=='/')i++;
+    const name=tag.slice(start,i).toLowerCase();
+    while(i<n&&space(tag[i]))i++;
+    if(tag[i]!=='=')continue;
+    i++;while(i<n&&space(tag[i]))i++;
+    const quote=tag[i];let value:string;
+    if(quote==='"'||quote==="'"){const end=tag.indexOf(quote,i+1);value=tag.slice(i+1,end<0?n:end);i=end<0?n:end+1;}
+    else{const from=i;while(i<n&&!space(tag[i]))i++;value=tag.slice(from,i);}
+    if(name&&!attrs.has(name))attrs.set(name,value);
+  }
+  return attrs;
+}
 
 /** Título, descripción y sitio a partir del HTML recibido. Nunca se interpreta ni se ejecuta: sólo se buscan textos. */
 export function readHead(body:Buffer,contentType=''):Omit<LinkPreview,'url'>{
@@ -120,16 +157,19 @@ export function readHead(body:Buffer,contentType=''):Omit<LinkPreview,'url'>{
   const charset=(/charset=["']?([\w-]+)/i.exec(contentType)??/<meta[^>]+charset=["']?([\w-]+)/i.exec(sniff))?.[1]?.toLowerCase();
   let html:string;
   try{html=new TextDecoder(charset&&charset!=='utf8'?charset:'utf-8').decode(body);}catch{html=new TextDecoder('utf-8').decode(body);}
-  const end=html.search(/<\/head>/i),head=end>=0?html.slice(0,end):html;
+  const end=html.search(/<\/head>/i),head=end>=0?html.slice(0,end):html,lower=head.replace(/[A-Z]+/g,upper=>upper.toLowerCase());
   const meta=new Map<string,string>();
-  // Un `>` dentro de un valor entre comillas no cierra la etiqueta.
-  for(const tag of head.match(/<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi)??[]){
-    const attrs=new Map<string,string>();
-    for(const m of tag.matchAll(/([a-zA-Z:_-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g))attrs.set(m[1]!.toLowerCase(),m[2]??m[3]??m[4]??'');
+  for(const tag of tagBodies(head,lower,'meta')){
+    const attrs=attributes(tag.body);
     const key=(attrs.get('property')??attrs.get('name'))?.toLowerCase(),content=attrs.get('content');
     if(key&&content!==undefined&&!meta.has(key))meta.set(key,content);
   }
-  const title=/<title[^>]*>([^<]*)<\/title>/i.exec(head)?.[1];
+  // El título es el texto entre <title> y su cierre, sin etiquetas adentro.
+  let title:string|undefined;
+  for(const tag of tagBodies(head,lower,'title',5)){
+    const close=lower.indexOf('<',tag.end);
+    if(close>=0&&lower.startsWith('</title',close)){title=head.slice(tag.end,close);break;}
+  }
   return {
     title:clean(meta.get('og:title')??meta.get('twitter:title')??title,200),
     description:clean(meta.get('og:description')??meta.get('description')??meta.get('twitter:description'),300),

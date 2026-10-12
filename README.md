@@ -41,6 +41,8 @@ Empezá por [LEEME_PRIMERO.md](LEEME_PRIMERO.md).
 | `npm run db:backup` / `npm run smoke:db` | Backup local y prueba de restauración en dos instancias aisladas; ver `infra/README.md` |
 | `npm run smoke:repository` / `npm run smoke:shared` | Integración PostgreSQL, cuentas, cuotas y editor↔MCP con navegador real |
 | `npm run smoke:mcp-remote` | MCP Streamable HTTP con OAuth, issuer/JWKS y PostgreSQL efímeros |
+| `npm run doctor` | Diagnóstico de la configuración (`--env .env.production` para el servidor, `--online` prueba claves y login) |
+| `npm run paddle -- check` / `setup` | Compara el cobro configurado con la cuenta de Paddle, o crea lo que falte (pase a cobros reales: `infra/DEPLOY.md`) |
 | `node scripts/setup-mcp.mjs` | Archivo de trabajo y configs MCP locales |
 | `npm run mcp` | MCP; usa DIAGRAMIA_DOCUMENT para archivo local o DIAGRAMIA_DOCUMENTS_URL/ID/TOKEN para el canal compartido |
 

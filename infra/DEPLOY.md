@@ -22,7 +22,7 @@ Internet ──TLS──▶ reverse proxy del VPS (ya atiende a ReservApp)
 - Sólo `web` publica un puerto, y únicamente en loopback. `api` y `db` quedan en la red interna de Docker.
 - **Límites para no afectar a ReservApp:** `db` 1 CPU y 768 MB, `api` 1 CPU y 512 MB, `web` 0,5 CPU y 128 MB. Hay tope de procesos y los logs rotan (3 × 10 MB).
 - **Gateway endurecido:** corre sin root, con filesystem de sólo lectura, sin capabilities y con `no-new-privileges`. El ledger de gasto vive en el volumen `api_state`.
-- **nginx:** aplica CSP estricta (`script-src 'self'`, sin inline ni eval), `nosniff`, `Referrer-Policy`, `Permissions-Policy` y caché inmutable para `/assets`.
+- **nginx:** aplica CSP estricta (`script-src 'self'`, sin inline ni eval), `nosniff`, `Referrer-Policy`, `Permissions-Policy` y caché inmutable para `/assets`. No publica `/api/v1/documents` ni `/api/v1/local` (rutas con token del servidor, sólo para herramientas en el propio equipo): responden 404.
 - **IP real del visitante:** nginx la toma del `X-Forwarded-For` que manda el reverse proxy (`real_ip`) y se la pasa al gateway. Los límites por IP la usan; se probó con dos clientes.
 
 ## Primera instalación
@@ -81,9 +81,11 @@ Para pausar los despliegues automáticos sin tocar el código: `DEPLOY_ENABLED=f
 El gateway recibe los avisos de Paddle en `https://app.<dominio>/api/v1/billing/webhook` (nginx ya lo reenvía junto con el resto de `/api/`). Para activarlo:
 
 1. En Paddle (sandbox o real) → Developer Tools → Notifications → **New destination**: tipo URL, esa dirección y los eventos `subscription.created`, `subscription.activated`, `subscription.updated`, `subscription.canceled`, `subscription.paused`, `subscription.resumed`, `subscription.past_due` y `subscription.trialing`. Copiá el **secreto** del destino.
-2. En `.env.production`: `DIAGRAMIA_PADDLE_ENV`, `DIAGRAMIA_PADDLE_API_KEY`, `DIAGRAMIA_PADDLE_WEBHOOK_SECRET` y `DIAGRAMIA_PADDLE_PRICE_PRO` (las tres últimas juntas o ninguna). `npm run doctor -- --env .env.production` las revisa.
+2. En `.env.production`: `DIAGRAMIA_PADDLE_ENV`, `DIAGRAMIA_PADDLE_API_KEY`, `DIAGRAMIA_PADDLE_WEBHOOK_SECRET` y `DIAGRAMIA_PADDLE_PRICE_PRO` (las tres últimas juntas o ninguna). `npm run doctor -- --env .env.production` revisa el archivo y `npm run paddle -- check --env .env.production` lo compara con lo que hay en Paddle (precios, cantidad, descuento, destino de avisos, secreto y token).
 3. En Paddle → Checkout → Checkout settings: configurá el **default payment link** con la página de pago propia, `https://app.<dominio>/pago.html` (en local, `http://127.0.0.1:5173/pago.html`). Sin eso Paddle rechaza la creación de cualquier pago (`transaction_default_checkout_url_not_set`, visible en el log del gateway como `[billing] Paddle no creó el pago`).
 3b. En Paddle → Developer tools → Authentication → **Client-side tokens**: creá uno y cargalo en `DIAGRAMIA_PADDLE_CLIENT_TOKEN`. Es público (`test_…` en sandbox, `live_…` en real) y es lo único de Paddle que llega al navegador. Sin él, el editor no ofrece Pro.
+
+**Cantidad de Pro:** Diagramia vende una suscripción por cuenta, sin asientos adicionales. En **cada precio** mensual y anual de Paddle fijá `quantity.minimum = 1` y `quantity.maximum = 1` (Catalog → Prices, o `PATCH /prices/{price_id}`). Si se deja el máximo predeterminado de 100, el checkout permite subir la cantidad y el importe sin conceder más beneficios. Los dos precios actuales del sandbox quedaron limitados a 1 el 12/10/2026; repetirlo al crear precios live o de reemplazo y comprobarlo antes de ofrecerlos.
 
 **Comprobación del 12/10/2026:** el enlace predeterminado del sandbox ya devuelve `https://app.diagramia.app/pago.html` al crear una transacción. No enviar esa misma URL otra vez en `checkout.url`: Paddle la trata como un override y responde `transaction_checkout_url_domain_is_not_approved`, aunque el enlace predeterminado funcione. El gateway valida que la URL devuelta siga siendo la página propia antes de enviarla al navegador. Para un eventual entorno live, el dominio sí debe estar aprobado en Paddle.
 
@@ -91,6 +93,38 @@ El gateway recibe los avisos de Paddle en `https://app.<dominio>/api/v1/billing/
 
 **Si la configuración queda incompleta**, el gateway arranca igual con el cobro apagado y lo dice en el log (`COBRO APAGADO`, `COBRO SIN PÁGINA DE PAGO`, `OFERTA APAGADA`). `npm run doctor` muestra qué falta.
 4. Desplegá y probá en el sandbox con una tarjeta de prueba de Paddle. No uses claves reales hasta que Paddle apruebe la cuenta.
+
+### Pasar la tienda de sandbox a live (ADR 098)
+
+La app de producción sigue en sandbox hasta que hagas estos pasos. Paddle no copia nada entre entornos: la cuenta live tiene su propio catálogo, credenciales y destino de avisos, con otros IDs. `scripts/paddle-live.mjs` los crea y los carga en `.env.production` para no copiar IDs ni secretos a mano. [Checklist oficial de Paddle](https://developer.paddle.com/build/go-live-checklist/).
+
+**Sólo desde el panel de Paddle, con la cuenta real** (nadie más puede hacerlo):
+
+1. Cuenta live aprobada por Paddle (sitio, negocio e identidad) y dominio `app.diagramia.app` aprobado: Checkout → Website approval.
+2. Checkout → Checkout settings → **Default payment link** = `https://app.diagramia.app/pago.html` ([documentación](https://developer.paddle.com/build/transactions/default-payment-link/)).
+3. Developer tools → Authentication → **API key** live (`pdl_live_…`) con lectura y escritura de Products, Prices, Discounts, Notification settings y Client-side tokens, y escritura de Transactions.
+
+**En el VPS, dentro del checkout:**
+
+4. En `.env.production` cambiá sólo `DIAGRAMIA_PADDLE_API_KEY` por la clave live. Si vas a ofrecer el descuento, dejá `DIAGRAMIA_OFFER_PERCENT`, `DIAGRAMIA_OFFER_MONTHS` y un vencimiento (`DIAGRAMIA_OFFER_ENDS_AT` o `DIAGRAMIA_OFFER_WELCOME_HOURS`); si no, borrá las variables `DIAGRAMIA_OFFER_*`.
+5. Creá lo que falte en la cuenta live y cargá las variables (guarda antes una copia `.env.production.antes-de-paddle-<fecha>`):
+   ```sh
+   docker run --rm -v "$PWD":/app -w /app node:22.23.1-alpine node scripts/paddle-live.mjs setup --env .env.production --write
+   ```
+   Crea el producto, el precio mensual de USD 10 y el anual de USD 40 (los dos con cantidad 1–1), el descuento si hay oferta, el destino de avisos hacia `/api/v1/billing/webhook` (sólo los ocho avisos de suscripción, sin simulaciones) y el token público de Paddle.js. Reutiliza lo que ya esté bien: correrlo dos veces no duplica nada. No imprime la clave ni el secreto del webhook.
+6. Comprobá contra Paddle, incluido el enlace de pago (deja una transacción sin pagar, que no es de ninguna cuenta):
+   ```sh
+   docker run --rm -v "$PWD":/app -w /app node:22.23.1-alpine node scripts/paddle-live.mjs check --env .env.production --probe
+   ```
+   Tiene que terminar sin ✖. Un ✖ dice qué falta y cómo resolverlo.
+7. Aplicá la configuración: `DIAGRAMIA_SKIP_PULL=1 infra/deploy.sh` (hace un respaldo y recrea el gateway con las variables nuevas).
+8. Verificá desde afuera: `curl -H "x-diagramia-client: editor" https://app.diagramia.app/api/v1/billing/config` debe responder `"env":"live"` y un token `live_…`. Abrí el pago con tu cuenta y cerralo sin pagar; en el primer pago real mirá la consola del navegador por orígenes bloqueados.
+
+**Qué pasa con las pruebas del sandbox.** Cada suscripción guarda el entorno que la originó (migración 009). Al arrancar en `live`, el gateway quita las suscripciones pagadas con tarjetas de prueba y lo informa en el log (`se quitaron N suscripción(es) de prueba`): esas cuentas vuelven a Free sin perder diagramas. El destino de avisos del sandbox puede seguir apuntando al servidor; sus avisos llegan firmados con otro secreto y se rechazan. Conviene desactivarlo en el panel del sandbox.
+
+**Volver al sandbox:** restaurá la copia `.env.production.antes-de-paddle-<fecha>` y corré `DIAGRAMIA_SKIP_PULL=1 infra/deploy.sh`. Las suscripciones de prueba quitadas no vuelven solas (están en el respaldo previo de `deploy.sh`), y una suscripción real conserva Pro aunque el entorno configurado sea otro.
+
+**Estado al 12/10/2026:** no hay credenciales live en el entorno de desarrollo ni acceso al panel de Paddle o al VPS desde las sesiones del agente. El script se probó contra el sandbox real en modo de sólo lectura (encuentra el producto, los dos precios, el descuento, el destino de avisos y el token que usa producción, sin crear nada) y con un doble de la API para la creación (`apps/api/test/paddleLive.test.ts`). Falta ejecutarlo contra la cuenta live.
 
 ### Oferta por tiempo limitado (ADR 092)
 
