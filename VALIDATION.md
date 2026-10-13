@@ -442,3 +442,5 @@ Revisión manual pendiente del usuario:
 51. **Primer pago real:** pagar Pro con una tarjeta propia, ver Pro activo, cancelar desde la cuenta y pedir el reembolso en Paddle. Mirar la consola del navegador por orígenes bloqueados.
 52. **Cuenta de prueba tras el pase:** la cuenta que quedó Pro con un pago del sandbox debe volver a Free sin perder diagramas.
 53. **Cobro vencido:** con una suscripción en `past_due`, la cuenta muestra los dos enlaces y «Eliminar cuenta» pide cancelar primero.
+
+**Despliegue (13/10/2026 00:03 UTC):** commit `ea51945`, workflow https://github.com/maximo-cobeaga/DiagramIa/actions/runs/38324913809: check, database y deploy aprobados. Sonda externa por HTTPS, sin sesión y sin crear datos: 10/15 antes del despliegue (las cinco diferencias eran exactamente los cambios: tres rutas internas respondían 401/503 desde el gateway, el bundle no tenía la pantalla de cobro vencido y el aviso de privacidad era el anterior) y **15/15 después**. El cobro sigue en sandbox.
