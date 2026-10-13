@@ -35,7 +35,7 @@ function UpgradeCard({account}:{account:Account}){
       <p className="price"><strong>USD {account.billing.prices?.monthlyUsd??10}</strong> por mes{account.billing.prices?.yearlyUsd?` o USD ${account.billing.prices.yearlyUsd} por año`:''} · cancelás cuando quieras</p></div>
     <ProBenefits/>
     <button className="primary big" disabled={working} onClick={async()=>{setWorking(true);setError('');const failure=await startCheckout();if(failure){setWorking(false);setError(failure);}}}>{working?'Abriendo el pago…':'Pasar a Pro'}</button>
-    <small>Si pasan menos de 48 horas desde el pago, te lo devolvemos. <a href="https://diagramia.app/reembolsos.html" target="_blank" rel="noopener noreferrer">Condiciones</a></small>
+    <small>Si pasan menos de 14 días desde el pago, te lo devolvemos. <a href="https://diagramia.app/reembolsos.html" target="_blank" rel="noopener noreferrer">Condiciones</a></small>
     {error&&<p className="inline-note warn" role="alert">{error}</p>}
   </section>;
 }

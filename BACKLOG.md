@@ -2,6 +2,12 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Textos legales definitivos y pase a live (13/10/2026; ADR 100)
+
+- **Hecho:** sin cartel «Borrador» en privacidad, términos y reembolsos; reembolso en 14 días (textos y editor); versiones en inglés enlazadas y pie de la landing según el idioma. Check 182/182 y `smoke:landing` 11/11.
+- **Paddle live (usuario, 13/10):** `setup --write` y `check --probe` ejecutados en el VPS; el único ✖ era el default payment link, que el usuario informó haber cargado después.
+- **Pendiente del usuario:** `check --probe` sin ✖ → primer pago real, cancelación y reembolso (VALIDATION 51–52). Desactivar el destino de avisos del sandbox. La revisión legal profesional sigue sin hacerse. P4.6 sigue parcial hasta ese pago.
+
 ## Auditoría, seguridad y preparación del cobro real (12/10/2026; ADR 098–099)
 
 - **Hecho:** correcciones de seguridad del gateway, de nginx y de las reglas de suscripción; script de pase a live y marca de entorno en las suscripciones; doctor y ejemplos de configuración alineados con el despliegue real; documentación corregida. Detalle en `docs/SEGURIDAD.md`, `infra/DEPLOY.md` y `DEVELOPMENT_STATE.md`.

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy · Diagramia</title>
+<!-- Traducción de privacidad.html: los dos archivos se cambian juntos. Fuente técnica: docs/TELEMETRIA.md y docs/SEGURIDAD.md. -->
+<style>
+@font-face{font-family:Manrope;src:url('/fonts/Manrope.ttf');font-weight:200 800;font-display:swap}
+:root{--ink:#141619;--paper:#f4f6f8;--muted:#606975;--line:#d7dce2;--blue:#245cf6}
+@media (prefers-color-scheme:dark){:root{--ink:#e8ebef;--paper:#0f1114;--muted:#9aa4b2;--line:#2e343d;--blue:#7d9cff}}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 Manrope,system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+h1{font-size:34px;line-height:1.15;margin:0 0 8px}h2{font-size:20px;margin:36px 0 8px}
+p,li{color:var(--ink)}small,.note{color:var(--muted)}a{color:var(--blue)}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+.table{overflow-x:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>How we handle your data</h1>
+<p class="note">Last updated: October 8, 2026 · This is a translation of the <a href="privacidad.html" lang="es" hreflang="es">Spanish version</a>. If the two differ, the Spanish version prevails.</p>
+
+<h2>In short</h2>
+<ul>
+  <li>You can use the canvas <strong>without an account</strong>: your diagrams stay in your browser.</li>
+  <li>We measure <strong>how Diagramia is used</strong> (which tools, errors, timings), <strong>never the content</strong> of your diagrams.</li>
+  <li>When you use the AI, your request and the necessary part of the diagram are sent to the model provider to generate the proposal.</li>
+  <li>You can turn measurement off, and you can delete your account and everything you saved to the cloud at any time.</li>
+</ul>
+
+<h2>Who is responsible</h2>
+<p>Maximo Andres Cobeaga, Misiones 134, Mar del Plata, Buenos Aires, Argentina. Privacy contact: <a href="mailto:mcobeaga@diagramia.app">mcobeaga@diagramia.app</a>.</p>
+
+<h2>What data we use and why</h2>
+<div class="table"><table>
+  <thead><tr><th>Data</th><th>Purpose</th><th>Where and for how long</th></tr></thead>
+  <tbody>
+    <tr><td>Your diagrams without an account</td><td>So you do not lose your work</td><td>Only in your browser (local storage). They do not reach our servers unless you save them to the cloud or use the AI.</td></tr>
+    <tr><td>Anonymous usage data: tools used, number of elements, exports, errors (without messages), load times, device and browser type, language, referring site (domain only) and campaign</td><td>Understanding what works and where people get stuck, to improve the product</td><td>In our database. They are identified by a random code stored in your browser, not by your name. For now they have no automatic deletion period: they are kept while the service is active, unless you delete your account (they are unlinked from you) or ask us to delete them.</td></tr>
+    <tr><td>Account: email, whether it is verified, and the identifier given by the sign-in service</td><td>Signing in, saving to the cloud and using the AI with its quota</td><td>While you have the account.</td></tr>
+    <tr><td>Diagrams saved to the cloud and their versions</td><td>So you can open them from any device and recover versions</td><td>While you have the account, and in backups for up to 14 days after you delete them.</td></tr>
+    <tr><td>AI requests: your text and the necessary part of the diagram</td><td>Generating the proposal</td><td>They are sent to the model provider. We keep the response for 24 hours for retries and, for 90 days, only the record of credits used, without content.</td></tr>
+    <tr><td>A link you ask a preview for</td><td>Fetching the title and description of that page</td><td>Only when you click «Traer título y descripción» (Fetch title and description). Our server visits the page (the site sees our address, not yours) and keeps the result in memory for about 10 minutes. The link is not kept in logs or in the database.</td></tr>
+    <tr><td>Your feedback on a response (👍/👎 and reason)</td><td>Improving the AI</td><td>Together with the usage data. It does not include free text.</td></tr>
+    <tr><td>Pro subscription: subscription and customer identifiers in Paddle, status, renewal or cancellation date</td><td>Knowing whether your account is Pro and showing you when it renews</td><td>While you have the account. Payment data (card, billing, taxes) is received and stored by Paddle, not by us.</td></tr>
+    <tr><td>Business inquiries: name, email, company, team size and message</td><td>Answering your commercial inquiry</td><td>In a private inbox that only verified administrators can access, separate from telemetry. For now it has no automatic deletion; you can ask for its deletion by email.</td></tr>
+    <tr><td>IP address</td><td>Limiting abuse (request frequency)</td><td>Only in memory: one minute for AI and events, up to one hour for business inquiries. It is not stored in the database.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Cookies and storage in your browser</h2>
+<ul>
+  <li><strong>Session</strong> (<code>diagramia_session</code>): needed to keep you signed in. It lasts up to 30 days or until you sign out.</li>
+  <li><strong>Sign-in</strong> (<code>diagramia_oidc_flow</code>): lasts 10 minutes, only during sign-in.</li>
+  <li><strong>Local storage</strong>: your drafts, your preferences (theme, tutorial) and the anonymous measurement code.</li>
+  <li>We do not use advertising cookies or third-party analytics tools.</li>
+</ul>
+
+<h2>Who we share data with</h2>
+<p>Only with the providers we need for Diagramia to work, and only what is necessary:</p>
+<ul>
+  <li><strong>Auth0 (Okta)</strong>: sign-in. If you sign in with Google, also Google.</li>
+  <li><strong>AI model provider</strong> (DeepSeek or OpenAI, depending on the model in use): generates the proposals from your request. Privacy policies: <a href="https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html">DeepSeek</a> and <a href="https://openai.com/policies/privacy-policy/">OpenAI</a>.</li>
+  <li><strong>Paddle</strong> (Paddle.com Market Limited): processes the payments of the Pro subscription and acts as the authorized reseller (Merchant of Record). It receives the payment data you enter on its page; <a href="https://www.paddle.com/legal/privacy">its privacy policy</a>.</li>
+  <li><strong>Hostinger</strong>: the server where Diagramia runs. The server is in São Paulo, Brazil. <a href="https://www.hostinger.com/legal/privacy-policy">Hostinger privacy policy</a>.</li>
+</ul>
+<p>We do not sell your data.</p>
+
+<h2>Your choices and rights</h2>
+<ul>
+  <li><strong>Turning measurement off:</strong> in the editor, «Cuenta → Configuración → Privacidad» (Account → Settings → Privacy). If your browser asks not to be tracked (Do Not Track or Global Privacy Control), we measure nothing.</li>
+  <li><strong>Deleting your account:</strong> under «Cuenta → Configuración → Eliminar mi cuenta» (Account → Settings → Delete my account). Your account, your cloud diagrams with their versions and your credits are deleted. Usage data you already sent is unlinked from your account. Business inquiries are handled separately: ask us to delete them by email.</li>
+  <li><strong>Access, correction or questions:</strong> write to us at <a href="mailto:mcobeaga@diagramia.app">mcobeaga@diagramia.app</a>. You can file a complaint with the data protection authority of your country. In Argentina, the Agencia de Acceso a la Información Pública.</li>
+</ul>
+
+<h2>Security</h2>
+<p>Connections are encrypted (HTTPS). Provider keys never reach your browser. Each account can only see its own diagrams, and we make daily backups.</p>
+
+<h2>Minors</h2>
+<p>You must be at least 18 years old to create an account.</p>
+
+<h2>Changes</h2>
+<p>If we change something important, we will announce it on this page and in the editor before it applies.</p>
+</main>
+</body>
+</html>

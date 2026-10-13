@@ -223,7 +223,7 @@ El detalle técnico, cómo actualizar y cómo volver atrás está en `infra/DEPL
    - Dejarlo así, o hacer el repositorio **privado** en GitHub: Settings → Danger Zone → Change visibility. Es lo más simple si querés que sea un producto comercial.
    - Una licencia abierta (MIT o Apache-2.0): otros pueden usar y copiar el código.
    - Decime cuál preferís y la agrego.
-2. **Aviso de privacidad:** el borrador está en `apps/editor/public/privacidad.html` y describe exactamente lo que hace el sistema. Los datos ya están completos (08/10/2026) y está publicado con el cartel «Borrador»: hacelo revisar por un abogado, junto con los términos y la política de reembolsos, y avisame para quitar el cartel.
+2. **Aviso de privacidad:** el borrador está en `apps/editor/public/privacidad.html` y describe exactamente lo que hace el sistema. Los datos ya están completos (08/10/2026) y desde el 13/10/2026 se publica sin el cartel «Borrador», con versión en inglés (`privacy.html`). La revisión de un abogado, junto con los términos y la política de reembolsos, sigue siendo recomendable.
 3. **Visitantes de Europa:** si vas a buscar usuarios en la UE, preguntale al abogado si hace falta un aviso de consentimiento para la medición anónima. Si dice que sí, lo agrego.
 4. **Subir los cambios a GitHub:** decime «hacé push» y lo hago. Así también corre la verificación automática (CI) en GitHub.
 
@@ -259,7 +259,7 @@ Para decidir precio y cuotas hace falta el costo real por pedido. Con DeepSeek l
 - tu nombre o el de tu empresa dentro de los Términos;
 - el sitio publicado con HTTPS.
 
-Las páginas de precios, términos y reembolsos las preparo yo como borrador; el contenido legal lo tenés que revisar vos, idealmente con un abogado. Argentina no figura en la lista de países no admitidos para vendedores (revisado el 05/10/2026). Antes de cargar los datos de cobro, confirmá en el panel de Paddle las comisiones, el mínimo y el medio de pago hacia Argentina: cambian y no los verifiqué en su documentación.
+Las páginas de precios, términos y reembolsos ya están publicadas (términos y reembolsos también en inglés; reembolso en 14 días, ADR 100); el contenido legal lo tenés que revisar vos, idealmente con un abogado. Argentina no figura en la lista de países no admitidos para vendedores (revisado el 05/10/2026). Antes de cargar los datos de cobro, confirmá en el panel de Paddle las comisiones, el mínimo y el medio de pago hacia Argentina: cambian y no los verifiqué en su documentación.
 
 **8.4. Contador.** Vas a recibir pagos del exterior por un servicio. Preguntale cómo facturarlo y declararlo según tu situación fiscal antes de activar la cuenta real.
 

@@ -22,7 +22,7 @@ Del contexto de la visita se guarda: campaña UTM (como slug), **sólo el host**
 
 - El editor respeta **Do Not Track** y **Global Privacy Control**: con cualquiera de los dos no envía nada.
 - En «Sesión → Privacidad» hay un interruptor para apagar la medición. Apagada, no guarda ningún ID en el navegador.
-- **Aviso de privacidad:** el borrador está en `apps/editor/public/privacidad.html`, servido en `/privacidad.html` y enlazado desde la landing y desde «Sesión → Privacidad». Los datos se completaron el 08/10/2026; sigue publicado como borrador hasta su revisión legal.
+- **Aviso de privacidad:** está en `apps/editor/public/privacidad.html` (inglés: `privacy.html`; se cambian juntos), servido en `/privacidad.html` y enlazado desde la landing y desde «Sesión → Privacidad». Los datos se completaron el 08/10/2026 y desde el 13/10/2026 se publica sin el cartel de borrador (ADR 100), sin revisión legal profesional.
 - Al eliminar una cuenta, sus eventos quedan sin `user_id` y se borra el vínculo anónimo→cuenta.
 - **Pendiente antes de lanzar:** revisión legal del aviso de privacidad y decidir si hace falta un banner de consentimiento para visitantes de la UE (ePrivacy/GDPR). Mientras tanto, la medición es propia, sin terceros y sin contenido.
 

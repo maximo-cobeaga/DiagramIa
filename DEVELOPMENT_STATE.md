@@ -2,6 +2,15 @@
 
 ## Último checkpoint
 
+13/10/2026 (textos legales definitivos y pase a live; ADR 100). Pedido del usuario: quitar el cartel «Borrador» y dejar los textos listos para la aprobación de Paddle.
+- **Decisiones del usuario (preguntadas en la sesión):** reembolso completo en 14 días (antes 48 horas); titular Maximo Andres Cobeaga, igual que la cuenta de Paddle; textos en español e inglés; publicar y pasar a live en el mismo despliegue.
+- **Cambios:** `terminos.html`, `reembolsos.html` y `privacidad.html` sin el cartel; `terms.html`, `refunds.html` (landing) y `privacy.html` (editor) nuevos, enlazados con su versión en español y con la aclaración de que prevalece el español; pie y precios de la landing enlazan según el idioma (`data-page-es|en` en `app.js`); el editor anuncia 14 días. Sin cambios de schema, API ni dependencias.
+- **Verificación:** `npm run check` 182/182; `smoke:landing` 11/11 con PostgreSQL y Chromium reales (comprobación nueva de los textos legales).
+- **Paddle live (hecho por el usuario; el agente no tiene acceso al VPS ni al panel):** `paddle-live.mjs setup --write` y `check --probe` en el VPS, con un único ✖ por el default payment link; después el usuario informó que ya lo cargó (`https://app.diagramia.app/pago.html`). No se repitió `check --probe` tras ese cambio.
+- **Efecto del despliegue:** `.env.production` ya tiene las variables live, así que el gateway arranca en `live` y quita las suscripciones de prueba del sandbox. No hace falta otro despliegue para cobrar.
+- **Límites:** los textos no tienen revisión legal profesional. Ningún pago real se completó todavía.
+- **Próximo paso inequívoco (usuario):** repetir `check --probe` en el VPS (debe terminar sin ✖) y hacer el primer pago real con cancelación y reembolso (VALIDATION 51–52), mirando la consola por orígenes bloqueados. Desactivar el destino de avisos del sandbox.
+
 12/10/2026 (auditoría, seguridad y preparación del cobro real; ADR 098–099). Pedido del usuario: analizar el proyecto, resolver problemas e inconsistencias, revisar vulnerabilidades, preparar el pase de sandbox a cobros reales, documentar y desplegar.
 - **Seguridad (detalle en `docs/SEGURIDAD.md`):** corregido un bloqueo real del gateway por la vista previa de enlaces (una página de 256 KB lo dejaba ~10 s sin responder por pedido; ahora se lee en tiempo lineal); límites por IP agrupados por /64 de IPv6 y poda acotada del limitador; el cupo de inicios de sesión ya no deja a todos sin entrar; nginx no publica `/api/v1/documents` ni `/api/v1/local`; comparación de tokens en bytes; enlaces de gestión sólo https. `npm audit`: 0 vulnerabilidades. Historial de Git sin claves.
 - **Cobro:** un aviso de otra suscripción no quita el Pro vigente; no se elimina una cuenta con una suscripción viva (también vencida o en pausa) y, en ese estado, la cuenta muestra «Cambiar medio de pago» y «Cancelar suscripción»; migración 009 marca el entorno de cada suscripción y, al arrancar en `live`, se quitan las de prueba.

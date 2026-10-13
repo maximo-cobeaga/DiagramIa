@@ -59,12 +59,12 @@ Revisión del gateway, el cobro, el login, la configuración de nginx y el front
 - **Contenedor `web`:** nginx corre con las capacidades por defecto de la imagen oficial; el gateway sí corre sin root, sin capacidades y con sistema de archivos de sólo lectura.
 - **Ataque volumétrico:** los límites del gateway viven en memoria de un proceso; no reemplazan un límite en el proxy del VPS o un servicio delante.
 - **Reembolsos y contracargos:** el gateway sólo procesa avisos de suscripción. Un reembolso hecho en Paddle no baja el plan hasta que la suscripción se cancele.
-- **Textos legales:** privacidad, términos y reembolsos siguen marcados como borrador y sin revisión profesional; Paddle los revisa para aprobar la cuenta real.
+- **Textos legales:** privacidad, términos y reembolsos se publican como definitivos desde el 13/10/2026 (ADR 100), en español e inglés, sin revisión profesional; Paddle los revisa para aprobar la cuenta real.
 
 ## Pendiente antes de lanzar
 
 - **Auth0 real:** configurar el tenant, exigir el email verificado, revisar la pantalla de login con la marca y probar el login completo en HTTPS.
-- **Privacidad y textos legales:** `privacidad.html`, `terminos.html` y `reembolsos.html` ya tienen los datos completos (08/10) pero están publicados con el cartel «Borrador»: falta la revisión profesional para quitarlo. Decidir sobre el consentimiento de visitantes de la UE (ADR 051). Retención mínima y eliminación de cuenta ya implementadas (ADR 056).
+- **Privacidad y textos legales:** `privacidad.html`, `terminos.html` y `reembolsos.html` tienen los datos completos (08/10) y se publican sin el cartel «Borrador» por decisión del usuario (13/10, ADR 100), con versión en inglés (`privacy.html`, `terms.html`, `refunds.html`). La revisión profesional sigue sin hacerse. Decidir sobre el consentimiento de visitantes de la UE (ADR 051). Retención mínima y eliminación de cuenta ya implementadas (ADR 056).
 - **Licencia del código:** el repositorio es público y todavía no tiene licencia elegida (ADR 043).
 - **Alerta de gasto:** fijar `DIAGRAMIA_ALERT_WEBHOOK_URL` en producción (guía, paso 5).
 - **Revisión externa:** al tener tráfico real o antes de cobrar, una revisión independiente de autenticación y del MCP remoto.

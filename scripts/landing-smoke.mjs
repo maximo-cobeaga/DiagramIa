@@ -84,6 +84,19 @@ try{
     await send('Page.reload');await sleep(250);assert.equal(await js('document.documentElement.lang'),'es','idioma persistente');
     await js("document.querySelector('#language').click()");assert.equal(await js('document.documentElement.lang'),'en');
   });
+  await check('textos legales: sin cartel de borrador, 14 días en los dos idiomas y enlaces según el idioma',async()=>{
+    const pages="[...document.querySelectorAll('footer [data-page-en]')].map(a=>new URL(a.href).pathname.split('/').pop())";
+    await navigate('/');assert.deepEqual(await js(pages),['terms.html','refunds.html','privacy.html']);
+    await js("document.querySelector('#language').click()");assert.deepEqual(await js(pages),['terminos.html','reembolsos.html','privacidad.html']);
+    await js("document.querySelector('#language').click()");
+    for(const [page,other,window] of [['terms.html','terminos.html'],['refunds.html','reembolsos.html','14 days'],['terminos.html','terms.html'],['reembolsos.html','refunds.html','14 días']]){
+      await navigate('/'+page);const text=await js('document.body.textContent');
+      assert.ok(!/borrador|draft/i.test(text),page+' sigue marcado como borrador');
+      assert.ok(await js(`Boolean(document.querySelector('nav a[href="${other}"]'))`),page+' no enlaza al otro idioma');
+      if(window)assert.ok(text.includes(window)&&!text.includes('48'),page+' no anuncia el plazo de 14 días');
+      assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'),page+' desborda');
+    }
+  });
   for(const width of [1440,390,320])await check(`empresas ${width}px: formulario accesible sin desborde`,async()=>{
     await send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<600});await navigate('/empresas.html');
     assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'));

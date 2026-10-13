@@ -10,7 +10,6 @@ nav a[aria-current=page]{color:var(--blue);font-weight:700}
 main{max-width:760px;margin:0 auto;padding:24px 20px 72px}
 h1{font-size:34px;line-height:1.15;margin:0 0 8px}h2{font-size:20px;margin:36px 0 8px}
 a{color:var(--blue)}small,.note{color:var(--muted)}
-.draft{border:1px solid var(--line);border-radius:8px;padding:12px 16px;font-size:14px;background:var(--card)}
 .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:24px 0}
 .plan{border:1px solid var(--line);border-radius:12px;padding:24px;background:var(--card)}
 .plan.pro{border-color:var(--blue);border-width:2px}
