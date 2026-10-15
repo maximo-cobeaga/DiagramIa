@@ -92,8 +92,11 @@ try{
     vite=spawn(process.execPath,[join(root,'apps/editor/node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port',String(editorPort),'--strictPort'],{cwd:join(root,'apps/editor'),env:{...process.env,DIAGRAMIA_API_URL:api},stdio:'ignore'});
     let ready=false;for(let i=0;i<80&&!ready;i++){try{ready=(await fetch(origin)).ok;}catch{}if(!ready)await sleep(250);}assert.ok(ready,'Vite no inició');
     profile=mkdtempSync(join(tmpdir(),'diagramia-founder-'));
-    browser=spawn(browserExe,['--headless=new','--lang=es-AR',`--remote-debugging-port=${debugPort}`,`--user-data-dir=${profile}`,'--no-first-run','--disable-gpu','--window-size=1440,900','about:blank'],{stdio:'ignore'});
-    let ws;for(let i=0;i<80&&!ws;i++){try{ws=(await(await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json()).find(p=>p.type==='page')?.webSocketDebuggerUrl;}catch{}if(!ws)await sleep(250);}assert.ok(ws,'Chrome no inició');
+    // En los runners de Linux el sandbox de Chrome puede no tener permisos (AppArmor); fuera de CI se conserva.
+    const sandbox=process.platform==='linux'&&process.env.CI?['--no-sandbox']:[];
+    browser=spawn(browserExe,['--headless=new',...sandbox,`--remote-debugging-port=${debugPort}`,`--user-data-dir=${profile}`,'--no-first-run','--disable-gpu','--window-size=1440,900','about:blank'],{stdio:['ignore','ignore','pipe']});
+    let browserLog='';browser.stderr.on('data',chunk=>{browserLog=(browserLog+chunk).slice(-2000);});
+    let ws;for(let i=0;i<80&&!ws;i++){try{ws=(await(await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json()).find(p=>p.type==='page')?.webSocketDebuggerUrl;}catch{}if(!ws)await sleep(250);}assert.ok(ws,`Chrome no inició (${browserExe}, salida ${browser.exitCode}):\n${browserLog}`);
     socket=new WebSocket(ws);await new Promise((resolve,reject)=>{socket.onopen=resolve;socket.onerror=reject;});
     let sequence=0;const pending=new Map();socket.onmessage=event=>{const msg=JSON.parse(event.data);if(msg.id){const wait=pending.get(msg.id);pending.delete(msg.id);msg.error?wait.reject(new Error(msg.error.message)):wait.resolve(msg.result);}};
     const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject});socket.send(JSON.stringify({id,method,params}));});
@@ -101,7 +104,8 @@ try{
     const shot=async name=>{mkdirSync(join(root,'state/smoke'),{recursive:true});writeFileSync(join(root,'state/smoke',name+'.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));};
     await send('Page.enable');await send('Runtime.enable');await send('Network.enable');
     await send('Network.setCookie',{name:'diagramia_session',value:ana.token,url:origin});
-    await send('Page.navigate',{url:origin+'/#fundador'});
+    // El panel del fundador está sólo en español: el idioma se fija por la dirección, igual en cualquier sistema.
+    await send('Page.navigate',{url:origin+'/?lang=es#fundador'});
     // La bandeja de consultas carga aparte: sólo se cuentan los indicadores del panel.
     const metricTiles="[...document.querySelectorAll('.founder-tile')].filter(t=>t.closest('section')?.getAttribute('aria-label')!=='Consultas de empresas').length";
     let tiles=0;for(let i=0;i<60&&tiles<17;i++){await sleep(250);tiles=await js(metricTiles);}
