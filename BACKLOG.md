@@ -2,8 +2,32 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Auditoría externa del sitio (15/10/2026; ADR 106–108)
+
+- **Implementado, local:** arreglos de la auditoría (privacidad sin JavaScript, JSON de ejemplo, topes diarios, «Diagramia»), `pricing.html` y `business.html` en inglés, buscadores (`robots`, `sitemap`, Open Graph, `canonical`, `hreflang`, `noindex` en el editor), `security.txt`, 404 real en nginx, Términos y Privacidad con proveedor de IA, créditos, base legal y transferencias. Enlace para compartir y GIF/video, hechos en la sesión anterior, registrados y verificados (P4.2/P6.4/P8.2/P8.3).
+- **Evidencia:** check 200/200, landing 13/13, editor 62/62, shared y repository con PostgreSQL real, nginx de producción en local.
+- **Pendiente del usuario:** autorizar commit y push; revisión manual 61–63; Search Console y Bing. Decidir: retención de datos de uso y consultas (propuesta: 13 meses con borrado automático), si compartir es sólo Pro, domicilio publicado, voseo o español neutro, y si el anual conserva USD 40 en las renovaciones cuando termine la oferta.
+- **Para después (producto):** elegir o desactivar DeepSeek por cuenta o empresa; tokens MCP con alcance por diagrama y registro de acciones; Turnstile si llega spam al formulario; mover las políticas al dominio principal; versión en inglés del panel del fundador.
+
+## Editor en inglés, enlace para compartir y video (13–14/10/2026; ADR 105)
+
+- **Implementado, local:** editor bilingüe con español como fuente (P8.1/P8.2). Check 195/195 y editor 61/61.
+- **Pendiente de verificación:** `smoke:shared` y `smoke:landing` tras el cambio; cuenta y plan en inglés en navegador; IA en inglés con modelo real; revisión de la traducción por un hablante nativo.
+- **Pendiente de construir:** ~~enlace para compartir, GIF/video, `precios.html` y `empresas.html` en inglés~~ (hechos; ver la sección del 15/10). Siguen sólo en español el panel del fundador y los mensajes de validación del core.
+
+## Uso del administrador, chat persistente y nube por pestaña (13/10/2026; ADR 102–104)
+
+- **Implementado, local:** uso de IA del administrador registrado y visible (P4.4/P4.6); botón de enviar del chat alineado, conversación por pestaña e historial local (P3.4/P8.1); nube por pestaña, botón en la cabecera y guardado automático optativo (P4.2). Check 188/188, editor 60/60, `smoke:shared` y `smoke:repository`.
+- **Pendiente:** autorización para publicar y revisión manual 55–58. Decidir si el guardado automático debe venir encendido para cuentas nuevas (hoy apagado por privacidad) y si el historial del chat debe sincronizarse en la nube (requiere guardar pedidos en el servidor). La cabecera del editor ocupa dos filas a 1440 px con sesión y plan Free, como antes de este cambio.
+
+## Bots fuera de la medición (13/10/2026; ADR 101)
+
+- **Implementado, local:** descarte por user agent en `/v1/events` y `navigator.webdriver` en landing y editor (P7.1). Check 184/184, `smoke:shared` y `smoke:landing` 11/11.
+- **Pendiente:** autorización para publicar. Después, mirar si baja «Visitantes de la landing». Si siguen entrando bots disfrazados, evaluar señales de comportamiento (visitas sin scroll ni interacción) antes que un servicio externo. Los ingresos en dinero no están en el panel del fundador: se ven en Paddle.
+
 ## Textos legales definitivos y pase a live (13/10/2026; ADR 100)
 
+- **Desplegado:** `7972f8d`; producción responde `env=live` (verificado desde afuera).
 - **Hecho:** sin cartel «Borrador» en privacidad, términos y reembolsos; reembolso en 14 días (textos y editor); versiones en inglés enlazadas y pie de la landing según el idioma. Check 182/182 y `smoke:landing` 11/11.
 - **Paddle live (usuario, 13/10):** `setup --write` y `check --probe` ejecutados en el VPS; el único ✖ era el default payment link, que el usuario informó haber cargado después.
 - **Pendiente del usuario:** `check --probe` sin ✖ → primer pago real, cancelación y reembolso (VALIDATION 51–52). Desactivar el destino de avisos del sandbox. La revisión legal profesional sigue sin hacerse. P4.6 sigue parcial hasta ese pago.

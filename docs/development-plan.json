@@ -479,7 +479,7 @@
           ],
           "acceptance": "Export coincide con canvas sin UI, fonts/embed seguros, resolución elegible; JSON sigue siendo formato lossless; video no reemplaza documento.",
           "status": "partial",
-          "evidence": "SVG autónomo con tipografías incrustadas, PNG 1×/2×/3×, PDF A4 rasterizado del diagrama y PDF multipágina de la presentación con escenarios, cámara, resaltados y captions. Límites de 100 páginas y 4096 px por página; smoke Chromium comprueba firmas/tamaños PDF. Sigue parcial: falta un artefacto de animación con tiempo/movimiento (video u otro formato temporal), opciones de resolución para PDF y revisión visual manual de PDFs complejos. JSON es la copia sin pérdidas."
+          "evidence": "SVG autónomo con tipografías incrustadas, PNG 1×/2×/3×, PDF A4 rasterizado del diagrama y PDF multipágina de la presentación con escenarios, cámara, resaltados y captions. Límites de 100 páginas y 4096 px por página; smoke Chromium comprueba firmas/tamaños PDF. Desde el 14/10/2026 (ADR 107) la animación se exporta como GIF (960 × 540) y como video (1280 × 720, MP4 o WebM según el navegador), generados en el navegador; el smoke los hace decodificar por Chromium y comprueba tamaño, duración y contenido de un cuadro. Sigue parcial: faltan opciones de resolución para PDF, el video sin verificar en Firefox y Safari, y la revisión visual manual de PDFs complejos. JSON es la copia sin pérdidas."
         }
       ]
     },

@@ -3,6 +3,7 @@ import {commit,documentStore,newId,notify} from '../store/documentStore';
 import {playbackStore} from '../store/playbackStore';
 import {viewStore} from '../store/viewStore';
 import {track} from '../telemetry';
+import {t} from '../i18n';
 
 export type TourStep={caption:string;nodeIds:string[];edgeIds:string[]};
 
@@ -28,7 +29,7 @@ export function tourAction(doc:DiagramDocument,steps:TourStep[],label:string):Ex
  */
 export function playTour(steps:TourStep[],label:string){
   const {doc}=documentStore.get(),action=tourAction(doc,steps,label);
-  if(!action){notify('Los elementos de esta explicación ya no están en el diagrama.','warn');return false;}
+  if(!action){notify(t('Los elementos de esta explicación ya no están en el diagrama.'),'warn');return false;}
   const preview=previewBatch(doc,{id:newId('tour-preview'),baseRevision:doc.revision,actions:[action]}).document;
   viewStore.set({tour:{doc:preview,previousAnimationId:playbackStore.get().animationId},presenting:true});
   playbackStore.set({animationId:action.animation.id,scenarioId:'',time:0,playing:true});
@@ -38,8 +39,8 @@ export function playTour(steps:TourStep[],label:string){
 /** Guarda el recorrido como una animación más: queda editable en la línea de tiempo y se puede presentar después. */
 export function saveTour(steps:TourStep[],label:string){
   const {doc}=documentStore.get(),action=tourAction(doc,steps,label);
-  if(!action){notify('Los elementos de esta explicación ya no están en el diagrama.','warn');return false;}
-  const saved=commit({id:newId('ui'),baseRevision:doc.revision,actions:[action]},'Explicación guardada como animación','ai');
+  if(!action){notify(t('Los elementos de esta explicación ya no están en el diagrama.'),'warn');return false;}
+  const saved=commit({id:newId('ui'),baseRevision:doc.revision,actions:[action]},t('Explicación guardada como animación'),'ai');
   if(saved){track('animation_created',{origin:'tour',steps:action.animation.steps.length});playbackStore.set({animationId:action.animation.id,scenarioId:'',time:0,playing:false});}
   return saved;
 }

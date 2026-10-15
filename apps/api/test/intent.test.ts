@@ -24,6 +24,27 @@ test('the mode is inferred from how people actually ask, with or without accents
   for(const [prompt,mode] of cases)assert.equal(inferMode(prompt,false),mode,prompt);
 });
 
+test('requests written in English reach the same modes as their Spanish equivalents',()=>{
+  const cases:[string,ReturnType<typeof inferMode>][]=[
+    ['Explain what this diagram does','explain'],
+    ['What does this system do?','explain'],
+    ['Why did you add Redis','explain'],
+    ['What risks do you see in this diagram?','review'],
+    ['Review the architecture and point out bottlenecks','review'],
+    ['Write the documentation in Markdown','document'],
+    ['Create a login diagram with user, frontend, API and database','create'],
+    ['Draw a flowchart for a purchase','create'],
+    ['Add Redis as a cache inside Backend, below the API','edit'],
+    ['Connect the API to the database','edit'],
+    ['Change the frontend color to green','edit'],
+    ['Rearrange the diagram so it reads left to right','transform'],
+    ['Animate the walkthrough of a purchase','animate'],
+    ['Review and add a replica to the database','edit']
+  ];
+  for(const [prompt,mode] of cases)assert.equal(inferMode(prompt,false),mode,prompt);
+  assert.equal(inferMode('Add a user and an API',true),'create');
+});
+
 test('an empty canvas turns change requests into a new diagram, but a plain question is still answered',()=>{
   assert.equal(inferMode('Agregá un usuario y una API',true),'create');
   assert.equal(inferMode('login con google',true),'create');

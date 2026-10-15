@@ -12,7 +12,9 @@ export const AssistRequestSchema=z.strictObject({
   // Turnos anteriores de la conversación, en texto. El documento sólo viaja en el pedido actual, siempre en su revisión vigente.
   history:z.array(z.strictObject({role:z.enum(['user','assistant']),content:z.string().trim().min(1).max(4000)})).max(8).default([]),
   // «Explicar más» pide la versión ampliada; por defecto las respuestas son breves.
-  detail:z.enum(['brief','expanded']).default('brief')
+  detail:z.enum(['brief','expanded']).default('brief'),
+  // Idioma del editor: todo lo que el modelo escribe para la persona va en ese idioma. Sin el campo, español (clientes anteriores y MCP).
+  language:z.enum(['es','en']).default('es')
 }).refine(r=>r.history.every((turn,i)=>turn.role===(i%2?'assistant':'user'))&&r.history.length%2===0,'history debe alternar user/assistant y terminar en assistant');
 // Los modelos suelen mandar null donde el contrato dice texto vacío: se acepta y se normaliza en vez de gastar una reparación.
 const Text=(max:number)=>z.string().max(max).nullish().transform(value=>value??'');
@@ -198,6 +200,8 @@ function designed(actions:ActionInput[],doc:DiagramDocument,requestId:string):Ac
   return [...actions,...style,...(tour?[tour]:[])];
 }
 const estimateTokens=(chars:number)=>Math.ceil(chars/3);
+// Va al final del prompt de sistema: las instrucciones siguen en español, lo que lee la persona no.
+const LANGUAGE_EN='\n\nIDIOMA DE LA RESPUESTA: inglés. Todo el texto que escribas para la persona va en inglés, aunque estas instrucciones estén en español: resumen, preguntas y sus opciones, explicaciones, observaciones, textos de los pasos de animación y nombres de los elementos, zonas y conexiones nuevos. No traduzcas IDs ni los nombres de elementos que ya existen en el documento.';
 
 type Dependencies={providers:Provider[];ledger:UsageLedger;config:AssistConfig;system:string;createSystem?:string;rateLimitExempt?:boolean};
 /**
@@ -220,13 +224,13 @@ export async function assist(input:unknown,deps:Dependencies,clientSignal:AbortS
   const nodeIndex=doc.nodes.length?`\n\nNODOS (ID → nombre): ${doc.nodes.slice(0,80).map(n=>`${n.id} → ${n.label}`).join('; ')}${doc.nodes.length>80?'; …':''}`:'';
   const zoneIndex=doc.zones.length?`\n\nZONAS (ID → nombre): ${doc.zones.slice(0,60).map(z=>`${z.id} → ${z.label}`).join('; ')}`:'';
   const first=`MODO: ${request.mode}\n${MODE_BRIEF[request.mode]}\n\nCONTEXTO DEL DOCUMENTO (JSON):\n${context.body}${nodeIndex}${zoneIndex}${choice?.chosen?`\nEl usuario eligió la zona de ID "${choice.chosen.id}" entre las ${choice.twins.length} que se llaman «${choice.chosen.label}». Usá ese ID.`:''}\n\nPEDIDO DEL USUARIO:\n${request.prompt}\n\nFORMATO DE RESPUESTA:\n${OUTPUT_CONTRACT(request.mode,request.detail)}${ACTION_MODES.includes(request.mode)||request.mode==='review'?SUMMARY_RULE:''}${QUESTION_RULE}`;
-  const system=request.mode==='create'&&deps.createSystem?deps.createSystem:deps.system;
+  const system=(request.mode==='create'&&deps.createSystem?deps.createSystem:deps.system)+(request.language==='en'?LANGUAGE_EN:'');
   const inputEstimate=(messages:ChatMessage[])=>estimateTokens(system.length+messages.reduce((sum,m)=>sum+m.content.length,0));
   const callCost=(messages:ChatMessage[])=>inputEstimate(messages)+deps.config.maxOutputTokens;
   // Peor caso en USD: toda la entrada sin caché y la salida máxima. Se reserva antes de llamar y se libera al liquidar.
   const callUsd=(messages:ChatMessage[])=>costOf(info.pricing,inputEstimate(messages),deps.config.maxOutputTokens)??0;
   const messages:ChatMessage[]=[...request.history,{role:'user',content:first+(request.mode==='create'?CREATE_INVENTORY_RULE:'')}];
-  const signature=canonical({provider:info.id,mode:request.mode,detail:request.detail,prompt:request.prompt,revision:doc.revision,documentId:doc.id,selectedIds,history:request.history});
+  const signature=canonical({provider:info.id,mode:request.mode,detail:request.detail,prompt:request.prompt,revision:doc.revision,documentId:doc.id,selectedIds,history:request.history,language:request.language});
   // El presupuesto limita gasto: sólo los proveedores remotos lo consumen. La excepción de frecuencia viene del servidor autenticado.
   const billable=info.kind==='remote';
   const begun=deps.ledger.begin(request.requestId,signature,billable?callCost(messages):0,billable?callUsd(messages):0,deps.rateLimitExempt);

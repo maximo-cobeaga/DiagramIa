@@ -155,12 +155,15 @@ try{
     assert.equal((await new ContactRepository(sourcePool).list())[0].status,'answered');
     assert.equal((await sourcePool.query('SELECT count(*)::int AS n FROM telemetry_events WHERE props::text LIKE $1',['%Equipo de pruebas%'])).rows[0].n,0,'las consultas no son telemetría');
     for(let i=0;i<8;i++)assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(admin.token),body:JSON.stringify(aiBody(i))})).status,200,'un admin supera la cuota Free');
-    assert.equal((await accounts.creditUsage(admin.session.userId)).daily,0,'los recibos admin no consumen créditos');
+    assert.ok((await accounts.creditUsage(admin.session.userId)).daily>6,'el consumo del admin se registra aunque supere el tope de Free');
+    const adminAccount=await(await fetch(`${origin}/v1/auth/me`,{headers:as(admin.token)})).json(),aliceAccount=await(await fetch(`${origin}/v1/auth/me`,{headers:as(alice.token)})).json();
+    assert.equal(adminAccount.credits.unlimited,true);assert.ok(adminAccount.credits.daily>adminAccount.credits.dailyLimit,'la cuenta del admin muestra lo que usó, sin tope');
+    assert.equal(aliceAccount.credits.unlimited,false,'una cuenta común conserva su tope');
     const adminReceipts=await sourcePool.query('SELECT request_id,fingerprint,credits FROM ai_credit_receipts WHERE user_id=$1',[admin.session.userId]);
-    assert.equal(adminReceipts.rowCount,8);assert.ok(adminReceipts.rows.every(r=>r.credits===0));
+    assert.equal(adminReceipts.rowCount,8);assert.ok(adminReceipts.rows.every(r=>r.credits>0),'cada pedido del admin guarda su costo real');
     const reopenedAccounts=new AccountRepository(sourcePool);
     const firstAdmin=adminReceipts.rows.find(r=>r.request_id===aiBody(0).requestId);
-    assert.ok((await reopenedAccounts.reserveCredits(admin.session.userId,firstAdmin.request_id,firstAdmin.fingerprint,0)).replayed,'el recibo admin sobrevive a la instancia del repositorio');
+    assert.ok((await reopenedAccounts.reserveCredits(admin.session.userId,firstAdmin.request_id,firstAdmin.fingerprint,firstAdmin.credits,new Date(),true)).replayed,'el recibo admin sobrevive a la instancia del repositorio');
     assert.equal((await(await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(admin.token),body:JSON.stringify(aiBody(0))})).json()).replayed,true);
     assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(admin.token),body:JSON.stringify({...aiBody(0),prompt:'Otro pedido admin'})})).status,409);
     const bobAi=await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(bob.token),body:JSON.stringify(aiBody(0))});
@@ -280,6 +283,24 @@ try{
     const dave=await accounts.signIn({issuer:'https://oidc.example',subject:'dave',email:'dave@example.test'});
     assert.equal((await fetch(cloud,{method:'POST',headers:as(dave.token),body:JSON.stringify(emptyDocument(cloudId,'De Dave'))})).status,201);
     assert.equal((await fetch(`${cloud}/${cloudId}/batches`,{method:'POST',headers:as(dave.token),body:JSON.stringify({id:'dave-edit',baseRevision:0,actions:[{type:'UPDATE_DOCUMENT',changes:{title:'De Dave, editado'}}]})})).status,200);
+    // Enlace para compartir (ADR 106): lo crea el dueño, lo lee cualquiera sin sesión, cortarlo lo invalida y no revive, y muere con la cuenta.
+    const share=(token,action='share')=>fetch(`${cloud}/${cloudId}/${action}`,{method:'POST',headers:as(token)}),publicRead=token=>fetch(`${origin}/v1/shared/${token}`,{headers:{'x-diagramia-client':'editor'}});
+    const daveLink=(await(await share(dave.token)).json()).token;
+    assert.match(daveLink,/^[A-Za-z0-9_-]{24}$/,'el token son 144 bits al azar');
+    assert.equal((await(await share(dave.token)).json()).token,daveLink,'compartir dos veces devuelve el mismo enlace');
+    const publicBody=await(await publicRead(daveLink)).json();
+    assert.deepEqual(Object.keys(publicBody),['document'],'quien abre el enlace recibe el diagrama y nada de la cuenta');
+    assert.equal(publicBody.document.title,'De Dave, editado','el enlace muestra la última versión guardada');
+    assert.equal((await(await fetch(cloud,{headers:as(dave.token)})).json()).documents.find(item=>item.id===cloudId).shareToken,daveLink,'el dueño ve el enlace vigente en su lista');
+    const aliceLink=(await(await share(alice.token)).json()).token;
+    assert.notEqual(aliceLink,daveLink,'el mismo ID en otra cuenta tiene su propio enlace');
+    assert.notEqual((await(await publicRead(aliceLink)).json()).document.title,'De Dave, editado','cada enlace abre el diagrama de su cuenta');
+    assert.deepEqual(await(await share(alice.token,'unshare')).json(),{token:null});
+    assert.equal((await publicRead(aliceLink)).status,404,'cortar el enlace lo invalida');
+    assert.equal((await publicRead(daveLink)).status,200,'cortar un enlace no toca el de otra cuenta');
+    const aliceAgain=(await(await share(alice.token)).json()).token;
+    assert.notEqual(aliceAgain,aliceLink,'volver a compartir genera otro enlace');assert.equal((await publicRead(aliceLink)).status,404,'el enlace cortado no revive');
+    await share(alice.token,'unshare');
     assert.equal((await fetch(`${origin}/v1/assist`,{method:'POST',headers:as(dave.token),body:JSON.stringify({...aiBody(0),requestId:'dave-ai'})})).status,200);
     assert.equal((await sendEvents(telemetryBatch([{id:eventId(90),name:'export',at:new Date().toISOString(),props:{format:'png1'}}]),dave.token)).status,202);
     const daveDocument=(await sourcePool.query('SELECT document_id FROM cloud_documents WHERE project_id=$1',[dave.session.projectId])).rows[0].document_id;
@@ -287,6 +308,7 @@ try{
     assert.equal((await fetch(`${origin}/v1/auth/delete-account`,{method:'POST',headers:as(dave.token),body:JSON.stringify({})})).status,400,'sin confirmación no se borra nada');
     const deleted=await fetch(`${origin}/v1/auth/delete-account`,{method:'POST',headers:as(dave.token),body:JSON.stringify({confirm:'ELIMINAR'})});
     assert.equal(deleted.status,200);assert.deepEqual(await deleted.json(),{deleted:true,documents:1});
+    assert.equal((await publicRead(daveLink)).status,404,'al eliminar la cuenta, su enlace deja de abrir');
     assert.match(deleted.headers.get('set-cookie')??'',/diagramia_session=;.*Max-Age=0/,'la cookie de sesión se borra');
     const left=async(sql,params)=>(await sourcePool.query(sql,params)).rows[0].n;
     for(const [sql,params,what] of [

@@ -15,7 +15,7 @@ const Millis=z.number().int().min(0).max(3_600_000);
 /** Identificador técnico corto: plantillas, campañas, fuentes. No puede llevar espacios ni texto arbitrario largo. */
 const Slug=z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/);
 const Source=z.enum(['user','ai','mcp','import','template']);
-export const EXPORT_KINDS=['json','svg','png1','png2','png3','pdf','presentation-pdf','mermaid','drawio','dot','plantuml-class','plantuml-sequence','plantuml-state','bpmn','markdown','markdown-selection','timeline'] as const;
+export const EXPORT_KINDS=['json','svg','png1','png2','png3','pdf','presentation-pdf','animation-gif','animation-video','mermaid','drawio','dot','plantuml-class','plantuml-sequence','plantuml-state','bpmn','markdown','markdown-selection','timeline'] as const;
 export const IMPORT_KINDS=['json','mermaid','drawio','dot','plantuml','bpmn','image','other'] as const;
 export const LANDING_SECTIONS=['hero','story','equipos','play','agents','precios','cierre'] as const;
 export const EDITOR_TOOLS=['select','pan','node','connect','line','arrow','freehand','guided','eraser','zone','frame'] as const;
@@ -47,6 +47,10 @@ const EVENT_PROPS={
   import:z.strictObject({format:z.enum(IMPORT_KINDS),ok:z.boolean()}),
   tab_created:z.strictObject({}),
   presentation_started:z.strictObject({steps:Count}),
+  // Enlace público de un diagrama (ADR 106): cuántos se crean, cuántas veces se abren y cuántos visitantes pasan a Diagramia. Nunca el enlace.
+  share_link_created:z.strictObject({}),share_link_revoked:z.strictObject({}),
+  shared_view_opened:z.strictObject({animated:z.boolean(),steps:Count}),
+  shared_view_cta_clicked:z.strictObject({}),
   // Uso del editor: herramientas, paneles, inicio y animaciones. Todo enums o conteos, nunca texto.
   tool_selected:z.strictObject({tool:z.enum(EDITOR_TOOLS)}),
   panel_toggled:z.strictObject({panel:z.enum(['inspector','assistant','library','history','timeline','search','focus']),open:z.boolean()}),
@@ -162,6 +166,15 @@ export function describeAgent(userAgent:string,width:number,touch:boolean):Pick<
   const browser=/edg\//.test(ua)?'edge':/firefox|fxios/.test(ua)?'firefox':/chrome|crios|chromium/.test(ua)?'chrome':/safari/.test(ua)?'safari':'other';
   const device=/ipad|tablet/.test(ua)||(os==='android'&&!/mobile/.test(ua))||(os==='ios'&&!/iphone|ipod/.test(ua))?'tablet':/mobi|iphone|ipod/.test(ua)||width<600?'mobile':'desktop';
   return {device,browser,os};
+}
+const AUTOMATED_AGENT=/bot|crawl|spider|slurp|headless|lighthouse|pagespeed|gtmetrix|pingdom|statuscake|uptime|datadog|facebookexternalhit|mediapartners|google-inspectiontool|googleother|whatsapp|phantomjs|selenium|puppeteer|playwright|curl\/|wget|python|scrapy|go-http-client|okhttp|libwww/;
+/**
+ * Buscadores, vistas previas de enlaces, monitores y navegadores automatizados que se declaran en el user agent: no son personas
+ * y no cuentan como visitas. Un navegador siempre manda user agent; sin él, tampoco es una persona. «Cubot» es una marca de teléfonos.
+ */
+export function isAutomatedAgent(userAgent:string|null|undefined):boolean{
+  const ua=(userAgent??'').toLowerCase().replaceAll('cubot','');
+  return !ua.trim()||AUTOMATED_AGENT.test(ua);
 }
 /** Archivo y línea de un error, sin origen ni querystring. El mensaje nunca se envía: puede contener datos del usuario. */
 export function errorLocation(filename:string|undefined,line?:number,column?:number):string|null{

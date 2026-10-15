@@ -1,11 +1,12 @@
 import {useEffect,useState} from 'react';
 import {createStore} from '../store/createStore';
 import {useStore} from '../store/createStore';
+import {t} from '../i18n';
 
-export const COLORS=[['Papel','#ffffff'],['Lima','#d4f246'],['Cielo','#e5ecff'],['Rosa','#fde2ef'],['Durazno','#ffe4d6'],['Azul','#245cf6'],
-  ['Tinta','#141619'],['Gris','#606975'],['Rojo','#d12f45'],['Naranja','#e96922'],['Amarillo','#f5c842'],['Verde','#23834f'],
-  ['Menta','#bfead5'],['Turquesa','#168c97'],['Celeste','#62b5e5'],['Violeta','#7854cf'],['Lavanda','#e1d8fb'],['Fucsia','#bc3571'],
-  ['Coral','#f2a38c'],['Arena','#e8d6b6'],['Marrón','#865735'],['Oliva','#7f8e3b'],['Marino','#263866'],['Lila','#b28bd9']] as const;
+export const COLORS=[[t('Papel'),'#ffffff'],[t('Lima'),'#d4f246'],[t('Cielo'),'#e5ecff'],[t('Rosa'),'#fde2ef'],[t('Durazno'),'#ffe4d6'],[t('Azul'),'#245cf6'],
+  [t('Tinta'),'#141619'],[t('Gris'),'#606975'],[t('Rojo'),'#d12f45'],[t('Naranja'),'#e96922'],[t('Amarillo'),'#f5c842'],[t('Verde'),'#23834f'],
+  [t('Menta'),'#bfead5'],[t('Turquesa'),'#168c97'],[t('Celeste'),'#62b5e5'],[t('Violeta'),'#7854cf'],[t('Lavanda'),'#e1d8fb'],[t('Fucsia'),'#bc3571'],
+  [t('Coral'),'#f2a38c'],[t('Arena'),'#e8d6b6'],[t('Marrón'),'#865735'],[t('Oliva'),'#7f8e3b'],[t('Marino'),'#263866'],[t('Lila'),'#b28bd9']] as const;
 const HEX=/^#[0-9a-f]{6}$/i,KEY='diagramia.colors';
 function savedColors():string[]{try{const colors:unknown=JSON.parse(localStorage.getItem(KEY)??'[]');return Array.isArray(colors)?[...new Set(colors.filter((c):c is string=>typeof c==='string'&&HEX.test(c)).map(c=>c.toLowerCase()))].slice(-24):[];}catch{return [];}}
 const colorStore=createStore({custom:savedColors()});
@@ -26,9 +27,9 @@ export function ColorPicker({value,onChange}:{value?:string;onChange:(color:stri
     pick(color);
   };
   return <div className="color-picker">
-    <div className="color-grid" role="group" aria-label="Elegir un color">{COLORS.map(([name,color])=><button type="button" key={name} className={'color-dot'+(value?.toLowerCase()===color?' chosen':'')} style={{background:color}} aria-label={`Color ${name}`} title={name} aria-pressed={value?.toLowerCase()===color} onClick={()=>pick(color)}/>)}</div>
-    {custom.length>0&&<div className="custom-colors"><span>Mis colores</span><div className="color-grid">{custom.map(color=><button type="button" key={color} className={'color-dot'+(value?.toLowerCase()===color?' chosen':'')} style={{background:color}} aria-label={`Color guardado ${color}`} aria-pressed={value?.toLowerCase()===color} onClick={()=>pick(color)}/>)}</div></div>}
-    <div className="custom-color-entry"><input type="color" aria-label="Elegir color personalizado" value={valid?draft:'#245cf6'} onChange={e=>setDraft(e.target.value)}/><input aria-label="Código del color" value={draft} maxLength={7} spellCheck={false} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();save();}}}/><button type="button" disabled={!valid} onClick={save}>＋ Agregar</button></div>
-    <small>Elegí cualquier color y guardalo para volver a usarlo.</small>
+    <div className="color-grid" role="group" aria-label={t('Elegir un color')}>{COLORS.map(([name,color])=><button type="button" key={name} className={'color-dot'+(value?.toLowerCase()===color?' chosen':'')} style={{background:color}} aria-label={t('Color {0}',name)} title={name} aria-pressed={value?.toLowerCase()===color} onClick={()=>pick(color)}/>)}</div>
+    {custom.length>0&&<div className="custom-colors"><span>{t('Mis colores')}</span><div className="color-grid">{custom.map(color=><button type="button" key={color} className={'color-dot'+(value?.toLowerCase()===color?' chosen':'')} style={{background:color}} aria-label={t('Color guardado {0}',color)} aria-pressed={value?.toLowerCase()===color} onClick={()=>pick(color)}/>)}</div></div>}
+    <div className="custom-color-entry"><input type="color" aria-label={t('Elegir color personalizado')} value={valid?draft:'#245cf6'} onChange={e=>setDraft(e.target.value)}/><input aria-label={t('Código del color')} value={draft} maxLength={7} spellCheck={false} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();save();}}}/><button type="button" disabled={!valid} onClick={save}>{t('＋ Agregar')}</button></div>
+    <small>{t('Elegí cualquier color y guardalo para volver a usarlo.')}</small>
   </div>;
 }

@@ -2,7 +2,7 @@
 
 ## Qué se implementó
 
-El editor conserva el borrador en el navegador. Si se activa PostgreSQL, puede guardar una pestaña en un espacio local compartido con MCP. Con un proveedor OIDC configurado, una cuenta obtiene un proyecto privado y guardado en la nube. Cada cambio usa un lote del core, revisión optimista y un recibo durable; al reconectar se compara la revisión antes de aceptar datos remotos. Un conflicto conserva la copia local y ofrece descargarla antes de recuperar el servidor.
+El editor conserva el borrador en el navegador. Desde el 13/10/2026 cada pestaña puede estar vinculada a su propio documento remoto (ADR 103): «☁ Guardar en la nube» está en la cabecera y la preferencia «Guardar automáticamente en la nube», apagada por defecto, lo hace sola. Si se activa PostgreSQL, puede guardar una pestaña en un espacio local compartido con MCP. Con un proveedor OIDC configurado, una cuenta obtiene un proyecto privado y guardado en la nube. Cada cambio usa un lote del core, revisión optimista y un recibo durable; al reconectar se compara la revisión antes de aceptar datos remotos. Un conflicto conserva la copia local y ofrece descargarla antes de recuperar el servidor.
 
 El proveedor elegido para el primer MVP es **Auth0 Universal Login**, mediante el protocolo OIDC y `openid-client` 6.8.8 (MIT). El backend también acepta otro issuer OIDC compatible. El secreto de cliente y el token interno de documentos quedan sólo en el servidor. Se probaron PKCE, state, nonce, enlace de flujo al navegador, firma del ID Token, callback por el proxy y rechazo de respuestas repetidas con un issuer de prueba. **No hay tenant ni credenciales reales de Auth0 en este proyecto**, por lo que el login externo aún necesita su prueba manual.
 

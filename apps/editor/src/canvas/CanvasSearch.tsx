@@ -4,6 +4,7 @@ import {playbackStore} from '../store/playbackStore';
 import {useStore} from '../store/createStore';
 import {focusOn,viewStore} from '../store/viewStore';
 import {canvasIndex,findCanvas,type CanvasResult} from './search';
+import {t} from '../i18n';
 
 const PAGE_SIZE=12;
 
@@ -29,28 +30,28 @@ function Search({doc}:{doc:ReturnType<typeof documentStore.get>['doc']}){
   const visit=(result:CanvasResult)=>{
     const currentDoc=documentStore.get().doc,before=viewStore.get().camera;
     playbackStore.set({playing:false});
-    if(!focusOn(currentDoc,result.id)){notify('Ese elemento ya no está en el lienzo.','warn');return;}
+    if(!focusOn(currentDoc,result.id)){notify(t('Ese elemento ya no está en el lienzo.'),'warn');return;}
     viewStore.set({searchOpen:false,navigationBack:before});
     document.querySelector<SVGSVGElement>('.canvas')?.focus();
-    notify(`Viendo «${result.label}». La selección se conserva.`);
+    notify(t('Viendo «{0}». La selección se conserva.',result.label));
   };
-  return <div ref={panel} className="canvas-search" role="dialog" aria-label="Buscar en el lienzo" onPointerDown={e=>e.stopPropagation()}>
-    <div className="canvas-search-heading"><strong>Encontrá tu idea</strong><button aria-label="Cerrar búsqueda" onClick={()=>close()}>×</button></div>
+  return <div ref={panel} className="canvas-search" role="dialog" aria-label={t('Buscar en el lienzo')} onPointerDown={e=>e.stopPropagation()}>
+    <div className="canvas-search-heading"><strong>{t('Encontrá tu idea')}</strong><button aria-label={t('Cerrar búsqueda')} onClick={()=>close()}>×</button></div>
     <div className="canvas-search-field">
       <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
-      <input ref={input} role="combobox" aria-label="Buscar elementos por nombre o detalle" aria-autocomplete="list" aria-expanded={true} aria-controls="canvas-search-results" aria-activedescendant={results.length?`canvas-result-${current}`:undefined} autoComplete="off" maxLength={200} placeholder="Nombre, palabra o detalle…" value={query}
+      <input ref={input} role="combobox" aria-label={t('Buscar elementos por nombre o detalle')} aria-autocomplete="list" aria-expanded={true} aria-controls="canvas-search-results" aria-activedescendant={results.length?`canvas-result-${current}`:undefined} autoComplete="off" maxLength={200} placeholder={t('Nombre, palabra o detalle…')} value={query}
         onChange={e=>{setQuery(e.target.value);setActive(0);}}
         onKeyDown={e=>{if(['ArrowDown','ArrowUp','Enter'].includes(e.key)){e.preventDefault();e.stopPropagation();if(e.key==='Enter'){if(results[current])visit(results[current]);}else if(results.length)setActive(Math.max(0,Math.min(results.length-1,current+(e.key==='ArrowDown'?1:-1))));}}}/>
-      {query&&<button aria-label="Limpiar búsqueda" onClick={()=>{setQuery('');setActive(0);input.current?.focus();}}>×</button>}
+      {query&&<button aria-label={t('Limpiar búsqueda')} onClick={()=>{setQuery('');setActive(0);input.current?.focus();}}>×</button>}
     </div>
-    <p className="canvas-search-summary" role="status">{results.length?`${results.length} ${results.length===1?'elemento':'elementos'}${query?results.length===1?' encontrado':' encontrados':' en tu lienzo'}`:query?'No encontré esa palabra. Probá con otra.':'Tu lienzo está vacío. Agregá tu primera idea.'}</p>
-    <div id="canvas-search-results" role="listbox" aria-label="Elementos encontrados">
+    <p className="canvas-search-summary" role="status">{results.length?`${results.length} ${results.length===1?t('elemento'):t('elementos')}${query?results.length===1?' encontrado':' encontrados':t(' en tu lienzo')}`:query?t('No encontré esa palabra. Probá con otra.'):t('Tu lienzo está vacío. Agregá tu primera idea.')}</p>
+    <div id="canvas-search-results" role="listbox" aria-label={t('Elementos encontrados')}>
       {rows.map((item,i)=><button id={`canvas-result-${start+i}`} key={item.id} role="option" aria-selected={current===start+i} tabIndex={-1} className="canvas-search-result" onClick={()=>visit(item)}>
-        <span className="search-kind" aria-hidden="true">{item.kind==='Conexión'?'↗':item.kind==='Grupo'?'▦':item.kind==='Dibujo'?'✎':'◇'}</span>
+        <span className="search-kind" aria-hidden="true">{item.kind===t('Conexión')?'↗':item.kind===t('Grupo')?'▦':item.kind===t('Dibujo')?'✎':'◇'}</span>
         <span><strong>{item.label}</strong><small>{item.kind}{item.context&&` · ${item.context}`}</small></span><span className="search-go" aria-hidden="true">↗</span>
       </button>)}
     </div>
-    {results.length>PAGE_SIZE&&<div className="canvas-search-pages"><button disabled={page===0} aria-label="Resultados anteriores" onClick={()=>{setActive(start-PAGE_SIZE);input.current?.focus();}}>←</button><span>{start+1}–{Math.min(start+PAGE_SIZE,results.length)} de {results.length}</span><button disabled={start+PAGE_SIZE>=results.length} aria-label="Más resultados" onClick={()=>{setActive(start+PAGE_SIZE);input.current?.focus();}}>→</button></div>}
-    <p className="canvas-search-tip">↑ ↓ para recorrer · Enter para ir · Esc para cerrar</p>
+    {results.length>PAGE_SIZE&&<div className="canvas-search-pages"><button disabled={page===0} aria-label={t('Resultados anteriores')} onClick={()=>{setActive(start-PAGE_SIZE);input.current?.focus();}}>←</button><span>{start+1}–{Math.min(start+PAGE_SIZE,results.length)} {t('de')} {results.length}</span><button disabled={start+PAGE_SIZE>=results.length} aria-label={t('Más resultados')} onClick={()=>{setActive(start+PAGE_SIZE);input.current?.focus();}}>→</button></div>}
+    <p className="canvas-search-tip">{t('↑ ↓ para recorrer · Enter para ir · Esc para cerrar')}</p>
   </div>;
 }

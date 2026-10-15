@@ -2,6 +2,7 @@ import {Component,type ErrorInfo,type ReactNode} from 'react';
 import {documentStore} from '../store/documentStore';
 import {track} from '../telemetry';
 import {saveFile} from '../ui';
+import {t} from '../i18n';
 
 /**
  * Último recurso (ADR 094): si un componente falla al dibujarse, la página no queda en blanco. El trabajo ya está guardado
@@ -21,12 +22,12 @@ export class ErrorBoundary extends Component<{children:ReactNode},{failed:boolea
   render(){
     if(!this.state.failed)return this.props.children;
     return <main className="crash" role="alert">
-      <h1>Algo falló al mostrar el editor</h1>
-      <p>Tu trabajo está guardado en este navegador. Probá continuar; si vuelve a pasar, recargá la página.</p>
+      <h1>{t('Algo falló al mostrar el editor')}</h1>
+      <p>{t('Tu trabajo está guardado en este navegador. Probá continuar; si vuelve a pasar, recargá la página.')}</p>
       <div className="crash-actions">
-        {this.state.attempts<2&&<button className="primary" onClick={()=>this.setState(state=>({failed:false,attempts:state.attempts+1}))}>Continuar</button>}
-        <button className={this.state.attempts<2?'':'primary'} onClick={()=>location.reload()}>Recargar la página</button>
-        <button onClick={this.download}>Descargar una copia de mi diagrama</button>
+        {this.state.attempts<2&&<button className="primary" onClick={()=>this.setState(state=>({failed:false,attempts:state.attempts+1}))}>{t('Continuar')}</button>}
+        <button className={this.state.attempts<2?'':'primary'} onClick={()=>location.reload()}>{t('Recargar la página')}</button>
+        <button onClick={this.download}>{t('Descargar una copia de mi diagrama')}</button>
       </div>
     </main>;
   }

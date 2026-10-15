@@ -4,22 +4,23 @@ import {stepBy,togglePlay} from './store/playbackStore';
 import {select,selectionStore} from './store/selectionStore';
 import {setFocusMode,viewStore,zoomAt,zoomBy,GRID,type Tool} from './store/viewStore';
 import {copy,cut,deleteSelection,duplicate,fitAll,fitSelection,group,nudge,openCanvasSearch,paste,selectAll,ungroup} from './commands';
+import {t} from './i18n';
 
 /** Fuente única de los atajos: la ayuda en pantalla se genera desde esta lista. */
 export const SHORTCUTS:[keys:string,action:string][]=[
-  ['V · H','Seleccionar · Mano (pan)'],['N · C · Z · F','Última forma · Conector · Zona · Frame'],['Doble clic · F2','Escribir el texto del elemento en el lugar'],
-  ['D · G · E','Lápiz libre · Lápiz guiado · Goma'],
-  ['Espacio + arrastrar','Pan temporal (también botón central)'],['Rueda · Ctrl + rueda','Desplazar · Zoom hacia el cursor'],
-  ['+ · − · 0 · 1','Acercar · Alejar · 100% · Encuadrar todo'],
-  ['Ctrl + F · Shift + 1','Buscar en el lienzo · Ver selección'],
-  ['Clic · Shift + clic · Alt + clic','Seleccionar · Sumar o quitar · Un nodo dentro de un grupo'],
-  ['Arrastrar en el fondo','Selección rectangular (Shift suma)'],['Flechas','Mover 8 px (Shift: 40 px · Alt: 1 px)'],
-  ['Ctrl + Z · Ctrl + Shift + Z','Deshacer · Rehacer'],['Ctrl + C · X · V · D','Copiar · Cortar · Pegar · Duplicar'],
-  ['Ctrl + A','Seleccionar todo'],['Ctrl + G · Ctrl + Shift + G','Agrupar · Desagrupar'],
-  ['Supr · Retroceso','Eliminar la selección'],['Enter · Espacio sobre un elemento','Seleccionarlo con teclado (Tab para recorrer)'],
-  ['Shift + Espacio · [ · ]','Reproducir o pausar · Paso anterior · Paso siguiente'],['P','Modo presentación (Esc para salir)'],
-  ['Shift + F','Entrar o salir del modo concentración'],
-  ['Esc','Soltar la herramienta o la selección'],['?','Abrir esta ayuda']
+  ['V · H',t('Seleccionar · Mano (pan)')],['N · C · Z · F',t('Última forma · Conector · Zona · Frame')],[t('Doble clic · F2'),t('Escribir el texto del elemento en el lugar')],
+  ['D · G · E',t('Lápiz libre · Lápiz guiado · Goma')],
+  [t('Espacio + arrastrar'),t('Pan temporal (también botón central)')],[t('Rueda · Ctrl + rueda'),t('Desplazar · Zoom hacia el cursor')],
+  ['+ · − · 0 · 1',t('Acercar · Alejar · 100% · Encuadrar todo')],
+  [t('Ctrl + F · Shift + 1'),t('Buscar en el lienzo · Ver selección')],
+  [t('Clic · Shift + clic · Alt + clic'),t('Seleccionar · Sumar o quitar · Un nodo dentro de un grupo')],
+  [t('Arrastrar en el fondo'),t('Selección rectangular (Shift suma)')],[t('Flechas'),t('Mover 8 px (Shift: 40 px · Alt: 1 px)')],
+  [t('Ctrl + Z · Ctrl + Shift + Z'),t('Deshacer · Rehacer')],[t('Ctrl + C · X · V · D'),t('Copiar · Cortar · Pegar · Duplicar')],
+  [t('Ctrl + A'),t('Seleccionar todo')],[t('Ctrl + G · Ctrl + Shift + G'),t('Agrupar · Desagrupar')],
+  [t('Supr · Retroceso'),t('Eliminar la selección')],[t('Enter · Espacio sobre un elemento'),t('Seleccionarlo con teclado (Tab para recorrer)')],
+  [t('Shift + Espacio · [ · ]'),t('Reproducir o pausar · Paso anterior · Paso siguiente')],['P',t('Modo presentación (Esc para salir)')],
+  [t('Shift + F'),t('Entrar o salir del modo concentración')],
+  [t('Esc'),t('Soltar la herramienta o la selección')],['?',t('Abrir esta ayuda')]
 ];
 const TOOLS:Record<string,Tool>={v:'select',h:'pan',n:'node',c:'connect',l:'line',a:'arrow',d:'freehand',g:'guided',e:'eraser',z:'zone',f:'frame'};
 const typing=(target:EventTarget|null)=>target instanceof HTMLElement&&(target.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(target.tagName));
@@ -29,7 +30,7 @@ export function useShortcuts(){
     const onKey=(e:KeyboardEvent)=>{
       // En presentación manda su propio manejador; al escribir en un campo, el campo. Con una propuesta en vista previa el canvas es de sólo lectura.
       if(viewStore.get().presenting||viewStore.get().staging||typing(e.target))return;
-      if(viewStore.get().tutorial||viewStore.get().searchOpen||viewStore.get().accountOpen)return;
+      if(viewStore.get().tutorial||viewStore.get().searchOpen||viewStore.get().accountOpen||viewStore.get().shareOpen)return;
       const key=e.key.length===1?e.key.toLowerCase():e.key,mod=e.ctrlKey||e.metaKey,doc=documentStore.get().doc;
       const run=(action:()=>void)=>{e.preventDefault();action();};
       if(mod){
@@ -57,7 +58,7 @@ export function useShortcuts(){
         case 'ArrowDown':return selectionStore.get().ids.length?run(()=>nudge(0,step)):undefined;
         case 'Delete':case 'Backspace':return selectionStore.get().ids.length?run(deleteSelection):undefined;
         case 'F2':return selectionStore.get().ids.length===1?run(()=>viewStore.set({editingId:selectionStore.get().ids[0]})):undefined;
-        case 'Escape':return run(()=>{if(viewStore.get().focusMode){setFocusMode(false);return;}if(viewStore.get().tool!=='select'){if(viewStore.get().connectFromId)notify('Unión cancelada.');viewStore.set({tool:'select',connectFromId:null,startMode:'choose'});}else select([]);});
+        case 'Escape':return run(()=>{if(viewStore.get().focusMode){setFocusMode(false);return;}if(viewStore.get().tool!=='select'){if(viewStore.get().connectFromId)notify(t('Unión cancelada.'));viewStore.set({tool:'select',connectFromId:null,startMode:'choose'});}else select([]);});
         case '+':case '=':return run(()=>zoomBy(1.2));
         case '-':return run(()=>zoomBy(1/1.2));
         case '0':return run(()=>{const {viewport}=viewStore.get();zoomAt(viewport.width/2,viewport.height/2,1);});

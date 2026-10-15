@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MAX_EVENTS_PER_BATCH,ServerEventSchema,TelemetryBatchSchema,campaignFrom,changeCounts,describeAgent,errorLocation,referrerHostOf} from '../src/index.js';
+import {MAX_EVENTS_PER_BATCH,ServerEventSchema,TelemetryBatchSchema,campaignFrom,changeCounts,describeAgent,errorLocation,isAutomatedAgent,referrerHostOf} from '../src/index.js';
 
 const uuid=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const context={app:'editor',appVersion:'0.1.0',utmSource:'reddit',utmMedium:'social',utmCampaign:'launch-1',referrerHost:'www.reddit.com',landingPath:'/',
@@ -46,6 +46,17 @@ test('visit context keeps hosts, slugs and coarse device data only',()=>{
   assert.deepEqual(describeAgent('Mozilla/5.0 (Linux; Android 15; SM-X710) AppleWebKit/537.36 Chrome/140.0 Safari/537.36',1200,true),{device:'tablet',browser:'chrome',os:'android'});
   assert.equal(errorLocation('https://app.diagramia.test/assets/index-a1b2.js?v=3',1,2345),'assets/index-a1b2.js:1:2345');
   assert.equal(errorLocation(undefined),null);
+});
+test('declared crawlers, previews, monitors and automated browsers are not people; real browsers are',()=>{
+  for(const bot of ['Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm) Chrome/116.0.1938.76 Safari/537.36','Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.0.0 Safari/537.36','Mozilla/5.0 (Linux; Android 11; moto g power) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36 Chrome-Lighthouse',
+    'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)','WhatsApp/2.23.20.0','Mozilla/5.0 (compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)','curl/8.9.1','python-requests/2.32.3','',undefined,null])
+    assert.equal(isAutomatedAgent(bot),true,String(bot));
+  for(const person of ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1','Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0',
+    'Mozilla/5.0 (Linux; Android 13; CUBOT KINGKONG 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36','node'])
+    assert.equal(isAutomatedAgent(person),false,person);
 });
 test('behaviour and monetization events carry enums and counts only',()=>{
   const ok=TelemetryBatchSchema.parse(batch([

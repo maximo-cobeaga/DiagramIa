@@ -47,15 +47,20 @@ if(['aid','sid','utm_source','utm_medium','utm_campaign'].some(key=>url.searchPa
 }
 const context=():TelemetryContext=>({
   app:'editor',appVersion:pkg.version,...campaign,
-  referrerHost:referrerHostOf(document.referrer,location.hostname),landingPath:/^\/[a-zA-Z0-9._~/-]{0,199}$/.test(location.pathname)?location.pathname:null,
+  referrerHost:referrerHostOf(document.referrer,location.hostname),landingPath:entryPath(location.pathname),
   ...describeAgent(navigator.userAgent,window.innerWidth,navigator.maxTouchPoints>0),
   language:/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})?$/.test(navigator.language)?navigator.language:null,
   viewport:{width:Math.round(window.innerWidth),height:Math.round(window.innerHeight)}
 });
 
+/** Camino de entrada para el contexto. El de un enlace compartido lleva el token, que es la llave del diagrama: se registra sólo `/s`. */
+export function entryPath(pathname:string){return pathname.startsWith('/s/')?'/s':/^\/[a-zA-Z0-9._~/-]{0,199}$/.test(pathname)?pathname:null;}
+
 // ---- Cola y envío ----
 const queue:TelemetryEvent[]=[];
 let disabledByServer=false,backoffUntil=0,sending=false;
+// Un navegador manejado por un programa (Selenium, Puppeteer, Playwright) no es una persona: no se mide. El gateway descarta además a los que se declaran en el user agent.
+const automated=navigator.webdriver===true;
 // Resumen de uso de la sesión: tiempo activo (con interacción real y página visible) y cuánto se trabajó. Se emite al ocultarse la página.
 const usage={activeMs:0,changes:0,aiRequests:0,usedAi:false,usedAnimation:false};
 let lastActivity=0,probe:()=>{nodes:number;edges:number;animations:number}=()=>({nodes:0,edges:0,animations:0});
@@ -72,7 +77,7 @@ function emitSummary(){
   usage.activeMs=0;usage.changes=0;usage.aiRequests=0;
 }
 export function track<N extends TelemetryEventName>(name:N,props:Props<N>){
-  if(disabledByServer||!telemetryEnabled())return;
+  if(disabledByServer||automated||!telemetryEnabled())return;
   const parsed=TelemetryEventSchema.safeParse({id:crypto.randomUUID(),name,at:new Date().toISOString(),props});
   if(!parsed.success){if(['127.0.0.1','localhost'].includes(location.hostname))console.warn('[telemetry] evento descartado',name,parsed.error.issues[0]?.message);return;}
   queue.push(parsed.data as TelemetryEvent);
@@ -146,6 +151,14 @@ export function trackReopened(doc:DiagramDocument){
   const key=`diagramia.telemetry.seen.${doc.id}`,current=sessionId(),seen=read('local',key);
   if(seen&&seen!==current)trackUseful(doc,'reopened');
   write('local',key,current);
+}
+
+/** Página de un enlace compartido (ADR 106): quien mira no usa el editor, así que sólo se mide que se abrió y si pasa a Diagramia. */
+export function startSharedViewTelemetry(props:Props<'shared_view_opened'>){
+  track('shared_view_opened',props);
+  setInterval(()=>void flush(),FLUSH_MS);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')void flush(true);});
+  window.addEventListener('pagehide',()=>void flush(true));
 }
 
 // ---- Arranque, errores y rendimiento ----

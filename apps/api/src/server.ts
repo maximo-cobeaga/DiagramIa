@@ -2,7 +2,7 @@ import {createServer,type IncomingMessage,type Server,type ServerResponse} from 
 import {createHash,timingSafeEqual} from 'node:crypto';
 import {isIPv6} from 'node:net';
 import {z} from 'zod';
-import {DiagramError,SCHEMA_VERSION,TelemetryBatchSchema,describeError,type ServerEvent} from '@diagramia/core';
+import {DiagramError,SCHEMA_VERSION,TelemetryBatchSchema,describeError,isAutomatedAgent,type ServerEvent} from '@diagramia/core';
 import type {Provider} from '@diagramia/providers';
 import {AssistError,MODES,assist,systemPrompt,type AssistAnswer,type AssistConfig} from './assist.js';
 import {resolveAutoMode} from './intent.js';
@@ -93,7 +93,10 @@ const flowCookie=(token:string,secure:boolean,maxAge:number)=>`diagramia_oidc_fl
  */
 export function createApp(options:AppOptions):Server{
   const system=systemPrompt(options.productPrompt),createSystem=systemPrompt(options.productPrompt,true),eventLimiter=new RateLimiter(options.eventsPerMinute??60,60_000),contactLimiter=new RateLimiter(options.contact?.perHour??5,3_600_000);
+  /** Administradores: email verificado incluido en adminEmails. Ven el dashboard y usan la IA sin límites por cuenta. */
+  const isAdmin=(session:{email?:string|null;emailVerified?:boolean}|null|undefined)=>Boolean(session?.emailVerified&&session.email&&(options.adminEmails??[]).some(email=>email.toLowerCase()===session.email!.toLowerCase()));
   const aiPerIp=new RateLimiter(options.aiPerIpPerMinute??20,60_000),aiPerUser=new RateLimiter(options.aiPerUserPerMinute??6,60_000);
+  const sharedPerIp=new RateLimiter(120,60_000);
   const previewPerIp=new RateLimiter(20,60_000),previewPerUser=new RateLimiter(10,60_000),previews=new LinkPreviewCache();
   // Frenos por ruta (ADR 094). Ninguno reemplaza a la autenticación: acotan el daño de un cliente roto, un bucle o un abuso.
   const everyIp=new RateLimiter(options.requestsPerIpPerMinute??600,60_000),loginPerIp=new RateLimiter(30,60_000),webhookPerIp=new RateLimiter(300,60_000);
@@ -183,6 +186,8 @@ export function createApp(options:AppOptions):Server{
         if(!options.telemetry)return fail(503,'TELEMETRY_UNAVAILABLE','La telemetría no está configurada en este gateway.');
         if(!eventLimiter.allow(ip))return fail(429,'RATE_LIMITED','Demasiados envíos de eventos. Se reintenta más tarde.');
         const batch=TelemetryBatchSchema.parse(await readJson(req,MAX_EVENTS_BODY));
+        // Buscadores, monitores y navegadores automatizados: se responde igual que a una persona, pero no se guarda nada.
+        if(isAutomatedAgent(String(req.headers['user-agent']??'')))return send(202,{accepted:0});
         const session=options.accounts?await options.accounts.readSession(cookie(req,'diagramia_session')):null;
         return send(202,await options.telemetry.ingest(batch,session?.userId??null));
       }
@@ -208,7 +213,7 @@ export function createApp(options:AppOptions):Server{
         const interval=view?.plan==='pro'&&priceId&&priceId===options.billing?.paddle.yearlyPriceId?'year' as const:view?.plan==='pro'?'month' as const:null;
         // Sin el token público de Paddle.js no hay dónde pagar: no se ofrece un botón que no llevaría a ningún lado.
         const billing=view?{available:payable,...shown,offer:payable?offer:null,prices,interval}:{available:false,plan:'free' as const,offer:null,prices:null,interval:null};
-        return send(200,{session,storage:await options.accounts!.storage(session.projectId),credits:await options.accounts!.creditUsage(session.userId),billing});
+        return send(200,{session,storage:await options.accounts!.storage(session.projectId),credits:{...await options.accounts!.creditUsage(session.userId),unlimited:isAdmin(session)},billing});
       }
       if(path==='/v1/auth/delete-account'&&req.method==='POST'){
         const session=await options.accounts?.readSession(cookie(req,'diagramia_session'));
@@ -257,6 +262,13 @@ export function createApp(options:AppOptions):Server{
         res.setHeader('set-cookie',sessionCookie('',options.oidc?.redirectUri.protocol==='https:',0));
         return send(200,{signedOut:true});
       }
+      // Enlace público de un diagrama (ADR 106): sin sesión. Lo único que lo protege es el token, largo y al azar; un token inválido o revocado responde igual que uno inexistente.
+      if(path.startsWith('/v1/shared/')&&req.method==='GET'){
+        if(!options.accounts)return fail(503,'CLOUD_UNAVAILABLE','La nube no está configurada.');
+        if(!sharedPerIp.allow(ip))return fail(429,'RATE_LIMITED','Demasiados pedidos desde tu conexión. Esperá un minuto.');
+        const token=path.slice('/v1/shared/'.length),document=/^[A-Za-z0-9_-]{20,64}$/.test(token)?await options.accounts.sharedDocument(token):null;
+        return document?send(200,{document}):fail(404,'NOT_FOUND','Este enlace no existe o dejó de compartirse.');
+      }
       if(path==='/v1/cloud/documents'||path.startsWith('/v1/cloud/documents/')||path==='/v1/cloud/usage'){
         if(!options.accounts||!options.documents)return fail(503,'CLOUD_UNAVAILABLE','La nube no está configurada.');
         const session=await options.accounts.readSession(cookie(req,'diagramia_session'));
@@ -266,10 +278,13 @@ export function createApp(options:AppOptions):Server{
         if(path==='/v1/cloud/documents'&&req.method==='GET')return send(200,{documents:await options.accounts.listDocuments(projectId)});
         if(req.method==='POST'&&!writesPerUser.allow(session.userId))return fail(429,'RATE_LIMITED','Demasiados guardados seguidos. Se reintenta en un momento.');
         if(path==='/v1/cloud/documents'&&req.method==='POST')return send(201,{document:await repo.createFrom(await readJson(req,MAX_DOCUMENT_BODY),session.userId,projectId)});
-        const match=path.match(/^\/v1\/cloud\/documents\/([^/]+)(?:\/(batches|head|restore))?$/);
+        const match=path.match(/^\/v1\/cloud\/documents\/([^/]+)(?:\/(batches|head|restore|share|unshare))?$/);
         if(!match)return fail(404,'NOT_FOUND','Ruta inexistente.');
         const [,id,part]=match;
         if(!await options.accounts.ownsDocument(projectId,id!))return fail(404,'NOT_FOUND','No existe el documento en este proyecto.');
+        // Compartir es decisión de quien tiene el diagrama: sólo con su sesión y sobre un documento de su proyecto.
+        if(part==='share'&&req.method==='POST'){const token=await options.accounts.shareDocument(projectId,id!);return token?send(200,{token}):fail(404,'NOT_FOUND','No existe el documento en este proyecto.');}
+        if(part==='unshare'&&req.method==='POST'){await options.accounts.unshareDocument(projectId,id!);return send(200,{token:null});}
         if(!part&&req.method==='GET')return send(200,{document:await repo.get(id!,projectId)});
         if(part==='head'&&req.method==='GET')return send(200,{revision:(await repo.get(id!,projectId)).revision});
         if(part==='batches'&&req.method==='POST')return send(200,await repo.apply(id!,await readJson(req),session.userId,projectId));
@@ -323,7 +338,7 @@ export function createApp(options:AppOptions):Server{
       }
       const session=options.accounts?await options.accounts.readSession(cookie(req,'diagramia_session')):null;
       // Administradores: email verificado incluido en adminEmails. Ven el dashboard y usan la IA sin límites por cuenta.
-      const admin=Boolean(session?.emailVerified&&session.email&&(options.adminEmails??[]).some(email=>email.toLowerCase()===session.email!.toLowerCase()));
+      const admin=isAdmin(session);
       if(options.token&&!session&&!sameToken(String(req.headers.authorization??''),`Bearer ${options.token}`))return fail(401,'UNAUTHORIZED','Token del gateway inválido o ausente.');
       if(path==='/v1/admin/contacts'&&req.method==='GET'){
         if(!admin)return fail(403,'ADMIN_ONLY','Las consultas son sólo para administradores.');
@@ -384,7 +399,7 @@ export function createApp(options:AppOptions):Server{
             latencyMs:Math.min(3_600_000,Date.now()-started),calls:usage?.calls??0,repairs:Math.max(0,outcome.answer?.repairs??0),replayed:Boolean(outcome.answer?.replayed)}},session?.userId??null);
         };
         // Límites antes de cualquier reserva: por IP y por cuenta, salvo administradores verificados. Un rechazo no gasta créditos.
-        // Un admin no tiene límites por minuto ni créditos; el tope global de gasto del gateway (ledger) sigue valiendo.
+        // Un admin no tiene límites por minuto ni tope de créditos (su consumo se registra igual); el tope global de gasto del gateway (ledger) sigue valiendo.
         if(!admin&&(!aiPerIp.allow(ip)||(session&&!aiPerUser.allow(session.userId)))){
           track({blocked:'RATE_LIMITED'});return fail(429,'RATE_LIMITED','Demasiados pedidos seguidos. Esperá un minuto y volvé a intentar.');
         }
@@ -393,10 +408,10 @@ export function createApp(options:AppOptions):Server{
         }
         try{
         if(session){
-          const input=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES),providerId:z.string().max(40)}).parse(body),credits=admin?0:input.mode==='create'?2:1;
+          const input=z.object({requestId:z.string().min(1).max(200),mode:z.enum(MODES),providerId:z.string().max(40)}).parse(body),credits=input.mode==='create'?2:1;
           if(!providers.some(p=>p.info().id===input.providerId)){track({refused:true});return fail(403,'PROVIDER_NOT_IN_PLAN',`El proveedor «${input.providerId}» no está incluido en tu plan.`);}
           const fingerprint=createHash('sha256').update(JSON.stringify(body)).digest('hex');
-          const reservation=await options.accounts!.reserveCredits(session.userId,input.requestId,fingerprint,credits);
+          const reservation=await options.accounts!.reserveCredits(session.userId,input.requestId,fingerprint,credits,new Date(),admin);
           if(reservation.replayed){const replay={...(reservation.replayed as AssistAnswer),replayed:true};track({answer:replay});return send(200,replay);}
           try{
             // El ledger del proceso es global: su ID interno incluye la cuenta para que dos usuarios

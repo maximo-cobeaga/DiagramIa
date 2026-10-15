@@ -1,7 +1,8 @@
 import {useEffect,useId,useRef,useState} from 'react';
 import type {DiagramNode} from '@diagramia/core';
+import {t} from './i18n';
 
-export const KIND_LABELS:Record<DiagramNode['kind'],string>={service:'Servicio',database:'Base de datos',cache:'Caché',queue:'Cola',external:'Sistema externo',actor:'Actor',decision:'Decisión',note:'Nota',text:'Texto',image:'Imagen (reservado)',custom:'Genérico'};
+export const KIND_LABELS:Record<DiagramNode['kind'],string>={service:t('Servicio'),database:t('Base de datos'),cache:t('Caché'),queue:t('Cola'),external:t('Sistema externo'),actor:t('Actor'),decision:t('Decisión'),note:t('Nota'),text:t('Texto'),image:t('Imagen (reservado)'),custom:t('Genérico')};
 // `image` no se ofrece al crear: el engine valida el tipo pero todavía no carga ni dibuja imágenes.
 export const CREATABLE_KINDS:DiagramNode['kind'][]=['service','database','cache','queue','external','actor','decision','note','text'];
 
@@ -47,6 +48,8 @@ export function SelectField<T extends string>({label,value,options,onChange}:Sel
   return <div className="field"><label htmlFor={id}>{label}</label><select id={id} value={value} onChange={e=>onChange(e.target.value as T)}>{options.map(([key,text])=><option key={key} value={key}>{text}</option>)}</select></div>;
 }
 
+// La landing vive en el dominio principal y el editor en app.<dominio>; en desarrollo la sirve npm run dev:landing.
+export const SITE_URL=typeof location!=='undefined'&&location.hostname.startsWith('app.')?`${location.protocol}//${location.hostname.slice(4)}/`:'http://127.0.0.1:4173/';
 export function saveFile(name:string,body:BlobPart,type:string){
   const url=URL.createObjectURL(new Blob([body],{type})),a=document.createElement('a');
   a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);

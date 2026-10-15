@@ -15,7 +15,7 @@ if(!executable){console.error('No se encontró Chrome ni Edge. Indicá la ruta c
 
 const port=9300+Math.floor(Math.random()*500),profile=mkdtempSync(join(tmpdir(),'diagramia-smoke-')),shots='state/smoke';
 mkdirSync(shots,{recursive:true});
-const browser=spawn(executable,['--headless=new',`--remote-debugging-port=${port}`,`--user-data-dir=${profile}`,'--no-first-run','--no-default-browser-check','--disable-gpu','--window-size=1440,900','about:blank'],{stdio:'ignore'});
+const browser=spawn(executable,['--headless=new','--lang=es-AR',`--remote-debugging-port=${port}`,`--user-data-dir=${profile}`,'--no-first-run','--no-default-browser-check','--disable-gpu','--window-size=1440,900','about:blank'],{stdio:'ignore'});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function target(){
@@ -283,7 +283,7 @@ try{
       expect(await js(`window.__questionBodies[2].mode==='transform'&&window.__questionBodies[2].history[0].content.includes('Reorganizá estas ideas')`),'la segunda respuesta pierde el pedido original');
       expect((await saved()).revision===current.revision,'la respuesta aplicó cambios sin aceptar');{const accepted=await clickText('Aceptar y aplicar','.chat');expect(accepted,'responder no permite continuar con una propuesta válida: '+await js(`document.querySelector('.chat-thread').innerText.slice(-500)`));}
       const applied=await saved();expect(applied.nodes.length===before.nodes.length+1,'la propuesta no se aplicó al aceptar');await shot('53-ui-texto-reducido');
-      await clickText('Nueva conversación','.chat');await js(`window.__questionAgain=true`);await setValue('#chat-prompt','Reorganizá mi idea');await sendChat();await sleep(200);
+      await js(`(()=>{const b=document.querySelector('.chat [aria-label="Nueva conversación"]');if(!b||b.disabled)return false;b.click();return true;})()`);await js(`window.__questionAgain=true`);await setValue('#chat-prompt','Reorganizá mi idea');await sendChat();await sleep(200);
       // «Otro…» abre un campo propio: el envío espera a que haya texto y Esc lo cierra sin enviar nada.
       expect(await js(`(()=>{[...document.querySelectorAll('.question-choices .choice-option')].find(b=>b.textContent.includes('Otro')).click();return true;})()`),'falta Otro');await sleep(80);
       expect(await js(`document.activeElement.matches('.choice-other input')&&document.querySelector('.choice-other .primary').disabled`),'Otro no enfoca el campo o permite enviar vacío');await shot('52c-ia-pregunta-otro');
@@ -785,6 +785,40 @@ try{
     const named=await js(`document.querySelector('.chat .finding-target').textContent`);
     return `${doc.annotations.length} anotaciones (usuario + IA de demostración); enfoque de «${named}»`;
   });
+  await check('la conversación con la IA sobrevive al cambio de panel y a la recarga, y se retoma desde el historial sin guardar el diagrama',async()=>{
+    const reachable=await js(`fetch('/api/v1/providers',{headers:{'x-diagramia-client':'editor'}}).then(r=>r.ok?r.json():null).catch(()=>null)`);
+    if(!reachable?.providers.some(p=>p.id==='mock'))return 'OMITIDO: el gateway no corre con DIAGRAMIA_ENABLE_MOCK=1';
+    await js(`localStorage.removeItem('diagramia.chats')`);await send('Page.reload');await sleep(1500);
+    expect(await clickText('IA','.tabs'),'no está la pestaña IA');await sleep(400);
+    const thread=()=>js(`document.querySelector('.chat-thread:not(.chat-history)').textContent`),exchanges=()=>js(`document.querySelectorAll('.chat .exchange').length`);
+    await setValue('#chat-prompt','Explicame qué hace este diagrama');await sleep(80);expect(await sendChat(),'falta Enviar');await sleep(1400);
+    expect(await exchanges()===1&&await js(`Boolean(document.querySelector('.chat .bubble.assistant:not(.typing)'))`),'el asistente no respondió');
+    // Antes, salir del panel de IA desmontaba el chat y la conversación se perdía.
+    expect(await clickText('Propiedades','.tabs'),'no está Propiedades');await sleep(200);expect(await clickText('IA','.tabs'),'no se pudo volver a IA');await sleep(200);
+    expect(await exchanges()===1&&(await thread()).includes('Explicame qué hace este diagrama'),'cambiar de panel perdió la conversación');
+    await sleep(600);const stored=await js(`localStorage.getItem('diagramia.chats')`);
+    expect(stored&&JSON.parse(stored).length===1&&JSON.parse(stored)[0].turns[0].prompt==='Explicame qué hace este diagrama','la conversación no quedó guardada en el navegador');
+    expect(!stored.includes('"nodes"')&&!stored.includes('"document"')&&stored.length<20_000,'el historial guarda más que texto corto: '+stored.length);
+    await send('Page.reload');await sleep(1500);expect(await clickText('IA','.tabs'),'no está la pestaña IA');await sleep(400);
+    expect(await exchanges()===1&&(await thread()).includes('De una conversación guardada'),'recargar perdió la conversación');
+    // Una conversación nueva deja la anterior en el historial, y desde ahí se vuelve a abrir.
+    expect(await js(`(()=>{const b=document.querySelector('.chat [aria-label="Nueva conversación"]');if(!b||b.disabled)return false;b.click();return true;})()`),'falta Nueva conversación');await sleep(200);expect(await exchanges()===0,'la conversación nueva no empieza vacía');
+    expect(await clickText('Historial','.chat'),'falta el historial');await sleep(200);
+    expect(await js(`document.querySelectorAll('.chat-history-item').length===1&&document.querySelector('.chat-history').textContent.includes('Explicame qué hace este diagrama')`),'el historial no lista la conversación');await shot('55-chat-historial');
+    await js(`document.querySelector('.chat-history-item button').click()`);await sleep(200);
+    expect(await exchanges()===1&&!(await js(`Boolean(document.querySelector('.chat-history'))`)),'no se pudo retomar la conversación guardada');
+    // Al retomarla, el pedido siguiente lleva el intercambio anterior como contexto acotado.
+    await js(`(()=>{window.__chatFetch=window.fetch;window.__chatBody=null;window.fetch=async(url,init)=>{if(String(url).includes('/v1/assist'))window.__chatBody=JSON.parse(init.body);return window.__chatFetch(url,init);};})()`);
+    try{
+      await setValue('#chat-prompt','Explicame la parte de la base de datos');await sleep(80);expect(await sendChat(),'falta Enviar');await sleep(1400);
+      const history=await js(`window.__chatBody?.history`);
+      expect(Array.isArray(history)&&history.length===2&&history[0].content==='Explicame qué hace este diagrama'&&history[1].role==='assistant'&&history[1].content.length<=1500,'la conversación retomada no viaja como contexto acotado');
+    }finally{await js(`window.fetch=window.__chatFetch`);}
+    expect(await exchanges()===2,'el pedido nuevo no se sumó a la conversación retomada');
+    expect(await clickText('Historial','.chat'),'falta el historial');await sleep(200);await js(`document.querySelector('.chat-history-item button.quiet').click()`);await sleep(600);
+    expect(await js(`document.querySelectorAll('.chat-history-item').length===0&&JSON.parse(localStorage.getItem('diagramia.chats')).length===0`),'borrar no quitó la conversación del navegador');
+    return 'panel, recarga, historial, contexto de 1 intercambio y borrado';
+  });
   await check('una explicación es breve, se puede ampliar y se ve como presentación animada sin guardarse sola',async()=>{
     const reachable=await js(`fetch('/api/v1/providers',{headers:{'x-diagramia-client':'editor'}}).then(r=>r.ok?r.json():null).catch(()=>null)`);
     if(!reachable?.providers.some(p=>p.id==='mock'))return 'OMITIDO: el gateway no corre con DIAGRAMIA_ENABLE_MOCK=1';
@@ -977,11 +1011,67 @@ try{
     doc=await saved();expect(doc.animations[0].tracks.length===4,'no se creó la pista');
     await js(`document.querySelectorAll('.tracks-grid .track-row')[4].querySelectorAll('.track-cell')[0].click()`);
     doc=await saved();expect(doc.animations[0].tracks.at(-1).clips.length===1,'no se añadió un efecto al paso');
-    await js(`(()=>{window.__blobs=[];const make=URL.createObjectURL.bind(URL);URL.createObjectURL=b=>{window.__blobs.push(b);return make(b);};HTMLAnchorElement.prototype.click=function(){};})()`);
+    // Los cuadros de la animación pasan por la misma función como SVG: no se guardan, son cientos.
+    await js(`(()=>{window.__blobs=[];const make=URL.createObjectURL.bind(URL);URL.createObjectURL=b=>{if(b.type!=='image/svg+xml')window.__blobs.push(b);return make(b);};HTMLAnchorElement.prototype.click=function(){};})()`);
     await setValue('select[aria-label="Exportar"]','presentation-pdf');await sleep(1800);
     const exported=await js(`(async()=>{const b=window.__blobs.find(b=>b.type==='application/pdf');if(!b)return null;const bytes=new Uint8Array(await b.arrayBuffer());return {size:b.size,signature:String.fromCharCode(...bytes.slice(0,5))};})()`);
     expect(exported?.signature==='%PDF-'&&exported.size>10000,`PDF de presentación inválido: ${JSON.stringify(exported)} / ${await status()}`);
     await shot('16-desktop-login-tracks');return `3 pistas, rama filtrada, pista editable y PDF de presentación ${Math.round(exported.size/1024)} KB`;
+  });
+  await check('la animación se exporta como GIF y como video que el navegador puede abrir',async()=>{
+    // Sigue elegida la rama de rechazo: se exporta ese recorrido, no la animación entera.
+    const doc=await saved(),steps=doc.animations[0].steps.filter(step=>!step.scenarioIds.length||step.scenarioIds.includes('rejected'));
+    const expectedMs=steps.reduce((sum,step)=>sum+step.durationMs,0)+1500;
+    expect(steps.length===5,`la rama elegida tiene ${steps.length} pasos`);
+    const exportAs=async(format,type)=>{
+      const started=Date.now();await js(`window.__blobs.length=0`);
+      await setValue('select[aria-label="Exportar"]',format);
+      for(let i=0;i<480;i++){
+        await sleep(250);const text=await status();
+        if(text.includes('No se pudo exportar'))throw new Error(text);
+        if(text.includes('exportad')&&await js(`window.__blobs.some(b=>b.type.startsWith(${JSON.stringify(type)}))`))return {text,ms:Date.now()-started};
+      }
+      throw new Error(`la exportación no terminó: ${await status()}`);
+    };
+    const gifRun=await exportAs('animation-gif','image/gif');
+    // El propio navegador decodifica el archivo entero: tamaño, repetición, duración total y un cuadro a mitad de camino.
+    const gif=await js(`(async()=>{
+      const blob=window.__blobs.find(b=>b.type==='image/gif'),decoder=new ImageDecoder({data:await blob.arrayBuffer(),type:'image/gif'});
+      await decoder.tracks.ready;await decoder.completed;
+      const track=decoder.tracks.selectedTrack,canvas=document.createElement('canvas'),context=canvas.getContext('2d');let micros=0,width=0,height=0,stage=null,bar=null,ink=0;
+      for(let i=0;i<track.frameCount;i++){
+        const {image}=await decoder.decode({frameIndex:i});micros+=image.duration;width=image.displayWidth;height=image.displayHeight;
+        if(i===Math.floor(track.frameCount/2)){
+          canvas.width=width;canvas.height=height;context.drawImage(image,0,0);
+          stage=[...context.getImageData(3,3,1,1).data].slice(0,3);bar=[...context.getImageData(3,height-3,1,1).data].slice(0,3);
+          const data=context.getImageData(0,0,width,Math.round(height*.8)).data;for(let p=0;p<data.length;p+=4)if(data[p]<200||data[p+1]<200||data[p+2]<200)ink++;
+        }
+        image.close();
+      }
+      return {size:blob.size,frames:track.frameCount,loops:track.repetitionCount===Infinity,ms:Math.round(micros/1000),width,height,stage,bar,ink};
+    })()`);
+    expect(gif.width===960&&gif.height===540,`GIF de ${gif.width}×${gif.height}`);
+    expect(gif.frames>=steps.length&&gif.loops,`GIF con ${gif.frames} cuadros; se repite sin fin: ${gif.loops}`);
+    expect(Math.abs(gif.ms-expectedMs)<=200,`el GIF dura ${gif.ms} ms y la animación ${expectedMs} ms`);
+    expect(String(gif.stage)==='255,255,255'&&String(gif.bar)==='244,246,248'&&gif.ink>2000,`el cuadro del GIF no muestra el diagrama y la franja del paso: ${JSON.stringify(gif)}`);
+    const videoRun=await exportAs('animation-video','video/');
+    const video=await js(`(async()=>{
+      const blob=window.__blobs.find(b=>b.type.startsWith('video/')),player=document.createElement('video');
+      player.muted=true;player.src=URL.createObjectURL(blob);
+      await new Promise((resolve,reject)=>{player.onloadeddata=resolve;player.onerror=()=>reject(new Error('el navegador no pudo abrir el video'));});
+      // Un WebM grabado por el navegador no trae la duración en la cabecera: se obtiene yendo al final.
+      if(!Number.isFinite(player.duration)){player.currentTime=1e7;await new Promise(resolve=>{player.onseeked=resolve;});}
+      const seconds=player.duration;
+      player.currentTime=seconds/2;await new Promise(resolve=>{player.onseeked=resolve;});
+      const canvas=document.createElement('canvas');canvas.width=player.videoWidth;canvas.height=player.videoHeight;const context=canvas.getContext('2d');context.drawImage(player,0,0);
+      const data=context.getImageData(0,0,canvas.width,Math.round(canvas.height*.8)).data;let ink=0;for(let p=0;p<data.length;p+=4)if(data[p]<200||data[p+1]<200||data[p+2]<200)ink++;
+      return {type:blob.type,size:blob.size,width:player.videoWidth,height:player.videoHeight,ms:Math.round(seconds*1000),stage:[...context.getImageData(3,3,1,1).data].slice(0,3),ink};
+    })()`);
+    expect(video.width===1280&&video.height===720,`video de ${video.width}×${video.height}`);
+    expect(Math.abs(video.ms-expectedMs)<=600,`el video dura ${video.ms} ms y la animación ${expectedMs} ms`);
+    expect(video.stage.every(value=>value>=245)&&video.ink>4000,`el cuadro del video no muestra el diagrama: ${JSON.stringify(video)}`);
+    expect((await saved()).revision===doc.revision,'exportar la animación no cambia el diagrama');
+    return `GIF ${gif.frames} cuadros, ${(gif.size/1e6).toFixed(2)} MB en ${(gifRun.ms/1000).toFixed(1)} s; video ${video.type}, ${(video.size/1e6).toFixed(2)} MB en ${(videoRun.ms/1000).toFixed(1)} s; ambos de ${(expectedMs/1000).toFixed(1)} s`;
   });
   await check('modo oscuro, panel lateral plegable con IA primero y tutorial',async()=>{
     const first=await js(`document.querySelector('.tabs button').textContent`);expect(first==='IA',`primera pestaña del panel: ${first}`);
@@ -1054,6 +1144,47 @@ try{
       return `canvas ${JSON.stringify(await js(`(()=>{const r=document.querySelector('.canvas-host').getBoundingClientRect();return [Math.round(r.width),Math.round(r.height)]})()`))}`;
     });
   }
+  await check('el editor en inglés no deja español a la vista en cabecera, herramientas, paneles, tutorial y configuración, y el cambio de idioma conserva el diagrama',async()=>{
+    await viewport(1440,900);
+    // Los recorridos anteriores dejan pestañas abiertas: se cierran las últimas para que haya lugar (el diálogo de confirmación se acepta solo).
+    for(let i=0;i<12&&await js(`document.querySelectorAll('.doc-tab').length`)>3;i++){await js(`[...document.querySelectorAll('.doc-tab-close')].at(-1).click()`);await sleep(150);}
+    await tap('.doc-tab-add');await sleep(300);const before=JSON.stringify(await saved());
+    // Texto y atributos visibles con marcas de español, fuera del dibujo y de lo que escribe la persona (pestañas, campos, lista de elementos).
+    const leftovers=()=>js(`(()=>{
+      const skip='svg,script,style,input,textarea,[contenteditable],.doc-tab,.element-list,.component-card.own,.bubble.user,.md',found=new Set(),spanish=/[áéíóúñ¿¡]|\\b(Guardar|Deshacer|Rehacer|Exportar|Importar|Buscar|Cuenta|Propiedades|Biblioteca|Historial|Nueva|Nuevo|Pasar|Elegir|Cerrar|Abrir|Agregar|Eliminar|para|del|los|las|una|sin|con)\\b/;
+      const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+      for(let node=walker.nextNode();node;node=walker.nextNode()){const el=node.parentElement,text=node.nodeValue.trim();if(el&&text&&!el.closest(skip)&&el.getClientRects().length&&spanish.test(text))found.add(text.slice(0,70));}
+      for(const el of document.querySelectorAll('[title],[aria-label],[placeholder],[alt]')){if(el.closest('svg.diagram,.doc-tab,.component-card.own'))continue;for(const name of ['title','aria-label','placeholder','alt']){const value=el.getAttribute(name);if(value&&spanish.test(value))found.add(name+'='+value.slice(0,70));}}
+      return [...found];})()`);
+    const clean=async where=>{const rest=await leftovers();expect(rest.length===0,`${where}: ${rest.slice(0,10).join(' | ')}`);};
+    await js(`localStorage.setItem('diagramia.language','en')`);await send('Page.reload');await sleep(1600);
+    try{
+      expect(await js(`document.documentElement.lang`)==='en','el editor no arrancó en inglés');
+      expect(await js(`[...document.querySelectorAll('.side .tabs button')].map(b=>b.textContent).join('|')`)==='AI|Properties|Library|History','los paneles no están en inglés');
+      expect(await js(`document.querySelector('.header-actions button').textContent`)==='↶ Undo'&&(await js(`document.querySelector('.save-state').textContent`)).includes('Saved in this browser'),'la cabecera no está en inglés');
+      await clean('inicio y panel de IA');await shot('56-editor-en-ingles');
+      for(const [index,name] of [[1,'Properties'],[2,'Library'],[3,'History']]){await js(`document.querySelectorAll('.side .tabs button')[${index}].click()`);await sleep(250);await clean('panel '+name);}
+      await js(`document.querySelectorAll('.side .tabs button')[0].click()`);
+      // Con contenido: propiedades de un nodo, barra de selección y reproductor.
+      await js(`(()=>{const s=document.querySelector('[aria-label="Load example"]');s.value='0';s.dispatchEvent(new Event('change',{bubbles:true}));})()`);await sleep(700);
+      expect(await js(`document.querySelectorAll('.doc-tab').length`)>=2&&(await status()).includes('opened in a new tab'),'el ejemplo no se abrió o su aviso no está en inglés: '+await status());
+      await click(await center('.canvas .graph-node'));await sleep(250);await js(`document.querySelectorAll('.side .tabs button')[1].click()`);await sleep(250);
+      {const rest=(await leftovers()).filter(text=>!text.startsWith('title=')&&!/^[A-ZÁÉÍÓÚÑ ]+$/.test(text));const own=await js(`[...document.querySelectorAll('.side label,.side button,.side summary,.side legend,.side h3,.side .eyebrow,.selection-toolbar button')].map(e=>e.textContent.trim()).filter(Boolean)`);
+        expect(own.length>10&&!own.some(text=>/[áéíóúñ¿¡]/.test(text)),'propiedades o barra de selección con español: '+own.filter(text=>/[áéíóúñ¿¡]/.test(text)).slice(0,8).join(' | ')+' · '+rest.slice(0,3).join(' | '));}
+      await shot('57-propiedades-en-ingles');
+      await key('Escape');await tap('[aria-label="Open the tutorial"]');await sleep(300);
+      for(let i=0;i<5;i++){await clean('tutorial, paso '+(i+1));await clickText('Next');await sleep(120);}
+      await clean('tutorial, último paso');expect(await clickText('Start'),'el tutorial no termina con Start');await sleep(200);
+      await tap('[aria-label="Editor settings"]');await sleep(300);await clean('configuración');await shot('58-configuracion-en-ingles');
+      expect(await js(`document.querySelector('[aria-label="Language"]').value`)==='en','falta el selector de idioma');
+      // Cambiar el idioma desde la configuración recarga el editor y no toca el documento.
+      await js(`(()=>{const s=document.querySelector('[aria-label="Language"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'es');s.dispatchEvent(new Event('change',{bubbles:true}));})()`);await sleep(1800);
+      expect(await js(`document.documentElement.lang`)==='es'&&await js(`[...document.querySelectorAll('.side .tabs button')].map(b=>b.textContent).join('|')`)==='IA|Propiedades|Biblioteca|Historial','el selector no volvió a español');
+    }finally{await js(`localStorage.setItem('diagramia.language','es')`);await send('Page.reload');await sleep(1500);}
+    await js(`[...document.querySelectorAll('.doc-tab [role=tab]')].at(-2)?.click()`);await sleep(300);
+    expect(JSON.stringify(await saved())===before,'cambiar de idioma modificó el diagrama');
+    return 'sin español a la vista en inglés; selector de idioma ida y vuelta';
+  });
   await check('sin errores de consola ni excepciones durante todo el recorrido',async()=>{expect(!problems.length,problems.slice(0,5).join(' | '));return await status();});
 }finally{
   socket.close();browser.kill();await sleep(300);

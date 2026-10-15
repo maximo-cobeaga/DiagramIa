@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f4f6f8">
+  <meta name="description" content="Diagramia for business: bring animated diagrams and AI to your whole team, with custom credits, storage and terms. Tell us what you need.">
+  <title>Diagramia for business</title>
+  <link rel="canonical" href="https://diagramia.app/business.html">
+  <link rel="alternate" hreflang="en" href="https://diagramia.app/business.html">
+  <link rel="alternate" hreflang="es" href="https://diagramia.app/empresas.html">
+  <link rel="alternate" hreflang="x-default" href="https://diagramia.app/business.html">
+  <meta property="og:type" content="website"><meta property="og:site_name" content="Diagramia">
+  <meta property="og:url" content="https://diagramia.app/business.html">
+  <meta property="og:title" content="Diagramia for business">
+  <meta property="og:description" content="Animated diagrams and AI for your whole team, with custom credits, storage and terms.">
+  <meta property="og:image" content="https://diagramia.app/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="diagramia-app" content="http://127.0.0.1:5173/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="contact.js" defer></script>
+</head>
+<body class="contact-page">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <a class="brand" href="./" aria-label="Diagramia home"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M9 8h12c8 0 12 5 12 12s-4 12-12 12H9V8Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M10 20h14" fill="none" stroke="currentColor" stroke-width="3"/><rect x="21" y="16" width="8" height="8" rx="2" fill="#245cf6"/></svg><span>diagramia</span></a>
+    <nav aria-label="Main"><a href="./#equipos">Teams</a><a href="./#precios">Pricing</a><a href="empresas.html" lang="es" hreflang="es">Español</a></nav>
+    <div class="nav-end"><a class="button small dark" href="./#precios">See plans</a></div>
+  </header>
+  <main id="main" class="wrap contact-layout">
+    <section class="contact-pitch">
+      <span class="eyebrow">FOR BUSINESS</span>
+      <h1>Bring Diagramia to your whole team.</h1>
+      <p class="lead">Tell us which process you want to explain and how many people will use it. We reply by email with a proposal.</p>
+      <ul class="benefits">
+        <li>AI credits and storage agreed with you</li>
+        <li>We help you get started with your team's diagrams</li>
+        <li>Custom billing and terms</li>
+        <li>Works for any area: people, marketing, operations, education and more</li>
+      </ul>
+      <p class="contact-alt">Prefer to write to us directly? <a href="mailto:mcobeaga@diagramia.app">mcobeaga@diagramia.app</a></p>
+    </section>
+    <section class="contact-card" aria-labelledby="form-title">
+      <h2 id="form-title">Let's talk</h2>
+      <form id="contact-form">
+        <label>Your name<input name="name" type="text" autocomplete="name" required minlength="2" maxlength="100"></label>
+        <label>Work email<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+        <label>Company<input name="company" type="text" autocomplete="organization" required minlength="2" maxlength="120"></label>
+        <label>Team size
+          <select name="teamSize"><option value="">Choose an option</option><option value="1-10">1 to 10 people</option><option value="11-50">11 to 50 people</option><option value="51-200">51 to 200 people</option><option value="201+">More than 200</option></select>
+        </label>
+        <label>What would you like to solve?<textarea name="message" rows="5" required minlength="10" maxlength="2000"></textarea></label>
+        <!-- Trampa para bots: las personas no lo ven. -->
+        <div class="hp" aria-hidden="true"><label>Leave this field empty<input name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
+        <button class="button dark" type="submit" id="contact-submit">Send message</button>
+        <p id="contact-status" role="status" aria-live="polite"></p>
+        <p class="contact-legal">We only use your details to reply to you. More in the <a id="contact-privacy" href="https://app.diagramia.app/privacy.html">privacy notice</a>.</p>
+        <noscript>To send the form, turn on JavaScript or email us at <a href="mailto:mcobeaga@diagramia.app">mcobeaga@diagramia.app</a>.</noscript>
+      </form>
+    </section>
+  </main>
+  <footer class="wrap"><a class="brand" href="./"><span>diagramia</span></a><a href="pricing.html">Pricing</a><a href="terms.html">Terms</a><a href="refunds.html">Refunds</a><a href="https://app.diagramia.app/privacy.html">Privacy</a><span class="mono">© 2026 Diagramia</span></footer>
+</body>
+</html>

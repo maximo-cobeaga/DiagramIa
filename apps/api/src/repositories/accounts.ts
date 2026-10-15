@@ -63,9 +63,29 @@ export class AccountRepository{
   async endSession(token:string|undefined){if(token&&token.length<=256)await this.pool.query('DELETE FROM auth_sessions WHERE token_hash=$1',[hash(token)]);}
 
   async listDocuments(projectId:string){
-    const found=await this.pool.query<{id:string;revision:number;body:{title?:unknown};updated_at:Date}>(
-      'SELECT c.public_id AS id,d.revision,d.body,d.updated_at FROM documents d JOIN cloud_documents c ON c.document_id=d.id WHERE c.project_id=$1 ORDER BY d.updated_at DESC',[projectId]);
-    return found.rows.map(row=>({id:row.id,title:typeof row.body.title==='string'?row.body.title:row.id,revision:row.revision,updatedAt:row.updated_at}));
+    const found=await this.pool.query<{id:string;revision:number;body:{title?:unknown};updated_at:Date;share_token:string|null}>(
+      'SELECT c.public_id AS id,d.revision,d.body,d.updated_at,c.share_token FROM documents d JOIN cloud_documents c ON c.document_id=d.id WHERE c.project_id=$1 ORDER BY d.updated_at DESC',[projectId]);
+    return found.rows.map(row=>({id:row.id,title:typeof row.body.title==='string'?row.body.title:row.id,revision:row.revision,updatedAt:row.updated_at,shareToken:row.share_token}));
+  }
+
+  /**
+   * Enlace público de sólo lectura (ADR 106). Compartir dos veces devuelve el mismo enlace; null si el diagrama no es del proyecto.
+   * El token son 144 bits al azar: no se puede adivinar ni recorrer.
+   */
+  async shareDocument(projectId:string,documentId:string):Promise<string|null>{
+    const found=await this.pool.query<{share_token:string}>(
+      'UPDATE cloud_documents SET share_token=COALESCE(share_token,$3),shared_at=COALESCE(shared_at,now()) WHERE project_id=$1 AND public_id=$2 RETURNING share_token',[projectId,documentId,randomBytes(18).toString('base64url')]);
+    return found.rows[0]?.share_token??null;
+  }
+  /** Corta el enlace. Volver a compartir genera uno nuevo: el anterior no vuelve a servir. */
+  async unshareDocument(projectId:string,documentId:string):Promise<boolean>{
+    const found=await this.pool.query('UPDATE cloud_documents SET share_token=NULL,shared_at=NULL WHERE project_id=$1 AND public_id=$2',[projectId,documentId]);
+    return (found.rowCount??0)>0;
+  }
+  /** El diagrama vigente de un enlace, y nada de la cuenta que lo compartió. */
+  async sharedDocument(token:string):Promise<unknown|null>{
+    const found=await this.pool.query<{body:unknown}>('SELECT d.body FROM cloud_documents c JOIN documents d ON d.id=c.document_id WHERE c.share_token=$1',[token]);
+    return found.rows[0]?.body??null;
   }
 
   async ownsDocument(projectId:string,documentId:string):Promise<boolean>{
@@ -81,8 +101,11 @@ export class AccountRepository{
     return {plan,documents:Number(found.rows[0]!.documents),bytes:Number(found.rows[0]!.bytes),maxDocuments:limits.maxDocuments,maxDocumentBytes:limits.maxDocumentBytes,maxBytes:limits.maxBytes,maxOwnElements:limits.maxOwnElements};
   }
 
-  /** Reserva de créditos bajo lock de usuario; una segunda petición con el mismo ID recupera el recibo durable. */
-  async reserveCredits(userId:string,requestId:string,fingerprint:string,credits:0|1|2,at=new Date()):Promise<{replayed:unknown|null}>{
+  /**
+   * Reserva de créditos bajo lock de usuario; una segunda petición con el mismo ID recupera el recibo durable.
+   * `unlimited` (administradores) registra el consumo igual, para que la cuenta lo muestre, pero no aplica el tope del plan.
+   */
+  async reserveCredits(userId:string,requestId:string,fingerprint:string,credits:0|1|2,at=new Date(),unlimited=false):Promise<{replayed:unknown|null}>{
     return tx(this.pool,async client=>{
       const {day,month}=period(at),expiresAt=new Date(at.getTime()+900_000);
       await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[userId]);
@@ -101,7 +124,7 @@ export class AccountRepository{
                 coalesce(sum(credits) FILTER (WHERE created_at >= $3 AND created_at <= $4),0)::text AS monthly
          FROM ai_credit_receipts WHERE user_id=$1 AND status<>'released'`,[userId,day,month,at]);
       const {daily,monthly}=usage.rows[0]!;
-      if(credits>0&&(Number(daily)+credits>limits.dailyCredits||Number(monthly)+credits>limits.monthlyCredits))throw new CreditError('CREDIT_LIMIT',`Se agotaron los créditos de IA: máximo ${limits.dailyCredits} por día y ${limits.monthlyCredits} por mes.${plan==='free'?' Con el plan Pro tenés más.':''}`);
+      if(!unlimited&&credits>0&&(Number(daily)+credits>limits.dailyCredits||Number(monthly)+credits>limits.monthlyCredits))throw new CreditError('CREDIT_LIMIT',`Se agotaron los créditos de IA: máximo ${limits.dailyCredits} por día y ${limits.monthlyCredits} por mes.${plan==='free'?' Con el plan Pro tenés más.':''}`);
       if(old)await client.query("UPDATE ai_credit_receipts SET status='reserved',response=NULL,created_at=$3,expires_at=$4 WHERE user_id=$1 AND request_id=$2",[userId,requestId,at,expiresAt]);
       else await client.query("INSERT INTO ai_credit_receipts (user_id,request_id,fingerprint,credits,status,created_at,expires_at) VALUES ($1,$2,$3,$4,'reserved',$5,$6)",[userId,requestId,fingerprint,credits,at,expiresAt]);
       return {replayed:null};

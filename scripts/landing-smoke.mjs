@@ -36,7 +36,7 @@ try{
       if(!path.startsWith(root+sep))return void res.writeHead(403).end();
       let body=readFileSync(path);const extension=extname(path);
       if(extension==='.html')body=Buffer.from(body.toString().replace(/(<meta name="diagramia-app" content=")[^"]*/g,`$1${apiOrigin}/`).replace(/(<meta name="diagramia-events" content=")[^"]*/g,'$1'));
-      const mime={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.ttf':'font/ttf'};
+      const mime={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.ttf':'font/ttf','.png':'image/png','.txt':'text/plain','.xml':'application/xml'};
       res.writeHead(200,{'content-type':mime[extension]??'application/octet-stream','content-security-policy':`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src ${apiOrigin}; object-src 'none'; base-uri 'self'; form-action 'self'`});res.end(body);
     }catch{res.writeHead(404).end();}
   });
@@ -86,16 +86,27 @@ try{
   });
   await check('textos legales: sin cartel de borrador, 14 días en los dos idiomas y enlaces según el idioma',async()=>{
     const pages="[...document.querySelectorAll('footer [data-page-en]')].map(a=>new URL(a.href).pathname.split('/').pop())";
-    await navigate('/');assert.deepEqual(await js(pages),['terms.html','refunds.html','privacy.html']);
-    await js("document.querySelector('#language').click()");assert.deepEqual(await js(pages),['terminos.html','reembolsos.html','privacidad.html']);
+    await navigate('/');assert.deepEqual(await js(pages),['pricing.html','terms.html','refunds.html','privacy.html']);
+    await js("document.querySelector('#language').click()");assert.deepEqual(await js(pages),['precios.html','terminos.html','reembolsos.html','privacidad.html']);
+    assert.equal(await js("new URL(document.querySelector('[data-track=enterprise]').href).pathname"),'/empresas.html','Empresas según el idioma');
     await js("document.querySelector('#language').click()");
-    for(const [page,other,window] of [['terms.html','terminos.html'],['refunds.html','reembolsos.html','14 days'],['terminos.html','terms.html'],['reembolsos.html','refunds.html','14 días']]){
+    for(const [page,other,window] of [['terms.html','terminos.html'],['refunds.html','reembolsos.html','14 days'],['terminos.html','terms.html'],['reembolsos.html','refunds.html','14 días'],['pricing.html','precios.html','up to 40 a day'],['precios.html','pricing.html','hasta 40 por día'],['business.html','empresas.html'],['empresas.html','business.html']]){
       await navigate('/'+page);const text=await js('document.body.textContent');
       assert.ok(!/borrador|draft/i.test(text),page+' sigue marcado como borrador');
       assert.ok(await js(`Boolean(document.querySelector('nav a[href="${other}"]'))`),page+' no enlaza al otro idioma');
       if(window)assert.ok(text.includes(window)&&!text.includes('48'),page+' no anuncia el plazo de 14 días');
       assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'),page+' desborda');
+      assert.ok(await js(`document.querySelector('link[rel=canonical]')?.href.endsWith('/${page}')&&Boolean(document.querySelector('link[hreflang][href$="/${other}"]'))`),page+' sin canonical o hreflang');
     }
+  });
+  await check('sitio sin JavaScript: privacidad con dirección real, ejemplo JSON coherente y archivos para buscadores',async()=>{
+    const home=readFileSync(join(root,'index.html'),'utf8');
+    assert.ok(!/href="#"[^>]*data-es="Privacidad"|data-page-es="privacidad.html"[^>]*href="#"/.test(home),'el enlace de privacidad depende de JavaScript');
+    assert.ok(!home.includes('"area"')&&home.includes('og:image')&&home.includes('rel="canonical"'),'ejemplo JSON o metadatos de la home');
+    for(const [path,text] of [['/robots.txt','Sitemap: https://diagramia.app/sitemap.xml'],['/sitemap.xml','https://diagramia.app/pricing.html'],['/.well-known/security.txt','Contact: mailto:']]){
+      const response=await fetch(siteOrigin+path);assert.equal(response.status,200,path);assert.ok((await response.text()).includes(text),path);
+    }
+    const image=readFileSync(join(root,'og-image.png'));assert.equal(image.readUInt32BE(16),1200);assert.equal(image.readUInt32BE(20),630);
   });
   for(const width of [1440,390,320])await check(`empresas ${width}px: formulario accesible sin desborde`,async()=>{
     await send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<600});await navigate('/empresas.html');
@@ -115,6 +126,12 @@ try{
     await until(()=>js("document.querySelector('#contact-status').dataset.tone==='error'"),'error');
     assert.equal(await js("document.querySelector('[name=company]').value"),'Empresa de prueba');assert.equal((await repository.list()).length,1);
     failWrites=false;await js("document.querySelector('#contact-submit').click()");await until(()=>js("document.querySelector('#contact-status').dataset.tone==='ok'"),'reintento');assert.equal((await repository.list()).length,2);
+  });
+  await check('business.html: formulario en inglés, envío real y respuesta en inglés',async()=>{
+    await navigate('/business.html');assert.equal(await js('document.documentElement.lang'),'en');
+    assert.ok((await js("document.querySelector('#contact-privacy').href")).endsWith('/privacy.html'));
+    await fill();await js("document.querySelector('#contact-submit').click()");await until(()=>js("document.querySelector('#contact-status').dataset.tone==='ok'"),'guardado');
+    assert.ok((await js("document.querySelector('#contact-status').textContent")).startsWith('Thank you!'));assert.equal((await repository.list()).length,3);
   });
   assert.deepEqual(errors,[],'sin excepciones JavaScript');console.log(`${checks.length}/${checks.length} comprobaciones aprobadas. Capturas en evidencias/.`);
 }catch(error){failure=error;}

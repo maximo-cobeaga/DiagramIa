@@ -7,6 +7,8 @@
     const app=document.querySelector('meta[name="diagramia-app"]')?.content;
     if(!app)return;
     const base=new URL(app,location.href);
-    for(const link of document.querySelectorAll('[data-cta],[data-app-path]'))link.href=new URL(link.dataset.appPath||'',base).href;
+    // El editor vive en otro origen y no ve el idioma guardado acá: se lo pasa la dirección.
+    const lang=document.documentElement.lang==='es'?'es':'en';
+    for(const link of document.querySelectorAll('[data-cta],[data-app-path]')){const target=new URL(link.dataset.appPath||'',base);if(!/\.html$/.test(target.pathname))target.searchParams.set('lang',lang);link.href=target.href;}
   }catch{/* sin URL válida, los enlaces quedan como están en el HTML */}
 })();

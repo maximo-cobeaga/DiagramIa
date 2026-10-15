@@ -1,4 +1,5 @@
 import {autoFocus,type DiagramDocument,type DiagramNode,type DiagramStep} from '@diagramia/core';
+import {t} from '../i18n';
 const newId=(prefix:string)=>prefix+'-'+crypto.randomUUID().slice(0,8);
 
 /**
@@ -9,11 +10,11 @@ export type PresetKind='walk'|'build'|'edges'|'zones'|'spotlight';
 export type Preset={kind:PresetKind;name:string;title:string;description:string;/** Pista visual del resultado, en una línea. */sketch:string};
 
 export const PRESETS:Preset[]=[
-  {kind:'walk',name:'Recorrido',title:'Seguir el camino',description:'Avanza por las conexiones, de a una etapa por vez.',sketch:'A → B → C'},
-  {kind:'build',name:'Aparecer de a uno',title:'Ir sumando piezas',description:'Cada paso agrega lo nuevo y deja lo anterior resaltado. Ideal para presentar.',sketch:'A · A+B · A+B+C'},
-  {kind:'edges',name:'Conexión por conexión',title:'Explicar cada relación',description:'Un paso por flecha: de dónde sale, adónde llega y qué dice.',sketch:'A→B · B→C · C→D'},
-  {kind:'zones',name:'Por zonas',title:'Recorrer cada zona',description:'Un paso por zona, y un cierre con todo junto.',sketch:'Zona 1 · Zona 2 · Todo'},
-  {kind:'spotlight',name:'Pieza por pieza',title:'Mostrar una pieza a la vez',description:'Pone el foco en cada elemento, con la cámara cerca.',sketch:'A · B · C · D'}
+  {kind:'walk',name:t('Recorrido'),title:t('Seguir el camino'),description:t('Avanza por las conexiones, de a una etapa por vez.'),sketch:'A → B → C'},
+  {kind:'build',name:t('Aparecer de a uno'),title:t('Ir sumando piezas'),description:t('Cada paso agrega lo nuevo y deja lo anterior resaltado. Ideal para presentar.'),sketch:'A · A+B · A+B+C'},
+  {kind:'edges',name:t('Conexión por conexión'),title:t('Explicar cada relación'),description:t('Un paso por flecha: de dónde sale, adónde llega y qué dice.'),sketch:'A→B · B→C · C→D'},
+  {kind:'zones',name:t('Por zonas'),title:t('Recorrer cada zona'),description:t('Un paso por zona, y un cierre con todo junto.'),sketch:t('Zona 1 · Zona 2 · Todo')},
+  {kind:'spotlight',name:t('Pieza por pieza'),title:t('Mostrar una pieza a la vez'),description:t('Pone el foco en cada elemento, con la cámara cerca.'),sketch:'A · B · C · D'}
 ];
 
 const MAX_STEPS=60;
@@ -48,7 +49,7 @@ const reading=(nodes:DiagramNode[])=>[...nodes].sort((a,b)=>(a.position.y-b.posi
 /** Pasos del estilo elegido. Una lista vacía significa que el diagrama no alcanza para ese estilo (el motivo va en `reason`). */
 export function buildPreset(kind:PresetKind,doc:DiagramDocument,ids:string[]):{steps:DiagramStep[];reason?:string}{
   const {nodes,edges}=scope(doc,ids);
-  if(!nodes.length)return {steps:[],reason:'Agregá elementos antes de crear una animación.'};
+  if(!nodes.length)return {steps:[],reason:t('Agregá elementos antes de crear una animación.')};
   const label=new Map(nodes.map(n=>[n.id,n.label])),names=(list:string[])=>list.map(id=>label.get(id)??id).join(', ');
   const focusOf=(nodeIds:string[],edgeIds:string[])=>autoFocus(doc,nodeIds.slice(0,100),edgeIds.slice(0,100));
   const steps:DiagramStep[]=[];
@@ -59,11 +60,11 @@ export function buildPreset(kind:PresetKind,doc:DiagramDocument,ids:string[]):{s
       const out=edges.filter(e=>frontier.includes(e.from)),targets=[...new Set(out.map(e=>e.to))].filter(id=>!frontier.includes(id));
       seen.push(...frontier);
       const nodeIds=(kind==='build'?seen:frontier).slice(0,100),edgeIds=(kind==='build'?edges.filter(e=>seen.includes(e.from)&&seen.includes(e.to)):out).map(e=>e.id).slice(0,100);
-      const text=kind==='build'?(index===0?`Empezamos con ${names(frontier)}`:`Se suma ${names(frontier)}`):(targets.length?`${names(frontier)} → ${names(targets)}`:names(frontier));
+      const text=kind==='build'?(index===0?t('Empezamos con {0}',names(frontier)):t('Se suma {0}',names(frontier))):(targets.length?`${names(frontier)} → ${names(targets)}`:names(frontier));
       steps.push(blank({caption:text.slice(0,500),nodeIds,edgeIds,focus:kind==='build'?'overview':focusOf(nodeIds,edgeIds),transition:index?'smooth':'slow'}));
     });
   }else if(kind==='edges'){
-    if(!edges.length)return {steps:[],reason:'Este diagrama no tiene conexiones para explicar. Probá «Pieza por pieza».'};
+    if(!edges.length)return {steps:[],reason:t('Este diagrama no tiene conexiones para explicar. Probá «Pieza por pieza».')};
     const order=new Map<string,number>();
     layers(nodes,edges).forEach((frontier,index)=>frontier.forEach(id=>order.set(id,index)));
     const sorted=[...edges].sort((a,b)=>(order.get(a.from)??0)-(order.get(b.from)??0));
@@ -73,12 +74,12 @@ export function buildPreset(kind:PresetKind,doc:DiagramDocument,ids:string[]):{s
     });
   }else if(kind==='zones'){
     const zones=doc.zones.filter(zone=>nodes.some(n=>n.zoneId===zone.id));
-    if(!zones.length)return {steps:[],reason:'Este diagrama no tiene zonas. Probá «Seguir el camino» o «Pieza por pieza».'};
+    if(!zones.length)return {steps:[],reason:t('Este diagrama no tiene zonas. Probá «Seguir el camino» o «Pieza por pieza».')};
     zones.slice(0,MAX_STEPS-1).forEach((zone,index)=>{
       const inZone=nodes.filter(n=>n.zoneId===zone.id).map(n=>n.id),inner=edges.filter(e=>inZone.includes(e.from)&&inZone.includes(e.to)).map(e=>e.id);
-      steps.push(blank({caption:`${zone.label}: ${names(inZone.slice(0,4))}${inZone.length>4?` y ${inZone.length-4} más`:''}`.slice(0,500),nodeIds:inZone.slice(0,100),edgeIds:inner.slice(0,100),focus:focusOf(inZone,inner),transition:index?'smooth':'slow'}));
+      steps.push(blank({caption:`${zone.label}: ${names(inZone.slice(0,4))}${inZone.length>4?t(' y {0} más',inZone.length-4):''}`.slice(0,500),nodeIds:inZone.slice(0,100),edgeIds:inner.slice(0,100),focus:focusOf(inZone,inner),transition:index?'smooth':'slow'}));
     });
-    steps.push(blank({caption:'Todo junto',nodeIds:nodes.map(n=>n.id).slice(0,100),edgeIds:edges.map(e=>e.id).slice(0,100),focus:'overview',durationMs:2600}));
+    steps.push(blank({caption:t('Todo junto'),nodeIds:nodes.map(n=>n.id).slice(0,100),edgeIds:edges.map(e=>e.id).slice(0,100),focus:'overview',durationMs:2600}));
   }else{
     reading(nodes).slice(0,MAX_STEPS).forEach((node,index)=>{
       const around=edges.filter(e=>e.from===node.id||e.to===node.id).map(e=>e.id);

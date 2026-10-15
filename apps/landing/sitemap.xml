@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url><loc>https://diagramia.app/</loc></url>
+  <url><loc>https://diagramia.app/pricing.html</loc><xhtml:link rel="alternate" hreflang="en" href="https://diagramia.app/pricing.html"/><xhtml:link rel="alternate" hreflang="es" href="https://diagramia.app/precios.html"/></url>
+  <url><loc>https://diagramia.app/precios.html</loc><xhtml:link rel="alternate" hreflang="en" href="https://diagramia.app/pricing.html"/><xhtml:link rel="alternate" hreflang="es" href="https://diagramia.app/precios.html"/></url>
+  <url><loc>https://diagramia.app/business.html</loc><xhtml:link rel="alternate" hreflang="en" href="https://diagramia.app/business.html"/><xhtml:link rel="alternate" hreflang="es" href="https://diagramia.app/empresas.html"/></url>
+  <url><loc>https://diagramia.app/empresas.html</loc><xhtml:link rel="alternate" hreflang="en" href="https://diagramia.app/business.html"/><xhtml:link rel="alternate" hreflang="es" href="https://diagramia.app/empresas.html"/></url>
+  <url><loc>https://diagramia.app/terms.html</loc><xhtml:link rel="alternate" hreflang="en" href="https://diagramia.app/terms.html"/><xhtml:link rel="alternate" hreflang="es" href="https://diagramia.app/terminos.html"/></url>
+  <url><loc>https://diagramia.app/terminos.html</loc><xhtml:link rel="alternate" hreflang="en" href="https://diagramia.app/terms.html"/><xhtml:link rel="alternate" hreflang="es" href="https://diagramia.app/terminos.html"/></url>
+  <url><loc>https://diagramia.app/refunds.html</loc><xhtml:link rel="alternate" hreflang="en" href="https://diagramia.app/refunds.html"/><xhtml:link rel="alternate" hreflang="es" href="https://diagramia.app/reembolsos.html"/></url>
+  <url><loc>https://diagramia.app/reembolsos.html</loc><xhtml:link rel="alternate" hreflang="en" href="https://diagramia.app/refunds.html"/><xhtml:link rel="alternate" hreflang="es" href="https://diagramia.app/reembolsos.html"/></url>
+</urlset>

@@ -9,7 +9,8 @@
   const uuid=()=>crypto.randomUUID?crypto.randomUUID():'10000000-1000-4000-8000-100000000000'.replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
   const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const stored=(store,key)=>{try{const value=store.getItem(key);if(UUID.test(value||''))return value;const fresh=uuid();store.setItem(key,fresh);return fresh;}catch{return uuid();}};
-  const enabled=!optOut&&Boolean(endpoint),anonymousId=enabled?stored(localStorage,'diagramia.aid'):null,sessionId=enabled?stored(sessionStorage,'diagramia.sid.landing'):null;
+  // Un navegador manejado por un programa no es una visita. Los bots que se declaran en el user agent los descarta el gateway.
+  const enabled=!optOut&&navigator.webdriver!==true&&Boolean(endpoint),anonymousId=enabled?stored(localStorage,'diagramia.aid'):null,sessionId=enabled?stored(sessionStorage,'diagramia.sid.landing'):null;
   const params=new URLSearchParams(location.search),utm=['utm_source','utm_medium','utm_campaign'];
   // Misma normalización que toSlug en el core: un valor que no queda como slug se descarta.
   const slug=value=>{const s=(value||'').trim().replace(/\s+/g,'-').replace(/[^a-zA-Z0-9._-]/g,'').replace(/^[._-]+/,'').slice(0,64);return s?s:null;};
@@ -33,6 +34,7 @@
     const target=new URL(app,location.href);
     if(enabled){target.searchParams.set('aid',anonymousId);target.searchParams.set('sid',sessionId);}
     for(const key of utm)if(params.get(key))target.searchParams.set(key,params.get(key));
+    target.searchParams.set('lang',document.documentElement.lang==='es'?'es':'en');
     link.href=target.href;
     link.addEventListener('click',event=>{
       if(!enabled||event.metaKey||event.ctrlKey||event.shiftKey||event.button!==0)return void send('landing_cta_clicked',{placement:link.dataset.cta});
@@ -46,6 +48,7 @@
     const target=new URL(link.dataset.appPath,new URL(app,location.href));
     if(enabled&&link.dataset.track){target.searchParams.set('aid',anonymousId);target.searchParams.set('sid',sessionId);}
     if(link.dataset.track)for(const key of utm)if(params.get(key))target.searchParams.set(key,params.get(key));
+    if(!/\.html$/.test(target.pathname))target.searchParams.set('lang',document.documentElement.lang==='es'?'es':'en');
     link.href=target.href;
   }
   // Botones de precios: se mide el clic con el mismo margen de 300 ms que los CTA principales.

@@ -2,6 +2,8 @@ import {flush as flushTelemetry,track} from '../telemetry';
 import {accountStore,refreshAccount,signIn} from '../store/accountStore';
 import {viewStore} from '../store/viewStore';
 import {notify} from '../store/documentStore';
+import {LANG,t} from '../i18n';
+import {serverTextIn} from '../serverText';
 
 type Source='plan_box'|'offer'|'limit'|'landing'|'header';
 export type Interval='month'|'year';
@@ -11,7 +13,7 @@ let checkoutPending:Promise<string|null>|null=null;
 let retryAt=0;
 export function startCheckout(source:Source='plan_box',interval:Interval='month'):Promise<string|null>{
   if(checkoutPending)return checkoutPending;
-  if(Date.now()<retryAt)return Promise.resolve(`Podés volver a abrir el pago en ${Math.ceil((retryAt-Date.now())/1000)} segundos.`);
+  if(Date.now()<retryAt)return Promise.resolve(t('Podés volver a abrir el pago en {0} segundos.',Math.ceil((retryAt-Date.now())/1000)));
   checkoutPending=requestCheckout(source,interval).finally(()=>{checkoutPending=null;});
   return checkoutPending;
 }
@@ -24,12 +26,12 @@ async function requestCheckout(source:Source,interval:Interval):Promise<string|n
   if(!response?.ok||!body?.url){
     if(response?.status===429){const seconds=Number(response.headers.get('Retry-After'));if(Number.isFinite(seconds)&&seconds>0)retryAt=Date.now()+Math.min(seconds,600)*1000;}
     track('checkout_failed',{status:response?.status??0});
-    return body?.error?.message??'No se pudo abrir el pago. Probá de nuevo en unos minutos.';
+    return typeof body?.error?.message==='string'?serverTextIn(LANG,body.error.message):t('No se pudo abrir el pago. Probá de nuevo en unos minutos.');
   }
   // Sólo se navega a la página de pago propia: aunque el servidor ya la valida, el navegador no sigue una dirección ajena.
   let target:URL;
-  try{target=new URL(body.url,window.location.href);}catch{track('checkout_failed',{status:0});return 'No se pudo abrir el pago. Probá de nuevo en unos minutos.';}
-  if(target.origin!==window.location.origin||target.pathname!=='/pago.html'){track('checkout_failed',{status:0});return 'No se pudo abrir el pago. Probá de nuevo en unos minutos.';}
+  try{target=new URL(body.url,window.location.href);}catch{track('checkout_failed',{status:0});return t('No se pudo abrir el pago. Probá de nuevo en unos minutos.');}
+  if(target.origin!==window.location.origin||target.pathname!=='/pago.html'){track('checkout_failed',{status:0});return t('No se pudo abrir el pago. Probá de nuevo en unos minutos.');}
   await flushTelemetry(true).catch(()=>undefined);
   window.location.assign(target.href);
   return null;
@@ -77,16 +79,16 @@ export async function resolveCheckoutReturn(){
     history.replaceState(history.state,'',url.pathname+(url.searchParams.toString()?`?${url.searchParams}`:'')+url.hash);
   }catch{return;}
   remember(null);
-  if(result==='cancel'){track('checkout_returned',{result:'cancelled',activated:false});openPlan();notify('No se hizo ningún cobro. Podés pasar a Pro cuando quieras.');return;}
-  notify('Pago recibido. Estamos activando tu plan Pro…');
+  if(result==='cancel'){track('checkout_returned',{result:'cancelled',activated:false});openPlan();notify(t('No se hizo ningún cobro. Podés pasar a Pro cuando quieras.'));return;}
+  notify(t('Pago recibido. Estamos activando tu plan Pro…'));
   const isPro=()=>accountStore.get().account?.billing.plan==='pro';
   for(let attempt=0;attempt<20&&!isPro();attempt++){
     await new Promise(resolve=>setTimeout(resolve,attempt<5?1500:3000));
     await refreshAccount().catch(()=>undefined);
   }
   track('checkout_returned',{result:'completed',activated:isPro()});
-  if(isPro()){openPlan();notify('¡Listo! Ya tenés Diagramia Pro.');}
-  else notify('Recibimos tu pago, pero la activación está tardando. Suele resolverse en unos minutos: recargá la página. Si no cambia, escribinos y lo arreglamos.','warn');
+  if(isPro()){openPlan();notify(t('¡Listo! Ya tenés Diagramia Pro.'));}
+  else notify(t('Recibimos tu pago, pero la activación está tardando. Suele resolverse en unos minutos: recargá la página. Si no cambia, escribinos y lo arreglamos.'),'warn');
 }
 
 let resolving=false;
@@ -101,7 +103,7 @@ export async function resolvePlanIntent(){
   if(auth==='loading')return;
   if(auth==='guest'&&(intent==='pro'||intent==='pro:year')){remember(intent==='pro:year'?'pro-login:year':'pro-login');signIn('pro');return;}
   remember(null);
-  if(auth==='unavailable'){notify('No pudimos verificar tu sesión. Probá de nuevo en unos minutos.','warn');return;}
+  if(auth==='unavailable'){notify(t('No pudimos verificar tu sesión. Probá de nuevo en unos minutos.'),'warn');return;}
   if(auth!=='signed-in')return;
   resolving=true;
   try{await goPro('landing',intent.endsWith(':year')?'year':'month');}finally{resolving=false;}

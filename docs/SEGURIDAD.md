@@ -61,6 +61,21 @@ Revisión del gateway, el cobro, el login, la configuración de nginx y el front
 - **Reembolsos y contracargos:** el gateway sólo procesa avisos de suscripción. Un reembolso hecho en Paddle no baja el plan hasta que la suscripción se cancele.
 - **Textos legales:** privacidad, términos y reembolsos se publican como definitivos desde el 13/10/2026 (ADR 100), en español e inglés, sin revisión profesional; Paddle los revisa para aprobar la cuenta real.
 
+## Auditoría externa del 15/10/2026 (ADR 108)
+
+Revisión pasiva del sitio publicado hecha por terceros con un lector web (sin JavaScript ni HTML crudo; `Auditoría de diagramia.app.md`). Cada hallazgo se contrastó con el código:
+
+| Hallazgo de la auditoría | Estado real | Qué se hizo |
+|---|---|---|
+| SSRF en la vista previa de enlaces (alta, «a verificar») | Ya cubierto desde ADR 066: DNS resuelto y validado antes de conectar, conexión a la IP validada, rangos privados/loopback/link-local/mapeados bloqueados, sólo http/https en 80/443, 3 redirecciones revalidadas, 6 s y 256 KB. | Nada. |
+| Endpoint de eventos público | Ya cubierto: contrato cerrado por evento (`strictObject`), 64 KB por lote, 60/min por IP, header propio y descarte de bots. Ensuciar métricas sigue siendo posible (ver «Pendiente»). | Nada. |
+| Honeypot leído por lectores de pantalla | Ya tenía `aria-hidden`, `tabindex="-1"` y `display:none`. | Nada; la versión en inglés lo conserva. |
+| Cookies sin flags verificados | `diagramia_session` y `diagramia_oidc_flow` llevan `HttpOnly`, `SameSite=Lax` y `Secure` en HTTPS. | Nada. |
+| Tokens MCP amplios | Ya son OAuth por usuario, con scopes y aislamiento por proyecto. El alcance por diagrama sería una función nueva. | Pendiente de producto. |
+| El editor responde a cualquier ruta (`/.env`) | Real: `try_files $uri /index.html`. | nginx sólo sirve el editor en `/` y `/s/`; el resto que no sea archivo responde 404, y los archivos con punto (salvo `/.well-known/`) 404 en los dos hosts. |
+| Sin `security.txt` | Real. | `/.well-known/security.txt` (RFC 9116, vence el 15/10/2027) en el dominio principal y en `app.`. Renovar `Expires` antes de esa fecha. |
+| Privacy de la home apunta a `#` | A medias: `links.js` la reescribe, pero sin JavaScript quedaba rota. | `href` real en el HTML. |
+
 ## Pendiente antes de lanzar
 
 - **Auth0 real:** configurar el tenant, exigir el email verificado, revisar la pantalla de login con la marca y probar el login completo en HTTPS.

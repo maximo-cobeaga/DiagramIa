@@ -12,7 +12,7 @@ const executable=[process.env.BROWSER,'C:/Program Files/Google/Chrome/Applicatio
 if(!executable){console.error('No se encontró Chrome ni Edge.');process.exit(2);}
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const port=9400+Math.floor(Math.random()*300),profile=mkdtempSync(join(tmpdir(),'diagramia-perf-'));
-const browser=spawn(executable,['--headless=new',`--remote-debugging-port=${port}`,`--user-data-dir=${profile}`,'--no-first-run','--disable-gpu','--window-size=1440,900','about:blank'],{stdio:'ignore'});
+const browser=spawn(executable,['--headless=new','--lang=es-AR',`--remote-debugging-port=${port}`,`--user-data-dir=${profile}`,'--no-first-run','--disable-gpu','--window-size=1440,900','about:blank'],{stdio:'ignore'});
 
 function synthetic(count){
   const perZone=20,zones=[],nodes=[],edges=[];

@@ -5,6 +5,7 @@ import {viewStore,type NodeTemplate} from '../store/viewStore';
 import {SHAPE_MIME} from '../canvas/Canvas';
 import {DiagramLayer} from '../canvas/DiagramLayer';
 import {singleNodeDocument,templateNode} from '../canvas/templateNode';
+import {t} from '../i18n';
 
 type Item=NodeTemplate&{name:string;keywords?:string};
 type Shape=NonNullable<NodeTemplate['shape']>;
@@ -32,102 +33,102 @@ function el(name:string,shape:Shape,[width,height]:[number,number],tone:Tone|'wh
  * píldora, avatar, insignia, cinta, carpeta, ventana y paso.
  */
 export const PALETTE:{title:string;open?:boolean;items:Item[]}[]=[
-  {title:'Ideas y notas',open:true,items:[
-    el('Nota adhesiva','sticky',[160,150],'sticky',{kind:'note',keywords:'post-it sticky nota'}),
-    el('Nota verde','sticky',[160,150],'stickyMint',{kind:'note',label:'Otra idea',keywords:'post-it sticky'}),
-    el('Idea','cloud',[200,124],'sun',{icon:'idea',large:true,kind:'note',keywords:'bombilla ocurrencia pensamiento'}),
-    el('Pregunta','bubble',[200,100],'violet',{icon:'question',label:'¿Cómo lo hacemos?',keywords:'duda consulta'}),
-    el('Objetivo','badge',[88,88],'mint',{icon:'target',keywords:'meta logro'}),
-    el('Importante','ribbon',[200,56],'coral',{label:'Importante',keywords:'destacado prioridad cinta'}),
-    el('Hecho','pill',[150,44],'mint',{icon:'check',keywords:'listo completado ok'}),
-    el('Atención','pill',[150,44],'coral',{icon:'alert',keywords:'alerta riesgo problema cuidado'}),
-    el('Etiqueta','pill',[150,44],'slate',{icon:'tag',keywords:'categoría'})
+  {title:t('Ideas y notas'),open:true,items:[
+    el(t('Nota adhesiva'),'sticky',[160,150],'sticky',{kind:'note',keywords:t('post-it sticky nota')}),
+    el(t('Nota verde'),'sticky',[160,150],'stickyMint',{kind:'note',label:t('Otra idea'),keywords:t('post-it sticky')}),
+    el(t('Idea'),'cloud',[200,124],'sun',{icon:'idea',large:true,kind:'note',keywords:t('bombilla ocurrencia pensamiento')}),
+    el(t('Pregunta'),'bubble',[200,100],'violet',{icon:'question',label:t('¿Cómo lo hacemos?'),keywords:t('duda consulta')}),
+    el(t('Objetivo'),'badge',[88,88],'mint',{icon:'target',keywords:t('meta logro')}),
+    el(t('Importante'),'ribbon',[200,56],'coral',{label:t('Importante'),keywords:t('destacado prioridad cinta')}),
+    el(t('Hecho'),'pill',[150,44],'mint',{icon:'check',keywords:t('listo completado ok')}),
+    el(t('Atención'),'pill',[150,44],'coral',{icon:'alert',keywords:t('alerta riesgo problema cuidado')}),
+    el(t('Etiqueta'),'pill',[150,44],'slate',{icon:'tag',keywords:t('categoría')})
   ]},
-  {title:'Personas',open:true,items:[
-    el('Persona','avatar',[88,88],'blue',{kind:'actor',label:'Ana',keywords:'usuario cliente perfil'}),
-    el('Cliente','avatar',[88,88],'pink',{kind:'actor',icon:'heart',keywords:'comprador'}),
-    el('Estudiante','avatar',[88,88],'lime',{kind:'actor',icon:'graduation',keywords:'alumno'}),
-    el('Docente','avatar',[88,88],'mint',{kind:'actor',icon:'book',keywords:'profesor maestro'}),
-    el('Equipo','card',[190,104],'white',{kind:'actor',icon:'users',accent:'violet',details:'3 personas',keywords:'grupo área'}),
-    el('Testimonio','bubble',[210,100],'pink',{label:'«Me resolvió el problema»',keywords:'opinión cita comentario'})
+  {title:t('Personas'),open:true,items:[
+    el(t('Persona'),'avatar',[88,88],'blue',{kind:'actor',label:t('Ana'),keywords:t('usuario cliente perfil')}),
+    el(t('Cliente'),'avatar',[88,88],'pink',{kind:'actor',icon:'heart',keywords:t('comprador')}),
+    el(t('Estudiante'),'avatar',[88,88],'lime',{kind:'actor',icon:'graduation',keywords:t('alumno')}),
+    el(t('Docente'),'avatar',[88,88],'mint',{kind:'actor',icon:'book',keywords:t('profesor maestro')}),
+    el(t('Equipo'),'card',[190,104],'white',{kind:'actor',icon:'users',accent:'violet',details:t('3 personas'),keywords:t('grupo área')}),
+    el(t('Testimonio'),'bubble',[210,100],'pink',{label:t('«Me resolvió el problema»'),keywords:t('opinión cita comentario')})
   ]},
-  {title:'Viajes y planes',open:true,items:[
-    el('Mapa','map',[168,112],'blue',{label:'Destino',keywords:'ubicación lugar recorrido ciudad'}),
-    el('Avión','pill',[150,44],'blue',{icon:'plane',label:'Vuelo',keywords:'aeropuerto viaje'}),
-    el('Auto','pill',[150,44],'slate',{icon:'car',label:'En auto',keywords:'ruta manejar'}),
-    el('Micro','pill',[150,44],'sun',{icon:'bus',label:'Micro',keywords:'colectivo bus'}),
-    el('Tren','pill',[150,44],'violet',{icon:'train',label:'Tren',keywords:'ferrocarril'}),
-    el('Alojamiento','card',[190,104],'white',{icon:'bed',accent:'violet',label:'Hotel',details:'Check-in 14 h',keywords:'hotel hostel dormir'}),
-    el('Día del viaje','card',[190,104],'white',{icon:'calendar',accent:'coral',label:'Día 1',details:'Llegada y paseo',keywords:'itinerario agenda'}),
-    el('Playa','badge',[88,88],'sun',{icon:'umbrella',keywords:'mar costa verano'}),
-    el('Comida','pill',[150,44],'coral',{icon:'food',label:'Restaurante',keywords:'comer cena almuerzo'}),
-    el('Excursión','bubble',[200,100],'mint',{icon:'mountain',label:'Excursión a la sierra',keywords:'paseo salida'}),
-    el('Entradas','pill',[150,44],'pink',{icon:'ticket',label:'Museo',keywords:'teatro cine show'}),
-    el('Presupuesto','card',[190,104],'white',{icon:'coin',accent:'lime',label:'Presupuesto',details:'Total estimado',keywords:'dinero gastos costo'})
+  {title:t('Viajes y planes'),open:true,items:[
+    el(t('Mapa'),'map',[168,112],'blue',{label:t('Destino'),keywords:t('ubicación lugar recorrido ciudad')}),
+    el(t('Avión'),'pill',[150,44],'blue',{icon:'plane',label:t('Vuelo'),keywords:t('aeropuerto viaje')}),
+    el(t('Auto@@vehículo'),'pill',[150,44],'slate',{icon:'car',label:t('En auto'),keywords:t('ruta manejar')}),
+    el(t('Micro@@vehículo'),'pill',[150,44],'sun',{icon:'bus',label:t('Micro@@vehículo'),keywords:t('colectivo bus')}),
+    el(t('Tren'),'pill',[150,44],'violet',{icon:'train',label:t('Tren'),keywords:t('ferrocarril')}),
+    el(t('Alojamiento'),'card',[190,104],'white',{icon:'bed',accent:'violet',label:t('Hotel'),details:t('Check-in 14 h'),keywords:t('hotel hostel dormir')}),
+    el(t('Día del viaje'),'card',[190,104],'white',{icon:'calendar',accent:'coral',label:t('Día 1'),details:t('Llegada y paseo'),keywords:t('itinerario agenda')}),
+    el(t('Playa'),'badge',[88,88],'sun',{icon:'umbrella',keywords:t('mar costa verano')}),
+    el(t('Comida'),'pill',[150,44],'coral',{icon:'food',label:t('Restaurante'),keywords:t('comer cena almuerzo')}),
+    el(t('Excursión'),'bubble',[200,100],'mint',{icon:'mountain',label:t('Excursión a la sierra'),keywords:t('paseo salida')}),
+    el(t('Entradas'),'pill',[150,44],'pink',{icon:'ticket',label:t('Museo'),keywords:t('teatro cine show')}),
+    el(t('Presupuesto'),'card',[190,104],'white',{icon:'coin',accent:'lime',label:t('Presupuesto'),details:t('Total estimado'),keywords:t('dinero gastos costo')})
   ]},
-  {title:'Procesos',items:[
-    el('Paso','chevron',[170,64],'blue',{label:'Paso 1',keywords:'etapa fase flecha proceso'}),
-    el('Siguiente paso','chevron',[170,64],'mint',{label:'Paso 2',keywords:'etapa fase flecha'}),
-    el('Inicio','pill',[140,44],'blue',{icon:'flag',keywords:'comienzo arranque'}),
-    el('Meta','ribbon',[190,56],'lime',{label:'Meta',keywords:'resultado logro final'}),
-    el('Decisión','diamond',[170,104],'sun',{kind:'decision',label:'¿Sí o no?',keywords:'condición pregunta'}),
-    el('Hito','badge',[88,88],'violet',{icon:'flag',keywords:'logro fecha'})
+  {title:t('Procesos'),items:[
+    el(t('Paso'),'chevron',[170,64],'blue',{label:t('Paso 1'),keywords:t('etapa fase flecha proceso')}),
+    el(t('Siguiente paso'),'chevron',[170,64],'mint',{label:t('Paso 2'),keywords:t('etapa fase flecha')}),
+    el(t('Inicio'),'pill',[140,44],'blue',{icon:'flag',keywords:t('comienzo arranque')}),
+    el(t('Meta'),'ribbon',[190,56],'lime',{label:t('Meta'),keywords:t('resultado logro final')}),
+    el(t('Decisión'),'diamond',[170,104],'sun',{kind:'decision',label:t('¿Sí o no?'),keywords:t('condición pregunta')}),
+    el(t('Hito'),'badge',[88,88],'violet',{icon:'flag',keywords:t('logro fecha')})
   ]},
-  {title:'Negocio',items:[
-    el('Producto','card',[190,104],'white',{icon:'box',accent:'coral',details:'Descripción breve',keywords:'paquete oferta'}),
-    el('Métrica','card',[190,104],'white',{icon:'chart',accent:'blue',label:'Ventas',details:'+12 % este mes',keywords:'gráfico datos indicador kpi'}),
-    el('Venta','pill',[150,44],'mint',{icon:'cart',keywords:'compra carrito'}),
-    el('Dinero','badge',[88,88],'lime',{icon:'coin',keywords:'pago precio costo'}),
-    el('Crecimiento','chevron',[180,64],'mint',{label:'Crecimiento',keywords:'tendencia aumento'}),
-    el('Contrato','document',[170,100],'white',{icon:'file',accent:'slate',keywords:'documento papel acuerdo'}),
-    el('Empresa','folder',[190,110],'sun',{keywords:'organización área carpeta'}),
-    el('Envío','pill',[150,44],'coral',{icon:'truck',keywords:'logística entrega'})
+  {title:t('Negocio'),items:[
+    el(t('Producto'),'card',[190,104],'white',{icon:'box',accent:'coral',details:t('Descripción breve'),keywords:t('paquete oferta')}),
+    el(t('Métrica'),'card',[190,104],'white',{icon:'chart',accent:'blue',label:t('Ventas'),details:t('+12 % este mes'),keywords:t('gráfico datos indicador kpi')}),
+    el(t('Venta'),'pill',[150,44],'mint',{icon:'cart',keywords:t('compra carrito')}),
+    el(t('Dinero'),'badge',[88,88],'lime',{icon:'coin',keywords:t('pago precio costo')}),
+    el(t('Crecimiento'),'chevron',[180,64],'mint',{label:t('Crecimiento'),keywords:t('tendencia aumento')}),
+    el(t('Contrato'),'document',[170,100],'white',{icon:'file',accent:'slate',keywords:t('documento papel acuerdo')}),
+    el(t('Empresa'),'folder',[190,110],'sun',{keywords:t('organización área carpeta')}),
+    el(t('Envío'),'pill',[150,44],'coral',{icon:'truck',keywords:t('logística entrega')})
   ]},
-  {title:'Educación',items:[
-    el('Tema','folder',[190,110],'blue',{keywords:'unidad carpeta materia'}),
-    el('Curso','card',[190,104],'white',{icon:'graduation',accent:'mint',details:'8 clases',keywords:'clase materia'}),
-    el('Tarea','sticky',[160,150],'stickyPink',{kind:'note',keywords:'ejercicio pendiente'}),
-    el('Concepto','ellipse',[180,96],'sun',{keywords:'idea mapa mental'}),
-    el('Investigar','bubble',[200,100],'blue',{icon:'search',label:'¿Qué sabemos?',keywords:'buscar averiguar'}),
-    el('Evaluación','badge',[88,88],'mint',{icon:'check',keywords:'examen prueba nota'})
+  {title:t('Educación'),items:[
+    el(t('Tema'),'folder',[190,110],'blue',{keywords:t('unidad carpeta materia')}),
+    el(t('Curso'),'card',[190,104],'white',{icon:'graduation',accent:'mint',details:t('8 clases'),keywords:t('clase materia')}),
+    el(t('Tarea'),'sticky',[160,150],'stickyPink',{kind:'note',keywords:t('ejercicio pendiente')}),
+    el(t('Concepto'),'ellipse',[180,96],'sun',{keywords:t('idea mapa mental')}),
+    el(t('Investigar'),'bubble',[200,100],'blue',{icon:'search',label:t('¿Qué sabemos?'),keywords:t('buscar averiguar')}),
+    el(t('Evaluación'),'badge',[88,88],'mint',{icon:'check',keywords:t('examen prueba nota')})
   ]},
-  {title:'Comunicación y tecnología',items:[
-    el('Página web','browser',[220,140],'white',{accent:'slate',label:'Inicio',keywords:'sitio pantalla navegador web'}),
-    el('Video','browser',[220,140],'white',{accent:'pink',icon:'play',large:true,keywords:'reproducir youtube'}),
-    el('App','rounded',[110,170],'slate',{icon:'phone',large:true,keywords:'celular móvil teléfono'}),
-    el('Mensaje','bubble',[200,100],'blue',{icon:'chat',label:'Hola, ¿cómo va?',keywords:'chat conversación'}),
-    el('Correo','card',[190,104],'white',{icon:'mail',accent:'blue',details:'Asunto del mensaje',keywords:'email'}),
-    el('Aviso','pill',[150,44],'coral',{icon:'bell',keywords:'notificación'}),
-    el('Internet','cloud',[200,124],'blue',{icon:'wifi',large:true,keywords:'red conexión nube'}),
-    el('Enlace','pill',[150,44],'violet',{icon:'link',keywords:'link url'})
+  {title:t('Comunicación y tecnología'),items:[
+    el(t('Página web'),'browser',[220,140],'white',{accent:'slate',label:t('Inicio@@web'),keywords:t('sitio pantalla navegador web')}),
+    el(t('Video'),'browser',[220,140],'white',{accent:'pink',icon:'play',large:true,keywords:t('reproducir youtube')}),
+    el(t('App'),'rounded',[110,170],'slate',{icon:'phone',large:true,keywords:t('celular móvil teléfono')}),
+    el(t('Mensaje'),'bubble',[200,100],'blue',{icon:'chat',label:t('Hola, ¿cómo va?'),keywords:t('chat conversación')}),
+    el(t('Correo'),'card',[190,104],'white',{icon:'mail',accent:'blue',details:t('Asunto del mensaje'),keywords:'email'}),
+    el(t('Aviso'),'pill',[150,44],'coral',{icon:'bell',keywords:t('notificación')}),
+    el(t('Internet'),'cloud',[200,124],'blue',{icon:'wifi',large:true,keywords:t('red conexión nube')}),
+    el(t('Enlace'),'pill',[150,44],'violet',{icon:'link',keywords:t('link url')})
   ]},
-  {title:'Lugares y tiempo',items:[
-    el('Fecha','card',[180,104],'white',{icon:'calendar',accent:'coral',label:'15 de marzo',details:'Reunión de equipo',keywords:'día evento calendario'}),
-    el('Hora','pill',[140,44],'violet',{icon:'clock',label:'10:30',keywords:'tiempo plazo'}),
-    el('Semana','chevron',[170,64],'sun',{label:'Semana 1',keywords:'cronograma etapa tiempo'}),
-    el('Casa','badge',[88,88],'coral',{icon:'home',keywords:'hogar'}),
-    el('Lugar','avatar',[88,88],'pink',{icon:'pin',keywords:'ubicación mapa'}),
-    el('Naturaleza','ellipse',[180,100],'mint',{icon:'leaf',large:true,keywords:'planta ambiente'}),
-    el('Seguridad','badge',[88,88],'slate',{icon:'shield',keywords:'protección'}),
-    el('Acceso','pill',[150,44],'sun',{icon:'key',keywords:'llave clave'})
+  {title:t('Lugares y tiempo'),items:[
+    el(t('Fecha'),'card',[180,104],'white',{icon:'calendar',accent:'coral',label:t('15 de marzo'),details:t('Reunión de equipo'),keywords:t('día evento calendario')}),
+    el(t('Hora'),'pill',[140,44],'violet',{icon:'clock',label:'10:30',keywords:t('tiempo plazo')}),
+    el(t('Semana'),'chevron',[170,64],'sun',{label:t('Semana 1'),keywords:t('cronograma etapa tiempo')}),
+    el(t('Casa'),'badge',[88,88],'coral',{icon:'home',keywords:t('hogar')}),
+    el(t('Lugar'),'avatar',[88,88],'pink',{icon:'pin',keywords:t('ubicación mapa')}),
+    el(t('Naturaleza'),'ellipse',[180,100],'mint',{icon:'leaf',large:true,keywords:t('planta ambiente')}),
+    el(t('Seguridad'),'badge',[88,88],'slate',{icon:'shield',keywords:t('protección')}),
+    el(t('Acceso'),'pill',[150,44],'sun',{icon:'key',keywords:t('llave clave')})
   ]},
-  {title:'Arquitectura',open:true,items:[
-    item('Servicio','service',null),item('Base de datos','database',null,160,88),item('Caché','cache',null),item('Cola','queue',null),
-    item('Externo','external',null,160,80,'Sistema externo'),item('Actor','actor',null,150,64,'Usuario'),item('Decisión','decision',null,160,96,'¿Condición?'),item('Nota','note',null,176,88),item('Texto','text',null,160,40)
+  {title:t('Arquitectura'),open:true,items:[
+    item(t('Servicio'),'service',null),item(t('Base de datos'),'database',null,160,88),item(t('Caché'),'cache',null),item(t('Cola'),'queue',null),
+    item(t('Externo'),'external',null,160,80,t('Sistema externo')),item(t('Actor'),'actor',null,150,64,t('Usuario')),item(t('Decisión'),'decision',null,160,96,t('¿Condición?')),item(t('Nota'),'note',null,176,88),item(t('Texto'),'text',null,160,40)
   ]},
-  {title:'Básicas',items:[
-    item('Rectángulo','custom','rectangle'),item('Redondeado','custom','rounded'),item('Elipse','custom','ellipse',160,88),item('Círculo','custom','circle',96,96),
-    item('Rombo','custom','diamond',152,96),item('Triángulo','custom','triangle',128,104),item('Hexágono','custom','hexagon',160,88),item('Paralelogramo','custom','parallelogram',168,80),
-    item('Trapecio','custom','trapezoid',168,80),item('Estrella','custom','star',112,104),item('Nube','custom','cloud',176,104),item('Cilindro','custom','cylinder',128,96)
+  {title:t('Básicas'),items:[
+    item(t('Rectángulo'),'custom','rectangle'),item(t('Redondeado'),'custom','rounded'),item(t('Elipse'),'custom','ellipse',160,88),item(t('Círculo'),'custom','circle',96,96),
+    item(t('Rombo'),'custom','diamond',152,96),item(t('Triángulo'),'custom','triangle',128,104),item(t('Hexágono'),'custom','hexagon',160,88),item(t('Paralelogramo'),'custom','parallelogram',168,80),
+    item(t('Trapecio'),'custom','trapezoid',168,80),item(t('Estrella'),'custom','star',112,104),item(t('Nube'),'custom','cloud',176,104),item(t('Cilindro'),'custom','cylinder',128,96)
   ]},
-  {title:'Diagrama de flujo',items:[
-    item('Inicio / fin','custom','terminator',152,56,'Inicio'),item('Proceso','custom','rectangle',160,72),item('Decisión','decision','diamond',160,96,'¿Condición?'),item('Datos','custom','parallelogram',168,72,'Entrada / salida'),
-    item('Documento','custom','document',160,88),item('Subproceso','custom','predefined',168,72),item('Entrada manual','custom','manual-input',160,72),item('Espera','custom','delay',152,72),
-    item('Preparación','custom','hexagon',168,72),item('Almacén','database','cylinder',128,96,'Datos')
+  {title:t('Diagrama de flujo'),items:[
+    item(t('Inicio / fin'),'custom','terminator',152,56,t('Inicio')),item(t('Proceso'),'custom','rectangle',160,72),item(t('Decisión'),'decision','diamond',160,96,t('¿Condición?')),item(t('Datos'),'custom','parallelogram',168,72,t('Entrada / salida')),
+    item(t('Documento'),'custom','document',160,88),item(t('Subproceso'),'custom','predefined',168,72),item(t('Entrada manual'),'custom','manual-input',160,72),item(t('Espera'),'custom','delay',152,72),
+    item(t('Preparación'),'custom','hexagon',168,72),item(t('Almacén'),'database','cylinder',128,96,t('Datos'))
   ]},
   {title:'UML',items:[
-    item('Clase','custom','class',184,112,'NombreDeClase'),item('Actor','actor','actor',56,88),item('Caso de uso','custom','ellipse',176,80),item('Paquete','custom','package',176,104),
-    item('Componente','custom','component',168,80),item('Estado','custom','rounded',152,64),item('Nota','note','note',176,88),item('Inicio','custom','start',36,36),item('Fin','custom','end',36,36)
+    item(t('Clase'),'custom','class',184,112,'NombreDeClase'),item(t('Actor'),'actor','actor',56,88),item(t('Caso de uso'),'custom','ellipse',176,80),item(t('Paquete'),'custom','package',176,104),
+    item(t('Componente'),'custom','component',168,80),item(t('Estado'),'custom','rounded',152,64),item(t('Nota'),'note','note',176,88),item(t('Inicio'),'custom','start',36,36),item(t('Fin'),'custom','end',36,36)
   ]}
 ];
 
@@ -149,10 +150,10 @@ export function Palette(){
   const {tool,template,paletteLayout}=useStore(viewStore),[query,setQuery]=useState('');
   const wanted=normalize(query.trim());
   // Al buscar, los resultados de todos los grupos se ven juntos y sin desplegables.
-  const groups=wanted?[{title:`Resultados para «${query.trim()}»`,open:true,items:PALETTE.flatMap(g=>g.items.filter(i=>normalize(`${i.name} ${i.keywords??''} ${g.title}`).includes(wanted)))}]:PALETTE;
+  const groups=wanted?[{title:t('Resultados para «{0}»',query.trim()),open:true,items:PALETTE.flatMap(g=>g.items.filter(i=>normalize(`${i.name} ${i.keywords??''} ${g.title}`).includes(wanted)))}]:PALETTE;
   const button=(group:string,{name,keywords:_keywords,...shape}:Item)=>{
     const chosen=tool==='node'&&template.kind===shape.kind&&template.shape===shape.shape&&template.label===shape.label&&template.icon===shape.icon;
-    return <button key={group+name} className={'palette-item'+(chosen?' chosen':'')} aria-label={name} aria-pressed={chosen} title={`${name}: clic y después clic en el canvas, o arrastrala`} draggable
+    return <button key={group+name} className={'palette-item'+(chosen?' chosen':'')} aria-label={name} aria-pressed={chosen} title={t('{0}: clic y después clic en el canvas, o arrastrala',name)} draggable
       onClick={()=>viewStore.set({tool:'node',template:shape})}
       onDragStart={e=>{e.dataTransfer.setData(SHAPE_MIME,JSON.stringify(shape));e.dataTransfer.effectAllowed='copy';if(EMPTY_DRAG)e.dataTransfer.setDragImage(EMPTY_DRAG,0,0);viewStore.set({dragTemplate:shape});}}
       onDragEnd={()=>viewStore.set({dragTemplate:null})}>
@@ -160,10 +161,10 @@ export function Palette(){
     </button>;
   };
   return <div className={'palette catalog-'+paletteLayout}>
-    <div className="catalog-heading"><span className="eyebrow">TU CAJA DE IDEAS</span><button className="quiet" aria-label={paletteLayout==='list'?'Ver elementos en cuadrícula':'Ver elementos en lista'} title="Cambiar vista del catálogo" onClick={()=>viewStore.set({paletteLayout:paletteLayout==='list'?'grid':'list'})}>{paletteLayout==='list'?'▦':'☰'}</button></div>
-    <input type="search" className="palette-search" placeholder="Buscar elementos…" aria-label="Buscar elementos" value={query} onChange={e=>setQuery(e.target.value)}/>
+    <div className="catalog-heading"><span className="eyebrow">{t('TU CAJA DE IDEAS')}</span><button className="quiet" aria-label={paletteLayout==='list'?t('Ver elementos en cuadrícula'):t('Ver elementos en lista')} title={t('Cambiar vista del catálogo')} onClick={()=>viewStore.set({paletteLayout:paletteLayout==='list'?'grid':'list'})}>{paletteLayout==='list'?'▦':'☰'}</button></div>
+    <input type="search" className="palette-search" placeholder={t('Buscar elementos…')} aria-label={t('Buscar elementos')} value={query} onChange={e=>setQuery(e.target.value)}/>
     {groups.map(group=>wanted
-      ?<div key={group.title}><p className="palette-results">{group.items.length?group.title:'Nada coincide. Probá con otra palabra.'}</p><div className="palette-grid">{group.items.map(i=>button(group.title,i))}</div></div>
+      ?<div key={group.title}><p className="palette-results">{group.items.length?group.title:t('Nada coincide. Probá con otra palabra.')}</p><div className="palette-grid">{group.items.map(i=>button(group.title,i))}</div></div>
       :<details key={group.title} open={group.open}>
         <summary>{group.title}</summary>
         <div className="palette-grid">{group.items.map(i=>button(group.title,i))}</div>

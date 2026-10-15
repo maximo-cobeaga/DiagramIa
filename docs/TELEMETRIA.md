@@ -18,6 +18,15 @@ Del contexto de la visita se guarda: campaña UTM (como slug), **sólo el host**
 4. **Servidor**: registra `ai_request` en cada pedido de IA, también los fallidos, porque ya consumieron tokens. Incluye resultado, código de error, tokens, tokens de caché, costo USD, latencia, llamadas y reparaciones. Registra además `signup_completed` o `signed_in` al volver del login.
 5. **PostgreSQL** (`apps/api/migrations/003_telemetry.sql`): `telemetry_events` es idempotente por ID de evento. Si la hora del cliente difiere en más de 24 h, se usa la hora de recepción.
 
+## Tráfico que no es de personas (ADR 101)
+
+La medición sale de JavaScript, así que quien no lo ejecuta (curl, la mayoría de los scrapers) nunca contó. Para los que sí lo ejecutan hay dos filtros:
+
+- **Gateway:** `POST /v1/events` descarta el lote si el user agent se declara como buscador, vista previa de enlace, monitor o navegador automatizado (`isAutomatedAgent` en `packages/core/src/telemetry.ts`), o si no trae user agent. Responde `202 {"accepted":0}`, igual que a una persona, y no guarda nada.
+- **Navegador:** la landing y el editor no envían eventos si `navigator.webdriver` es verdadero (Selenium, Puppeteer, Playwright).
+
+Límites: un bot que se hace pasar por un navegador común y oculta `webdriver` sigue contando. El user agent no se guarda, así que los eventos anteriores al filtro no se pueden limpiar: la comparación con semanas previas puede mostrar una caída que es sólo la limpieza. `smoke:shared` lanza Chrome con un user agent común y sin la marca de automatización porque representa a una persona.
+
 ## Privacidad del usuario
 
 - El editor respeta **Do Not Track** y **Global Privacy Control**: con cualquiera de los dos no envía nada.

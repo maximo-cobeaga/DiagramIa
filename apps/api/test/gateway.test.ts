@@ -559,6 +559,62 @@ test('the events endpoint stores valid batches, links a signed-in visitor, and r
     assert.equal(unavailable.status,503);assert.equal((await unavailable.json()).error.code,'TELEMETRY_UNAVAILABLE');
   }finally{for(const s of [server,offline]){s.closeAllConnections();await new Promise(resolve=>s.close(resolve));}}
 });
+test('a share link is created and revoked only by the owner, and the public read gives the diagram to anyone with a valid token and nothing else',async()=>{
+  const shares=new Map<string,string>(),calls:string[]=[];
+  const accounts:any={readSession:async(token?:string)=>token==='owner'?{userId:'u1',projectId:'p1'}:token==='other'?{userId:'u2',projectId:'p2'}:null,
+    ownsDocument:async(projectId:string,id:string)=>projectId==='p1'&&id==='doc-1',
+    shareDocument:async(projectId:string,id:string)=>{calls.push(`share ${projectId} ${id}`);if(!shares.has(id))shares.set(id,'tok_'+'a'.repeat(20));return shares.get(id)!;},
+    unshareDocument:async(_project:string,id:string)=>shares.delete(id),
+    sharedDocument:async(token:string)=>{calls.push('read '+token);return [...shares.values()].includes(token)?{id:'doc-1',title:'Ventas',nodes:[]}:null;}};
+  const ledger=new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null});
+  const server=createApp({providers:[],ledger,productPrompt:'p',allowedOrigins:['http://127.0.0.1:5173'],token:null,accounts,documents:{} as any,config:{maxOutputTokens:10,maxContextChars:10,maxRepairs:0,timeoutMs:1000}});
+  const url=await listen(server),as=(session?:string)=>({'content-type':'application/json','x-diagramia-client':'editor',...(session?{cookie:`diagramia_session=${session}`}:{})});
+  const post=(path:string,session?:string)=>fetch(url+path,{method:'POST',headers:as(session)}),read=(token:string)=>fetch(`${url}/v1/shared/${token}`,{headers:as()});
+  try{
+    assert.equal((await post('/v1/cloud/documents/doc-1/share')).status,401,'compartir exige sesión');
+    assert.equal((await post('/v1/cloud/documents/doc-1/share','other')).status,404,'otra cuenta no comparte un diagrama ajeno');
+    assert.deepEqual(calls,[],'sin ser el dueño no se llega a compartir');
+    const first=await(await post('/v1/cloud/documents/doc-1/share','owner')).json(),again=await(await post('/v1/cloud/documents/doc-1/share','owner')).json();
+    assert.match(first.token,/^[A-Za-z0-9_-]{20,64}$/);assert.equal(again.token,first.token,'compartir dos veces devuelve el mismo enlace');
+    const open=await read(first.token);
+    assert.equal(open.status,200);assert.deepEqual(await open.json(),{document:{id:'doc-1',title:'Ventas',nodes:[]}},'quien abre el enlace recibe sólo el diagrama');
+    calls.length=0;
+    for(const bad of ['corto','tok_'+'b'.repeat(20),'../../auth/me','a'.repeat(80)])assert.equal((await read(bad)).status,404,bad);
+    assert.deepEqual(calls,['read tok_'+'b'.repeat(20)],'un token con otra forma ni se consulta');
+    assert.equal((await post('/v1/cloud/documents/doc-1/unshare','other')).status,404,'otra cuenta no corta un enlace ajeno');
+    assert.deepEqual(await(await post('/v1/cloud/documents/doc-1/unshare','owner')).json(),{token:null});
+    const closed=await read(first.token);
+    assert.equal(closed.status,404);assert.equal((await closed.json()).error.code,'NOT_FOUND','el enlace revocado responde igual que uno inexistente');
+  }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
+test('the editor language reaches the model as an instruction, is part of the request identity and defaults to Spanish',async()=>{
+  const {provider,calls}=scripted([redis(),redis('redis-en'),redis('redis-x')]),{url,close}=await gateway([provider]);
+  const ask=(requestId:string,extra:object={})=>fetch(url+'/v1/assist',{method:'POST',headers:{'content-type':'application/json','x-diagramia-client':'editor'},body:JSON.stringify({requestId,providerId:'fake',mode:'edit',prompt:'Add a cache',document:architecture(),selectedIds:[],...extra})});
+  try{
+    assert.equal((await ask('lang-default')).status,200);
+    assert.ok(!calls[0]!.system.includes('IDIOMA DE LA RESPUESTA'),'sin idioma, las respuestas siguen en español');
+    assert.equal((await ask('lang-en',{language:'en'})).status,200);
+    assert.ok(calls[1]!.system.startsWith(calls[0]!.system)&&calls[1]!.system.includes('IDIOMA DE LA RESPUESTA: inglés'),'el inglés se pide al final del mismo prompt de sistema');
+    // El mismo ID con otro idioma es otro pedido: no devuelve la respuesta guardada en español.
+    assert.equal((await ask('lang-default',{language:'en'})).status,409);
+    assert.equal((await ask('lang-bad',{language:'fr'})).status,400,'un idioma desconocido no llega al modelo');
+    assert.equal(calls.length,2);
+  }finally{await close();}
+});
+test('events from declared bots and automated browsers get the same answer as a person but are never stored',async()=>{
+  const spy=telemetrySpy(),ledger=new UsageLedger({dailyTokenBudget:1000,dailyUsdBudget:1,requestsPerMinute:10,ledgerPath:null});
+  const server=createApp({providers:[],ledger,productPrompt:'p',allowedOrigins:['http://127.0.0.1:5173'],token:'gateway-secret',config:{maxOutputTokens:10,maxContextChars:10,maxRepairs:0,timeoutMs:1000},telemetry:spy.repo});
+  const url=await listen(server),post=(agent:string,n:number)=>fetch(url+'/v1/events',{method:'POST',headers:{'content-type':'application/json','x-diagramia-client':'editor','user-agent':agent},body:JSON.stringify(eventBatch([undoEvent(n)]))});
+  try{
+    for(const [n,agent] of ['Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)','Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.0.0 Safari/537.36'].entries()){
+      const response=await post(agent,n+1);
+      assert.equal(response.status,202);assert.deepEqual(await response.json(),{accepted:0});
+    }
+    assert.equal(spy.batches.length,0,'nada de un bot llega a la base');
+    const person=await post('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',3);
+    assert.deepEqual(await person.json(),{accepted:1});assert.equal(spy.batches.length,1);
+  }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
 test('every AI request is recorded with outcome, tokens, cost and latency, including failures that already spent tokens',async()=>{
   const spy=telemetrySpy(),broken=JSON.stringify({summary:'',actions:[{type:'ADD_EDGE',edge:{id:'x',from:'api',to:'ghost'}}]});
   const {provider}=scripted([redis(),broken,broken]);
@@ -608,9 +664,9 @@ test('the spending cap counts in-flight requests, adds a monthly cap and alerts 
   }finally{rmSync(dir,{recursive:true,force:true});}
 });
 test('an admin uses the AI without per-minute limits or credits, but only with a verified admin email, and the global budget still applies',async()=>{
-  const reserved:{id:string;credits:number}[]=[],receipts=new Map<string,{fingerprint:string;answer?:unknown}>();
+  const reserved:{id:string;credits:number;unlimited:boolean}[]=[],receipts=new Map<string,{fingerprint:string;answer?:unknown}>();
   const accounts:any={readSession:async(token?:string)=>token==='admin'?{userId:'boss',email:'Fundador@Example.com',emailVerified:true}:token==='unverified-admin'?{userId:'u9',email:'fundador@example.com',emailVerified:false}:token==='user'?{userId:'u1',email:'otra@example.com',emailVerified:true}:null,
-    creditUsage:async()=>({monthly:0,daily:0,dailyLimit:6,monthlyLimit:20}),reserveCredits:async(_user:string,requestId:string,fingerprint:string,credits:number)=>{const prior=receipts.get(requestId);if(prior?.answer)return {replayed:prior.answer};reserved.push({id:requestId,credits});receipts.set(requestId,{fingerprint});return {replayed:null};},settleCredits:async(_user:string,id:string,answer:unknown)=>{receipts.get(id)!.answer=answer;},releaseCredits:async()=>{}};
+    creditUsage:async()=>({monthly:0,daily:0,dailyLimit:6,monthlyLimit:20}),reserveCredits:async(_user:string,requestId:string,fingerprint:string,credits:number,_at:Date,unlimited:boolean)=>{const prior=receipts.get(requestId);if(prior?.answer)return {replayed:prior.answer};reserved.push({id:requestId,credits,unlimited});receipts.set(requestId,{fingerprint});return {replayed:null};},settleCredits:async(_user:string,id:string,answer:unknown)=>{receipts.get(id)!.answer=answer;},releaseCredits:async()=>{}};
   const replies=Array.from({length:12},()=>redis()),{provider,calls}=scripted(replies),cheap=scripted([redis()]).provider;
   const ledger=new UsageLedger({dailyTokenBudget:100_000,dailyUsdBudget:5,requestsPerMinute:1,ledgerPath:null});
   const server=createApp({providers:[provider,{...cheap,info:()=>({...cheap.info(),id:'free'})}],ledger,productPrompt:'p',allowedOrigins:[],token:null,accounts,accountProviders:['free'],adminEmails:['fundador@example.com'],aiPerUserPerMinute:1,aiPerIpPerMinute:1,config:{maxOutputTokens:2000,maxContextChars:60000,maxRepairs:1,timeoutMs:5000}});
@@ -620,7 +676,7 @@ test('an admin uses the AI without per-minute limits or credits, but only with a
     const listed=await(await fetch(url+'/v1/providers',{headers:headers('admin')})).json();
     assert.equal(listed.admin,true);assert.equal(listed.credits,null);assert.deepEqual(listed.providers.map((p:{id:string})=>p.id),['fake','free'],'un admin ve todos los proveedores');
     for(let i=1;i<=5;i++)assert.equal((await ask('admin','a-'+i)).status,200,`pedido ${i} del admin`);
-    assert.equal(reserved.length,5);assert.ok(reserved.every(r=>r.credits===0),'un admin conserva recibos sin gastar créditos');
+    assert.equal(reserved.length,5);assert.ok(reserved.every(r=>r.credits===1&&r.unlimited),'el consumo del admin se registra con su costo real y sin tope');
     assert.equal((await(await ask('admin','a-1')).json()).replayed,true);assert.equal(calls.length,5,'el reintento no repite la llamada');
     assert.equal((await ask('unverified-admin','x-1')).status,403,'sin email verificado no se obtiene la excepción');
     const user=await ask('user','u-1');assert.equal(user.status,429,'la IP ya usó su pedido: el resto de las cuentas sigue limitado');

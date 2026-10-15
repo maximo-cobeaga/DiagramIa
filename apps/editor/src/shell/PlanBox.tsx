@@ -6,12 +6,13 @@ import {accountStore,refreshAccount} from '../store/accountStore';
 import {useStore} from '../store/createStore';
 import {track,trackOnce,trackSession} from '../telemetry';
 import {goPro,startCheckout,type Interval} from './checkout';
+import {LANG,t} from '../i18n';
 
-const day=(iso:string)=>new Date(iso).toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
+const day=(iso:string)=>new Date(iso).toLocaleDateString(LANG==='en'?'en-US':'es-AR',{day:'numeric',month:'long',year:'numeric'});
 const money=(value:number)=>'USD '+(Number.isInteger(value)?value:value.toFixed(2).replace('.',','));
 const pad=(n:number)=>String(n).padStart(2,'0');
 export function ProBenefits(){
-  return <ul className="benefits"><li>400 créditos de IA por mes (hasta 40 por día)</li><li>Hasta 100 diagramas en la nube, 1 GB</li><li>Hasta 200 elementos propios</li></ul>;
+  return <ul className="benefits"><li>{t('400 créditos de IA por mes (hasta 40 por día)')}</li><li>{t('Hasta 100 diagramas en la nube, 1 GB')}</li><li>{t('Hasta 200 elementos propios')}</li></ul>;
 }
 
 /** Tiempo que falta para el vencimiento. Al llegar a cero avisa para que el plan se vuelva a pedir al servidor y la oferta desaparezca. */
@@ -29,7 +30,7 @@ export function formatLeft(ms:number){
   const total=Math.max(0,Math.floor(ms/1000)),d=Math.floor(total/86400),h=Math.floor(total%86400/3600),m=Math.floor(total%3600/60),s=total%60;
   return (d?`${d} d `:'')+`${pad(h)}:${pad(m)}:${pad(s)}`;
 }
-const offerTerms=(offer:Offer)=>offer.months>1?`durante tus primeros ${offer.months} meses`:'en tu primer mes';
+const offerTerms=(offer:Offer)=>offer.months>1?t('durante tus primeros {0} meses',offer.months):t('en tu primer mes');
 
 /** Oferta por tiempo limitado: muestra el precio, hasta cuándo vale y lleva directo al pago. */
 export function OfferBanner({offer}:{offer:Offer}){
@@ -41,12 +42,12 @@ export function OfferBanner({offer}:{offer:Offer}){
   },[offer.endsAt]);
   if(left<=0)return null;
   const terms=offerTerms(offer);
-  return <section className="offer-banner" aria-label="Oferta por tiempo limitado">
-    <div className="offer-copy"><span className="eyebrow">{offer.kind==='welcome'?'OFERTA DE BIENVENIDA':'OFERTA POR TIEMPO LIMITADO'}</span>
-      <strong>{offer.percent}% menos: {money(offer.priceUsd)} por mes</strong>
-      <span>{terms[0]!.toUpperCase()+terms.slice(1)}. Después, {money(offer.regularUsd)} por mes. Cancelás cuando quieras.</span></div>
-    <div className="offer-side"><span className="offer-clock mono" role="timer" aria-label={`Termina en ${formatLeft(left)}`}>Termina en {formatLeft(left)}</span>
-      <button className="primary" disabled={state==='working'} onClick={async()=>{setState('working');setError('');const failure=await startCheckout('offer');if(failure){setState('idle');setError(failure);}}}>{state==='working'?'Abriendo el pago…':'Aprovechar la oferta'}</button></div>
+  return <section className="offer-banner" aria-label={t('Oferta por tiempo limitado')}>
+    <div className="offer-copy"><span className="eyebrow">{offer.kind==='welcome'?t('OFERTA DE BIENVENIDA'):t('OFERTA POR TIEMPO LIMITADO')}</span>
+      <strong>{offer.percent}{t('% menos:')} {money(offer.priceUsd)} {t('por mes')}</strong>
+      <span>{terms[0]!.toUpperCase()+terms.slice(1)}{t('. Después,')} {money(offer.regularUsd)} {t('por mes. Cancelás cuando quieras.')}</span></div>
+    <div className="offer-side"><span className="offer-clock mono" role="timer" aria-label={t('Termina en {0}',formatLeft(left))}>{t('Termina en')} {formatLeft(left)}</span>
+      <button className="primary" disabled={state==='working'} onClick={async()=>{setState('working');setError('');const failure=await startCheckout('offer');if(failure){setState('idle');setError(failure);}}}>{state==='working'?t('Abriendo el pago…'):t('Aprovechar la oferta')}</button></div>
     {error&&<p className="inline-note warn" role="alert">{error}</p>}
   </section>;
 }
@@ -59,7 +60,7 @@ export function UpgradeAction({children,source='limit'}:{children?:ReactNode;sou
   if(!shown)return null;
   const offer=account!.billing.offer;
   const list=account!.billing.prices?.monthlyUsd;
-  return <button className="primary" onClick={()=>void goPro(source)}>{offer?(source==='header'?`⚡ Pro con ${offer.percent}% menos`:`Pasar a Pro · ${money(offer.priceUsd)}/mes (${offer.percent}% menos)`):children??(list?`Ver Pro · ${money(list)}/mes`:'Ver Pro')}</button>;
+  return <button className="primary" onClick={()=>void goPro(source)}>{offer?(source==='header'?t('⚡ Pro con {0}% menos',offer.percent):t('Pasar a Pro · {0}/mes ({1}% menos)',money(offer.priceUsd),offer.percent)):children??(list?t('Ver Pro · {0}/mes',money(list)):t('Ver Pro'))}</button>;
 }
 
 /** Plan de la cuenta: qué incluye, pasar a Pro y administrar el cobro. Los pagos los hace y los cobra Paddle; acá no se ve ninguna tarjeta. */
@@ -73,51 +74,53 @@ export function PlanBox({account}:{account:Account}){
     const failure=await startCheckout('plan_box',interval);
     if(failure){setState('idle');setError(failure);}
   };
-  const atLimit=credits.monthly>=credits.monthlyLimit||credits.daily>=credits.dailyLimit||storage.documents>=storage.maxDocuments;
+  // Un administrador no tiene tope de créditos: su consumo puede superar el del plan sin ser un límite alcanzado.
+  const monthlyHit=!credits.unlimited&&credits.monthly>=credits.monthlyLimit,dailyHit=!credits.unlimited&&credits.daily>=credits.dailyLimit;
+  const atLimit=monthlyHit||dailyHit||storage.documents>=storage.maxDocuments;
   useEffect(()=>{
     if(billing.plan!=='free'||!billing.available)return;
     trackSession('upgrade:plan_box','upgrade_prompt_shown',{placement:'plan_box',offer:Boolean(offer)});
-    if(credits.monthly>=credits.monthlyLimit)trackSession('limit:credits_monthly','limit_reached',{kind:'credits_monthly'});
-    else if(credits.daily>=credits.dailyLimit)trackSession('limit:credits_daily','limit_reached',{kind:'credits_daily'});
+    if(monthlyHit)trackSession('limit:credits_monthly','limit_reached',{kind:'credits_monthly'});
+    else if(dailyHit)trackSession('limit:credits_daily','limit_reached',{kind:'credits_daily'});
     if(storage.documents>=storage.maxDocuments)trackSession('limit:documents','limit_reached',{kind:'documents'});
   },[billing.plan,billing.available]);
   const pro=billing.plan==='pro';
   // La suscripción sigue viva en Paddle aunque no dé Pro (cobro vencido, en pausa): hay que poder ponerla al día o cancelarla.
   const pending=!pro&&Boolean(billing.status)&&billing.status!=='canceled';
   const manage=<>
-    {billing.updatePaymentUrl&&<a className="button quiet" href={billing.updatePaymentUrl} target="_blank" rel="noopener noreferrer">Cambiar medio de pago</a>}
-    {billing.cancelUrl&&!billing.cancelsAt&&<a className="button quiet" href={billing.cancelUrl} target="_blank" rel="noopener noreferrer">Cancelar suscripción</a>}
+    {billing.updatePaymentUrl&&<a className="button quiet" href={billing.updatePaymentUrl} target="_blank" rel="noopener noreferrer">{t('Cambiar medio de pago')}</a>}
+    {billing.cancelUrl&&!billing.cancelsAt&&<a className="button quiet" href={billing.cancelUrl} target="_blank" rel="noopener noreferrer">{t('Cancelar suscripción')}</a>}
   </>;
   const comparison=[
-    ['Créditos de IA / mes',PLANS.free.monthlyCredits,PLANS.pro.monthlyCredits],
-    ['Créditos de IA / día',PLANS.free.dailyCredits,PLANS.pro.dailyCredits],
-    ['Diagramas en la nube',PLANS.free.maxDocuments,PLANS.pro.maxDocuments],
-    ['Almacenamiento','30 MB','1 GB'],
-    ['Elementos propios',PLANS.free.maxOwnElements,PLANS.pro.maxOwnElements],
-    ['Editor, animaciones y exportaciones','Incluidos','Incluidos']
+    [t('Créditos de IA / mes'),PLANS.free.monthlyCredits,PLANS.pro.monthlyCredits],
+    [t('Créditos de IA / día'),PLANS.free.dailyCredits,PLANS.pro.dailyCredits],
+    [t('Diagramas en la nube'),PLANS.free.maxDocuments,PLANS.pro.maxDocuments],
+    [t('Almacenamiento'),t('30 MB'),t('1 GB')],
+    [t('Elementos propios'),PLANS.free.maxOwnElements,PLANS.pro.maxOwnElements],
+    [t('Editor, animaciones y exportaciones'),t('Incluidos'),t('Incluidos')]
   ];
-  return <div className="plan-box" aria-label={pro?'Plan Pro':'Plan Free'}>
-    {pro&&<section className="subscription-status"><span className="plan-badge pro">PRO ACTIVO</span><p>{billing.cancelsAt?`Tu plan sigue activo hasta el ${day(billing.cancelsAt)}.`:billing.renewsAt?`Próxima renovación: ${day(billing.renewsAt)}.`:'Tenés todo listo para seguir creando.'}</p><div className="step-actions">{manage}</div></section>}
-    {!pro&&atLimit&&<p className="inline-note warn" role="status">Llegaste a un límite de Free. Compará las opciones para seguir.</p>}
+  return <div className="plan-box" aria-label={pro?t('Plan Pro'):t('Plan Free')}>
+    {pro&&<section className="subscription-status"><span className="plan-badge pro">{t('PRO ACTIVO')}</span><p>{billing.cancelsAt?t('Tu plan sigue activo hasta el {0}.',day(billing.cancelsAt)):billing.renewsAt?t('Próxima renovación: {0}.',day(billing.renewsAt)):t('Tenés todo listo para seguir creando.')}</p><div className="step-actions">{manage}</div></section>}
+    {!pro&&atLimit&&<p className="inline-note warn" role="status">{t('Llegaste a un límite de Free. Compará las opciones para seguir.')}</p>}
     {!pro&&offer&&<OfferBanner offer={offer}/>}
-    {!pro&&yearly&&<div className="plan-frequency"><span>Elegí cómo pagar</span><div className="interval-toggle" role="group" aria-label="Frecuencia de pago">
-      <button aria-pressed={interval==='month'} className={interval==='month'?'chosen':''} onClick={()=>setInterval_('month')}>Mensual</button>
-      <button aria-pressed={interval==='year'} className={interval==='year'?'chosen':''} onClick={()=>setInterval_('year')}>Anual <small>−{Math.round((1-yearly/(monthly*12))*100)}%</small></button></div></div>}
+    {!pro&&yearly&&<div className="plan-frequency"><span>{t('Elegí cómo pagar')}</span><div className="interval-toggle" role="group" aria-label={t('Frecuencia de pago')}>
+      <button aria-pressed={interval==='month'} className={interval==='month'?'chosen':''} onClick={()=>setInterval_('month')}>{t('Mensual')}</button>
+      <button aria-pressed={interval==='year'} className={interval==='year'?'chosen':''} onClick={()=>setInterval_('year')}>{t('Anual')} <small>−{Math.round((1-yearly/(monthly*12))*100)}%</small></button></div></div>}
     <div className="plan-cards">
-      <section className="plan-card free"><div className="plan-card-top"><span className="eyebrow">PARA EMPEZAR</span>{!pro&&<span className="current-plan">Tu plan</span>}</div><h3>Free<span>↗</span></h3><p className="plan-description">De la primera idea a tu primer diagrama.</p><p className="plan-price"><strong>USD 0</strong><span>para siempre</span></p><ul className="benefits"><li>Canvas completo y editable</li><li>{PLANS.free.monthlyCredits} créditos de IA al mes</li><li>{PLANS.free.maxDocuments} diagramas en la nube</li></ul><div className="plan-card-foot">{!pro?'Tu espacio para empezar a crear.':'Al cancelar, volvés a Free sin borrar tus diagramas.'}</div></section>
-      <section className="plan-card pro" aria-label="Beneficios de Pro"><div className="plan-card-top"><span className="eyebrow">PARA IR MÁS LEJOS</span><span className="current-plan">{pro?'Tu plan':'20× más IA'}</span></div><h3>Pro<span>✳</span></h3><p className="plan-description">Más ideas, más espacio, más posibilidades.</p>
-        <p className="plan-price"><strong>{interval==='year'&&yearly?money(yearly):offer?money(offer.priceUsd):monthly?money(monthly):'USD 10'}</strong><span>{interval==='year'&&yearly?'por año':'por mes'}</span></p>
-        {offer&&<p className="plan-price-note">{offerTerms(offer)}; después {money(offer.regularUsd)}/mes.</p>}
-        {interval==='year'&&yearly&&<p className="plan-price-note">Equivale a {money(Math.round(yearly/12*100)/100)}/mes. Cobro anual.</p>}
+      <section className="plan-card free"><div className="plan-card-top"><span className="eyebrow">{t('PARA EMPEZAR')}</span>{!pro&&<span className="current-plan">{t('Tu plan')}</span>}</div><h3>{t('Free')}<span>↗</span></h3><p className="plan-description">{t('De la primera idea a tu primer diagrama.')}</p><p className="plan-price"><strong>{t('USD 0')}</strong><span>{t('para siempre')}</span></p><ul className="benefits"><li>{t('Canvas completo y editable')}</li><li>{PLANS.free.monthlyCredits} {t('créditos de IA al mes')}</li><li>{PLANS.free.maxDocuments} {t('diagramas en la nube')}</li></ul><div className="plan-card-foot">{!pro?t('Tu espacio para empezar a crear.'):t('Al cancelar, volvés a Free sin borrar tus diagramas.')}</div></section>
+      <section className="plan-card pro" aria-label={t('Beneficios de Pro')}><div className="plan-card-top"><span className="eyebrow">{t('PARA IR MÁS LEJOS')}</span><span className="current-plan">{pro?t('Tu plan'):t('20× más IA')}</span></div><h3>{t('Pro')}<span>✳</span></h3><p className="plan-description">{t('Más ideas, más espacio, más posibilidades.')}</p>
+        <p className="plan-price"><strong>{interval==='year'&&yearly?money(yearly):offer?money(offer.priceUsd):monthly?money(monthly):t('USD 10')}</strong><span>{interval==='year'&&yearly?t('por año'):t('por mes')}</span></p>
+        {offer&&<p className="plan-price-note">{offerTerms(offer)}{t('; después')} {money(offer.regularUsd)}{t('/mes.')}</p>}
+        {interval==='year'&&yearly&&<p className="plan-price-note">{t('Equivale a')} {money(Math.round(yearly/12*100)/100)}{t('/mes. Cobro anual.')}</p>}
         <ProBenefits/>
-        {!pro&&<button className="primary big" disabled={!billing.available||state==='working'} onClick={()=>void subscribe()}>{state==='working'?'Abriendo el pago…':billing.available?'Pasar a Pro ↗':'Suscripción aún no disponible'}</button>}
-        <div className="plan-card-foot">{pro?'Gracias por darle espacio a tus ideas.':'Cancelás cuando quieras. Tus diagramas siguen siendo tuyos.'}</div>
+        {!pro&&<button className="primary big" disabled={!billing.available||state==='working'} onClick={()=>void subscribe()}>{state==='working'?t('Abriendo el pago…'):billing.available?t('Pasar a Pro ↗'):t('Suscripción aún no disponible')}</button>}
+        <div className="plan-card-foot">{pro?t('Gracias por darle espacio a tus ideas.'):t('Cancelás cuando quieras. Tus diagramas siguen siendo tuyos.')}</div>
       </section>
     </div>
-    {error&&<div className="checkout-error" role="alert"><strong>No pudimos abrir el pago</strong><p>{error}</p><a href="mailto:mcobeaga@diagramia.app?subject=Ayuda%20con%20el%20pago%20de%20Pro">Contactar a soporte ↗</a></div>}
-    {!billing.available&&<p className="inline-note" role="status">Las suscripciones Pro todavía no están habilitadas. Podés seguir trabajando con Free.</p>}
-    {pending&&<section className="subscription-status"><p className="inline-note warn" role="status">{billing.status==='past_due'?'No pudimos cobrar tu suscripción.':billing.status==='paused'?'Tu suscripción está en pausa.':`Tu suscripción figura como «${billing.status}».`} La cuenta usa Free hasta que el pago esté al día.</p><div className="step-actions">{manage}</div></section>}
-    <section className="plan-comparison"><h3>Cada detalle, a la vista.</h3><div className="comparison-scroll"><table><caption>Comparación de los planes Free y Pro</caption><thead><tr><th scope="col">Qué incluye</th><th scope="col">Free</th><th scope="col">Pro</th></tr></thead><tbody>{comparison.map(([label,free,paid])=><tr key={label}><th scope="row">{label}</th><td>{free}</td><td>{paid}</td></tr>)}</tbody></table></div></section>
-    <p className="plan-legal">Pago seguro con Paddle. Los impuestos dependen de tu país. <a href="https://diagramia.app/reembolsos.html" target="_blank" rel="noopener noreferrer">Condiciones de reembolso</a>.</p>
+    {error&&<div className="checkout-error" role="alert"><strong>{t('No pudimos abrir el pago')}</strong><p>{error}</p><a href="mailto:mcobeaga@diagramia.app?subject=Ayuda%20con%20el%20pago%20de%20Pro">{t('Contactar a soporte ↗')}</a></div>}
+    {!billing.available&&<p className="inline-note" role="status">{t('Las suscripciones Pro todavía no están habilitadas. Podés seguir trabajando con Free.')}</p>}
+    {pending&&<section className="subscription-status"><p className="inline-note warn" role="status">{billing.status==='past_due'?t('No pudimos cobrar tu suscripción.'):billing.status==='paused'?t('Tu suscripción está en pausa.'):t('Tu suscripción figura como «{0}».',billing.status)} {t('La cuenta usa Free hasta que el pago esté al día.')}</p><div className="step-actions">{manage}</div></section>}
+    <section className="plan-comparison"><h3>{t('Cada detalle, a la vista.')}</h3><div className="comparison-scroll"><table><caption>{t('Comparación de los planes Free y Pro')}</caption><thead><tr><th scope="col">{t('Qué incluye')}</th><th scope="col">{t('Free')}</th><th scope="col">{t('Pro')}</th></tr></thead><tbody>{comparison.map(([label,free,paid])=><tr key={label}><th scope="row">{label}</th><td>{free}</td><td>{paid}</td></tr>)}</tbody></table></div></section>
+    <p className="plan-legal">{t('Pago seguro con Paddle. Los impuestos dependen de tu país.')} <a href={LANG==='en'?'https://diagramia.app/refunds.html':'https://diagramia.app/reembolsos.html'} target="_blank" rel="noopener noreferrer">{t('Condiciones de reembolso')}</a>.</p>
   </div>;
 }

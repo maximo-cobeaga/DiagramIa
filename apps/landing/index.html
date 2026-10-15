@@ -4,7 +4,17 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="description" content="Turn ideas into editable diagrams. Create with AI, connect the dots and explain every step with motion.">
-  <title>Diagramia — Ideas in motion</title>
+  <title>Diagramia — Animated AI diagrams</title>
+  <link rel="canonical" href="https://diagramia.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Diagramia">
+  <meta property="og:url" content="https://diagramia.app/">
+  <meta property="og:title" content="Diagramia — Animated AI diagrams">
+  <meta property="og:description" content="Turn ideas into editable diagrams. Create with AI, connect the dots and explain every step with motion.">
+  <meta property="og:image" content="https://diagramia.app/og-image.png">
+  <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Diagramia: an editable diagram that explains a process step by step">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="design.css">
@@ -73,14 +83,15 @@ worth chasing.</strong><span class="note-spark" aria-hidden="true">✳</span></d
               <g class="request-label"><rect x="349" y="142" width="171" height="29" rx="6" fill="#141619"/><text x="435" y="162" fill="white" text-anchor="middle" font-size="12" data-es="APROBAR PEDIDO" data-en="APPROVE REQUEST">APPROVE REQUEST</text></g>
             </svg>
             <div class="code-sheet"><div class="code-label mono">DIAGRAMIA / DOCUMENT.JSON</div><pre><span class="code-muted">{</span>
-  <span class="code-key">"id"</span>: <span class="code-string">"compra"</span>,
-  <span class="code-key">"zones"</span>: [<span class="code-string">"finanzas"</span>],
+  <span class="code-key">"id"</span>: <span class="code-string">"purchase"</span>,
+  <span class="code-key">"zones"</span>: [<span class="code-string">"finance"</span>],
   <span class="code-key">"nodes"</span>: [
-    { <span class="code-key">"id"</span>: <span class="code-string">"finanzas"</span>, <span class="code-key">"kind"</span>: <span class="code-string">"service"</span> },
-    { <span class="code-key">"id"</span>: <span class="code-string">"registro"</span>, <span class="code-key">"kind"</span>: <span class="code-string">"database"</span> }
+    { <span class="code-key">"id"</span>: <span class="code-string">"team"</span>, <span class="code-key">"kind"</span>: <span class="code-string">"actor"</span> },
+    { <span class="code-key">"id"</span>: <span class="code-string">"approve"</span>, <span class="code-key">"kind"</span>: <span class="code-string">"service"</span> },
+    { <span class="code-key">"id"</span>: <span class="code-string">"record"</span>, <span class="code-key">"kind"</span>: <span class="code-string">"database"</span> }
   ],
   <span class="code-key">"animation"</span>: {
-    <span class="code-key">"flow"</span>: [<span class="code-string">"area"</span>, <span class="code-string">"finanzas"</span>, <span class="code-string">"registro"</span>],
+    <span class="code-key">"flow"</span>: [<span class="code-string">"team"</span>, <span class="code-string">"approve"</span>, <span class="code-string">"record"</span>],
     <span class="code-key">"durationMs"</span>: <span class="code-number">4800</span>
   }
 <span class="code-muted">}</span></pre></div>
@@ -129,24 +140,24 @@ worth chasing.</strong><span class="note-spark" aria-hidden="true">✳</span></d
       <div class="section-header"><div><span class="eyebrow" data-es="PRECIOS" data-en="PRICING">PRICING</span><h2 id="pricing-title" data-es="Empezá gratis. Pasá a Pro cuando lo necesites." data-en="Start free. Go Pro when you need more.">Start free. Go Pro when you need more.</h2></div><p data-es="Sin tarjeta para empezar. Cancelás cuando quieras." data-en="No card to start. Cancel anytime.">No card to start. Cancel anytime.</p></div>
       <div class="price-grid">
         <article class="price-card"><h3>Free</h3><p class="price-tag">USD 0</p>
-          <ul><li data-es="Pizarra completa en tu navegador, sin cuenta" data-en="Full canvas in your browser, no account">Full canvas in your browser, no account</li><li data-es="20 créditos de IA por mes" data-en="20 AI credits per month">20 AI credits per month</li><li data-es="3 diagramas en la nube" data-en="3 cloud diagrams">3 cloud diagrams</li><li data-es="Exportá a JSON, SVG, PNG, Mermaid, PDF y más" data-en="Export to JSON, SVG, PNG, Mermaid, PDF and more">Export to JSON, SVG, PNG, Mermaid, PDF and more</li></ul>
+          <ul><li data-es="Pizarra completa en tu navegador, sin cuenta" data-en="Full canvas in your browser, no account">Full canvas in your browser, no account</li><li data-es="20 créditos de IA por mes (hasta 6 por día)" data-en="20 AI credits per month (up to 6 a day)">20 AI credits per month (up to 6 a day)</li><li data-es="3 diagramas en la nube" data-en="3 cloud diagrams">3 cloud diagrams</li><li data-es="Exportá a JSON, SVG, PNG, Mermaid, PDF y más" data-en="Export to JSON, SVG, PNG, Mermaid, PDF and more">Export to JSON, SVG, PNG, Mermaid, PDF and more</li></ul>
           <a class="button outline" href="#" data-app-path="" data-track="pricing_free" data-es="Crear un diagrama" data-en="Create a diagram">Create a diagram</a></article>
         <article class="price-card pro"><span class="price-flag mono" data-es="RECOMENDADO" data-en="RECOMMENDED">RECOMMENDED</span><h3>Pro</h3><p class="price-tag">USD 10 <small data-es="por mes" data-en="per month">per month</small></p>
-          <p class="annual-note" data-es="o USD 40 por año: ahorrás 67 %" data-en="or USD 40 per year: save 67%">or USD 40 per year: save 67%</p>
+          <p class="annual-note" data-es="Oferta de lanzamiento: USD 40 por año (ahorrás 67 %)" data-en="Launch offer: USD 40 per year (save 67%)">Launch offer: USD 40 per year (save 67%)</p>
           <p class="offer-tag" id="offer-tag" hidden><strong id="offer-headline"></strong><span id="offer-detail"></span><span class="offer-clock mono" id="offer-clock" role="timer" aria-live="off"></span></p>
-          <ul><li data-es="Todo lo del plan Free" data-en="Everything in Free">Everything in Free</li><li data-es="400 créditos de IA por mes" data-en="400 AI credits per month">400 AI credits per month</li><li data-es="Hasta 100 diagramas en la nube (1 GB)" data-en="Up to 100 cloud diagrams (1 GB)">Up to 100 cloud diagrams (1 GB)</li><li data-es="Hasta 200 elementos propios" data-en="Up to 200 custom elements">Up to 200 custom elements</li></ul>
+          <ul><li data-es="Todo lo del plan Free" data-en="Everything in Free">Everything in Free</li><li data-es="400 créditos de IA por mes (hasta 40 por día)" data-en="400 AI credits per month (up to 40 a day)">400 AI credits per month (up to 40 a day)</li><li data-es="Hasta 100 diagramas en la nube (1 GB)" data-en="Up to 100 cloud diagrams (1 GB)">Up to 100 cloud diagrams (1 GB)</li><li data-es="Hasta 200 elementos propios" data-en="Up to 200 custom elements">Up to 200 custom elements</li></ul>
           <a class="button lime" href="#" data-app-path="?plan=pro" data-track="pricing_pro" data-es="Pasar a Pro" data-en="Go Pro">Go Pro</a>
           <a class="annual-link" href="#" data-app-path="?plan=pro&amp;interval=year" data-track="pricing_pro_year" data-es="Prefiero el plan anual · USD 40" data-en="I prefer the annual plan · USD 40">I prefer the annual plan · USD 40</a></article>
         <article class="price-card business"><h3 data-es="Empresas" data-en="Business">Business</h3><p class="price-tag" data-es="A medida" data-en="Custom">Custom</p>
           <ul><li data-es="Todo lo de Pro" data-en="Everything in Pro">Everything in Pro</li><li data-es="Créditos de IA y almacenamiento acordados" data-en="Agreed AI credits and storage">Agreed AI credits and storage</li><li data-es="Te ayudamos a llevarlo a tu equipo" data-en="We help you roll it out to your team">We help you roll it out to your team</li><li data-es="Facturación y condiciones a medida" data-en="Custom billing and terms">Custom billing and terms</li></ul>
-          <a class="button dark" href="empresas.html" data-track="enterprise" data-es="Hablar con nosotros" data-en="Talk to us">Talk to us</a></article>
+          <a class="button dark" href="business.html" data-page-es="empresas.html" data-page-en="business.html" data-track="enterprise" data-es="Hablar con nosotros" data-en="Talk to us">Talk to us</a></article>
       </div>
-      <p class="price-foot"><span data-es="Pagos seguros con Paddle. Impuestos según tu país." data-en="Secure payments via Paddle. Taxes depend on your country.">Secure payments via Paddle. Taxes depend on your country.</span> <a href="precios.html" data-es="Ver el detalle" data-en="See the details">See the details</a> · <a href="refunds.html" data-page-es="reembolsos.html" data-page-en="refunds.html" data-es="Reembolsos" data-en="Refunds">Refunds</a></p>
+      <p class="price-foot"><span data-es="Pagos seguros con Paddle. Impuestos según tu país." data-en="Secure payments via Paddle. Taxes depend on your country.">Secure payments via Paddle. Taxes depend on your country.</span> <a href="pricing.html" data-page-es="precios.html" data-page-en="pricing.html" data-es="Ver el detalle" data-en="See the details">See the details</a> · <a href="refunds.html" data-page-es="reembolsos.html" data-page-en="refunds.html" data-es="Reembolsos" data-en="Refunds">Refunds</a></p>
     </section>
 
     <section id="cierre" class="closing wrap reveal"><span class="eyebrow" data-es="DE LA IDEA A LO QUE SIGUE" data-en="FROM THE IDEA TO WHAT COMES NEXT">FROM THE IDEA TO WHAT COMES NEXT</span><h2 class="scroll-lines"><span data-es="Hay ideas que" data-en="Some ideas">Some ideas</span><span data-es="necesitan moverse." data-en="need to move.">need to move.</span></h2><a href="#play" class="button dark" data-cta="closing" data-es="Empezá a crear ↗" data-en="Start creating ↗">Start creating ↗</a><a class="text-link" href="#precios" data-es="Ver planes y precios" data-en="See plans and pricing">See plans and pricing</a></section>
   </main>
-  <footer class="wrap"><a class="brand" href="#"><span>diagramia</span></a><span data-es="Creá. Transformá. Explicá." data-en="Create. Transform. Explain.">Create. Transform. Explain.</span><a href="precios.html" data-es="Precios" data-en="Pricing">Pricing</a><a href="terms.html" data-page-es="terminos.html" data-page-en="terms.html" data-es="Términos" data-en="Terms">Terms</a><a href="refunds.html" data-page-es="reembolsos.html" data-page-en="refunds.html" data-es="Reembolsos" data-en="Refunds">Refunds</a><a data-app-path="privacy.html" data-page-es="privacidad.html" data-page-en="privacy.html" href="#" data-es="Privacidad" data-en="Privacy">Privacy</a><span class="mono">© 2026 DIAGRAMIA</span></footer>
+  <footer class="wrap"><a class="brand" href="#"><span>diagramia</span></a><span data-es="Creá. Transformá. Explicá." data-en="Create. Transform. Explain.">Create. Transform. Explain.</span><a href="pricing.html" data-page-es="precios.html" data-page-en="pricing.html" data-es="Precios" data-en="Pricing">Pricing</a><a href="terms.html" data-page-es="terminos.html" data-page-en="terms.html" data-es="Términos" data-en="Terms">Terms</a><a href="refunds.html" data-page-es="reembolsos.html" data-page-en="refunds.html" data-es="Reembolsos" data-en="Refunds">Refunds</a><a data-app-path="privacy.html" data-page-es="privacidad.html" data-page-en="privacy.html" href="https://app.diagramia.app/privacy.html" data-es="Privacidad" data-en="Privacy">Privacy</a><span class="mono">© 2026 Diagramia</span></footer>
   <dialog id="mcp-dialog"><div class="dialog-heading"><span class="mono">MCP</span><button id="close-dialog" aria-label="Close" data-aria-es="Cerrar" data-aria-en="Close">×</button></div><h2 data-es="Un canvas para tu agente." data-en="A canvas for your agent.">A canvas for your agent.</h2><p data-es="Tu IA puede leer tus diagramas, aplicar cambios, comprobar reglas y crear animaciones a través de MCP, con permisos sobre tu cuenta." data-en="Your AI can read your diagrams, apply changes, check rules and create animations through MCP, with permissions over your account.">Your AI can read your diagrams, apply changes, check rules and create animations through MCP, with permissions over your account.</p><pre>{
   "server": "diagramia",
   "capabilities": [

@@ -1,5 +1,6 @@
 import type {CSSProperties,ReactNode} from 'react';
 import {CAPTION_LINES,captionWidth,ICON_LARGE,LABEL_BELOW_SHAPES,detailBlock,PILL_ICON,SHAPE_INSET,assetDataUrl,detailLines,edgeLabelLayout,pointOnPolyline,routeAll,shapeOf,usableFraction,wrapLabel,type DiagramAnnotation,type DiagramDocument,type DiagramEdge,type DiagramNode,type Point} from '@diagramia/core';
+import {t} from '../i18n';
 
 export {wrapLabel};
 type Shape=ReturnType<typeof shapeOf>;
@@ -184,7 +185,7 @@ function LinkMark({url,shape,x,y,w,h,interactive}:{url:string;shape:Shape;x:numb
   const cx=x+w-12,cy=y+12,domain=domainOf(url),inBar=shape==='browser';
   return <>
     <text className="node-domain" x={inBar?x+50:x+w/2} y={inBar?y+15.5:y+h-7} textAnchor={inBar?'start':'middle'}>{domain.length>34?domain.slice(0,33)+'…':domain}</text>
-    <g className="node-link" role={interactive?'link':undefined} tabIndex={interactive?0:undefined} aria-label={'Abrir '+domain} onPointerDown={e=>e.stopPropagation()} onClick={open} onKeyDown={e=>{if(e.key==='Enter')open(e);}}>
+    <g className="node-link" role={interactive?'link':undefined} tabIndex={interactive?0:undefined} aria-label={t('Abrir ')+domain} onPointerDown={e=>e.stopPropagation()} onClick={open} onKeyDown={e=>{if(e.key==='Enter')open(e);}}>
       <title>{url}</title><circle cx={cx} cy={cy} r="8"/><path d={'M'+(cx-2.5)+' '+(cy+2.5)+'L'+(cx+2.5)+' '+(cy-2.5)+'M'+(cx-1)+' '+(cy-2.5)+'H'+(cx+2.5)+'V'+(cy+1)}/>
     </g>
   </>;
@@ -278,7 +279,7 @@ export function DiagramLayer({doc,selected,activeNodes,activeEdges,failed=false,
     {doc.drawings.map(d=>{
       const pts=d.points,path='M'+pts.map(p=>`${p.x} ${p.y}`).join('L'),first=pts[0],last=pts[pts.length-1],prev=pts[pts.length-2],angle=Math.atan2(last.y-prev.y,last.x-prev.x),size=10+(d.style.strokeWidth??2)*2;
       const head=d.kind==='arrow'?<path className="drawing-head" d={`M${last.x} ${last.y}L${last.x-size*Math.cos(angle-.45)} ${last.y-size*Math.sin(angle-.45)}L${last.x-size*Math.cos(angle+.45)} ${last.y-size*Math.sin(angle+.45)}Z`}/>:null;
-      return <g key={d.id} data-id={d.id} data-type="drawing" style={vars(d.style)} className={'free-drawing'+(has(selected,d.id)?' selected':'')} {...(interactive?{role:'button',tabIndex:0,'aria-label':d.kind==='freehand'?'Dibujo a mano':d.kind==='arrow'?'Flecha dibujada':'Línea dibujada'}:{})}>
+      return <g key={d.id} data-id={d.id} data-type="drawing" style={vars(d.style)} className={'free-drawing'+(has(selected,d.id)?' selected':'')} {...(interactive?{role:'button',tabIndex:0,'aria-label':d.kind==='freehand'?t('Dibujo a mano'):d.kind==='arrow'?t('Flecha dibujada'):t('Línea dibujada')}:{})}>
         <path className="free-drawing-path" d={path}/>{head}{interactive&&<path className="free-drawing-hit" d={path}/>}
       </g>;
     })}
@@ -310,7 +311,7 @@ export function DiagramLayer({doc,selected,activeNodes,activeEdges,failed=false,
       const parts=shapeParts(shape,{x,y,w,h}),dash=n.style.dash?DASH[n.style.dash]:undefined,header=y+lineHeight+12;
       return <g key={n.id} data-id={n.id} data-type="node" style={vars(n.style)} strokeDasharray={dash}
         className={`graph-node kind-${n.kind} shape-${shape}${has(selected,n.id)?' selected':''}${has(staged,n.id)?' staged':''}${active?' active':''}${active&&failed?' failed':''}`}
-        {...(interactive?{role:'button',tabIndex:0,'aria-label':`${n.label}, ${n.kind}${n.zoneId?', en zona '+(doc.zones.find(z=>z.id===n.zoneId)?.label??n.zoneId):''}`}:{})}>
+        {...(interactive?{role:'button',tabIndex:0,'aria-label':`${n.label}, ${n.kind}${n.zoneId?t(', en zona ')+(doc.zones.find(z=>z.id===n.zoneId)?.label??n.zoneId):''}`}:{})}>
         <title>{n.label}</title>
         {asset?<><rect className="node-shape bare" x={x} y={y} width={w} height={h}/><image href={assetDataUrl(asset)} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid meet"/></>:<>{parts.main}{parts.extra}</>}
         {!asset&&!n.shape&&n.kind==='cache'&&<path className="node-accent" d={`M${x+5} ${y+12}V${y+h-12}`}/>}

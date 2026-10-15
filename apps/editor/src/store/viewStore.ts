@@ -2,6 +2,7 @@ import {documentBounds,groupMembers,type DiagramDocument,type DiagramNode,type R
 import {track,trackThrottled} from '../telemetry';
 import {createStore} from './createStore';
 import {DEFAULT_PREFERENCES,PREFERENCES_KEY,parsePreferences} from './preferences';
+import {t} from '../i18n';
 
 export type Camera={x:number;y:number;zoom:number};
 export type Tool='select'|'pan'|'node'|'connect'|'line'|'arrow'|'freehand'|'guided'|'eraser'|'zone'|'frame';
@@ -29,9 +30,9 @@ function initialTheme():Theme{
 // Estado de interfaz: nunca forma parte del documento ni del historial de cambios.
 export const viewStore=createStore({
   camera:{x:-40,y:-20,zoom:1} as Camera,viewport:{width:1000,height:600},
-  tool:'select' as Tool,template:{kind:'service',shape:null,label:'Nuevo componente',size:{width:160,height:80}} as NodeTemplate,...preferences,themeMode:initialThemeMode(),
+  tool:'select' as Tool,template:{kind:'service',shape:null,label:t('Nuevo componente'),size:{width:160,height:80}} as NodeTemplate,...preferences,themeMode:initialThemeMode(),
   // El panel lateral abre en IA: es el primer recorrido del producto.
-  panel:'assistant' as Panel,accountOpen:false,accountSection:'resumen' as AccountSection,sideOpen:true,timelineOpen:false,timelineHeight:300,presenting:false,tutorial:false,theme:initialTheme(),
+  panel:'assistant' as Panel,accountOpen:false,accountSection:'resumen' as AccountSection,shareOpen:false,sideOpen:true,timelineOpen:false,timelineHeight:300,presenting:false,tutorial:false,theme:initialTheme(),
   startMode:'choose' as 'choose'|'draw'|'examples',focusMode:false,connectFromId:null as string|null,connectFromAnchor:null as {x:number;y:number}|null,
   penColor:'#ffffff',penWidth:2,
   labelFocus:0,editingId:null as string|null,staging:null as Staging|null,flash:null as Flash|null,
@@ -71,7 +72,7 @@ export function setTheme(mode:Theme|'system'){
 if(typeof matchMedia==='function')matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(viewStore.get().themeMode==='system')setTheme('system');});
 let savedPreferences=JSON.stringify(preferences);
 viewStore.subscribe(()=>{
-  const {showGrid,snap,reduceMotion,paletteLayout}=viewStore.get(),next=JSON.stringify({showGrid,snap,reduceMotion,paletteLayout});
+  const {showGrid,snap,reduceMotion,paletteLayout,autoCloud}=viewStore.get(),next=JSON.stringify({showGrid,snap,reduceMotion,paletteLayout,autoCloud});
   if(next===savedPreferences)return;savedPreferences=next;
   try{localStorage.setItem(PREFERENCES_KEY,next);}catch{/* sólo para esta sesión */}
   if(reduceMotion)cancelCameraMove();

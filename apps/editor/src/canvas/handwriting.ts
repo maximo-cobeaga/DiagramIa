@@ -1,4 +1,5 @@
 import type {Point} from '@diagramia/core';
+import {LANG} from '../i18n';
 
 type InkStroke={addPoint:(point:Point&{t:number})=>void};
 type Recognizer={startDrawing:(options:{recognitionType:string;alternatives:number})=>{addStroke:(stroke:InkStroke)=>void;getPrediction:()=>Promise<{text:string}[]>;clear:()=>void};finish:()=>void};
@@ -11,7 +12,7 @@ export async function recognizeHandwriting(strokes:Point[][],platform:Handwritin
   const release=()=>{try{drawing?.clear();recognizer?.finish();}catch{/* liberar recursos no invalida la predicción */}drawing=undefined;recognizer=undefined;};
   const work=async():Promise<RecognitionResult>=>{
     try{
-      recognizer=await platform.createHandwritingRecognizer!({languages:['es']});
+      recognizer=await platform.createHandwritingRecognizer!({languages:[LANG]});
       if(expired)return {status:'failed',text:''};
       drawing=recognizer.startDrawing({recognitionType:'text',alternatives:1});
       let t=0;for(const points of strokes){const stroke=new platform.HandwritingStroke!();for(const p of points)stroke.addPoint({...p,t:t+=8});drawing.addStroke(stroke);t+=100;}

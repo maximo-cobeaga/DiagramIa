@@ -10,6 +10,7 @@ import {ColorPicker,readableText} from '../palette/ColorPicker';
 import {HandwritingText} from './HandwritingText';
 import {ArrangeSelection} from './ArrangeSelection';
 import {textSizeActions} from '../commands/textSize';
+import {t} from '../i18n';
 
 /** Acciones pequeñas cerca de la selección. Los cambios siguen pasando por el motor canónico. */
 export function SelectionToolbar({busy}:{busy:boolean}){
@@ -47,10 +48,10 @@ export function SelectionToolbar({busy}:{busy:boolean}){
       ...edges.map(e=>({type:'UPDATE_EDGE' as const,id:e.id,changes:{style:{...e.style,stroke}}})),
       ...drawings.map(d=>({type:'UPDATE_DRAWING' as const,id:d.id,changes:{style:{...d.style,stroke}}})),
       ...zones.map(z=>({type:'UPDATE_ZONE' as const,id:z.id,changes:{style:{...z.style,fill,textColor}}}))
-    ];pause();transact(actions,'Color de la selección cambiado');
+    ];pause();transact(actions,t('Color de la selección cambiado'));
   };
   const selectedColor=nodes[0]?.style.fill??drawings[0]?.style.stroke??edges[0]?.style.stroke??zones[0]?.style.fill;
-  return <div ref={ref} className="selection-toolbar" role="toolbar" aria-label="Acciones de la selección" style={{left,top,maxWidth:viewport.width-24,width:colorsOpen||textOpen||arrangeOpen?Math.min(330,viewport.width-24):undefined}} onPointerDown={e=>e.stopPropagation()}
+  return <div ref={ref} className="selection-toolbar" role="toolbar" aria-label={t('Acciones de la selección')} style={{left,top,maxWidth:viewport.width-24,width:colorsOpen||textOpen||arrangeOpen?Math.min(330,viewport.width-24):undefined}} onPointerDown={e=>e.stopPropagation()}
     onKeyDown={e=>{
       if(e.key==='Escape'){e.stopPropagation();setColorsOpen(false);setTextOpen(false);setArrangeOpen(false);document.querySelector<SVGSVGElement>('.canvas')?.focus();}
       if(e.target instanceof HTMLInputElement)return;
@@ -59,18 +60,18 @@ export function SelectionToolbar({busy}:{busy:boolean}){
       const next=e.key==='Home'?0:e.key==='End'?buttons.length-1:(index+(e.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;buttons[next]?.focus();
     }}>
     <div className="selection-actions">
-      {textTarget&&<button onClick={()=>{pause();viewStore.set({editingId:textTarget.id});}}>Escribir</button>}
-      {nodes.length>0&&<><button aria-label="Achicar texto de la selección" title="Achicar texto" disabled={nodes.every(n=>(n.style.fontSize??15)<=8)} onClick={()=>{pause();transact(textSizeActions(nodes,size=>size-2),'Texto achicado');}}>A−</button><button aria-label="Agrandar texto de la selección" title="Agrandar texto" disabled={nodes.every(n=>(n.style.fontSize??15)>=48)} onClick={()=>{pause();transact(textSizeActions(nodes,size=>size+2),'Texto agrandado');}}>A+</button></>}
-      {nodes.length+edges.length+drawings.length+zones.length>0&&<button aria-expanded={colorsOpen} onClick={()=>{setColorsOpen(!colorsOpen);setTextOpen(false);setArrangeOpen(false);}}>Color</button>}
-      {editable>0&&<><button onClick={()=>{pause();duplicate();}}>Duplicar</button><button onClick={copy}>Copiar</button></>}
-      {nodes.length+drawings.length>1&&unitCount>1&&<button onClick={()=>{pause();group();}}>Agrupar</button>}
-      {hasGroup&&unitCount===1&&<button onClick={()=>{pause();ungroup();}}>Desagrupar</button>}
-      {unitCount>1&&<button aria-expanded={arrangeOpen} onClick={()=>{setArrangeOpen(!arrangeOpen);setColorsOpen(false);setTextOpen(false);}}>Acomodar</button>}
-      {ids.length===1&&nodes.length===1&&<button onClick={()=>{pause();viewStore.set({tool:'connect',connectFromId:nodes[0].id});notify('Elegí el elemento que querés unir. Esc cancela.');}}>Unir</button>}
-      {nodes.length===0&&drawings.some(d=>d.kind==='freehand')&&<button onClick={()=>{pause();transact(drawings.filter(d=>d.kind==='freehand').map(d=>({type:'UPDATE_DRAWING',id:d.id,changes:{points:smoothInk(d.points)}})),'Trazos emprolijados');}}>Emprolijar</button>}
-      {drawings.length===ids.length&&drawings.every(d=>d.kind==='freehand')&&<button aria-expanded={textOpen} onClick={()=>{setColorsOpen(false);setArrangeOpen(false);setTextOpen(!textOpen);}}>Pasar a texto</button>}
-      {drawings.length===1&&ids.length===1&&<button onClick={()=>viewStore.set({tool:drawings[0].kind,penColor:drawings[0].style.stroke??'#141619',penWidth:drawings[0].style.strokeWidth??2})}>Usar este lápiz</button>}
-      <button onClick={()=>viewStore.set({panel:'inspector',sideOpen:true,focusMode:false})}>Más</button>
+      {textTarget&&<button onClick={()=>{pause();viewStore.set({editingId:textTarget.id});}}>{t('Escribir')}</button>}
+      {nodes.length>0&&<><button aria-label={t('Achicar texto de la selección')} title={t('Achicar texto')} disabled={nodes.every(n=>(n.style.fontSize??15)<=8)} onClick={()=>{pause();transact(textSizeActions(nodes,size=>size-2),t('Texto achicado'));}}>A−</button><button aria-label={t('Agrandar texto de la selección')} title={t('Agrandar texto')} disabled={nodes.every(n=>(n.style.fontSize??15)>=48)} onClick={()=>{pause();transact(textSizeActions(nodes,size=>size+2),t('Texto agrandado'));}}>A+</button></>}
+      {nodes.length+edges.length+drawings.length+zones.length>0&&<button aria-expanded={colorsOpen} onClick={()=>{setColorsOpen(!colorsOpen);setTextOpen(false);setArrangeOpen(false);}}>{t('Color')}</button>}
+      {editable>0&&<><button onClick={()=>{pause();duplicate();}}>{t('Duplicar')}</button><button onClick={copy}>{t('Copiar')}</button></>}
+      {nodes.length+drawings.length>1&&unitCount>1&&<button onClick={()=>{pause();group();}}>{t('Agrupar')}</button>}
+      {hasGroup&&unitCount===1&&<button onClick={()=>{pause();ungroup();}}>{t('Desagrupar')}</button>}
+      {unitCount>1&&<button aria-expanded={arrangeOpen} onClick={()=>{setArrangeOpen(!arrangeOpen);setColorsOpen(false);setTextOpen(false);}}>{t('Acomodar')}</button>}
+      {ids.length===1&&nodes.length===1&&<button onClick={()=>{pause();viewStore.set({tool:'connect',connectFromId:nodes[0].id});notify(t('Elegí el elemento que querés unir. Esc cancela.'));}}>{t('Unir')}</button>}
+      {nodes.length===0&&drawings.some(d=>d.kind==='freehand')&&<button onClick={()=>{pause();transact(drawings.filter(d=>d.kind==='freehand').map(d=>({type:'UPDATE_DRAWING',id:d.id,changes:{points:smoothInk(d.points)}})),t('Trazos emprolijados'));}}>{t('Emprolijar')}</button>}
+      {drawings.length===ids.length&&drawings.every(d=>d.kind==='freehand')&&<button aria-expanded={textOpen} onClick={()=>{setColorsOpen(false);setArrangeOpen(false);setTextOpen(!textOpen);}}>{t('Pasar a texto')}</button>}
+      {drawings.length===1&&ids.length===1&&<button onClick={()=>viewStore.set({tool:drawings[0].kind,penColor:drawings[0].style.stroke??'#141619',penWidth:drawings[0].style.strokeWidth??2})}>{t('Usar este lápiz')}</button>}
+      <button onClick={()=>viewStore.set({panel:'inspector',sideOpen:true,focusMode:false})}>{t('Más')}</button>
     </div>
     {colorsOpen&&<div className="selection-colors"><ColorPicker value={selectedColor} onChange={color}/></div>}
     {textOpen&&<HandwritingText doc={doc} drawings={drawings} onClose={()=>setTextOpen(false)}/>}

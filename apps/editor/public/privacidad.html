@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Privacidad · Diagramia</title>
+<link rel="canonical" href="https://app.diagramia.app/privacidad.html">
+<link rel="alternate" hreflang="es" href="https://app.diagramia.app/privacidad.html">
+<link rel="alternate" hreflang="en" href="https://app.diagramia.app/privacy.html">
 <!-- Describe lo que el sistema hace de verdad. Fuente técnica: docs/TELEMETRIA.md y docs/SEGURIDAD.md. -->
 <style>
 @font-face{font-family:Manrope;src:url('/fonts/Manrope.ttf');font-weight:200 800;font-display:swap}
@@ -20,13 +23,13 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 <body>
 <main>
 <h1>Cómo tratamos tus datos</h1>
-<p class="note">Última actualización: 8 de octubre de 2026 · <a href="privacy.html" lang="en" hreflang="en">English</a></p>
+<p class="note">Última actualización: 15 de octubre de 2026 · <a href="privacy.html" lang="en" hreflang="en">English</a></p>
 
 <h2>En pocas palabras</h2>
 <ul>
   <li>Podés usar la pizarra <strong>sin cuenta</strong>: tus diagramas quedan en tu navegador.</li>
   <li>Medimos <strong>cómo se usa</strong> Diagramia (qué herramientas, errores, tiempos), <strong>nunca el contenido</strong> de tus diagramas.</li>
-  <li>Cuando usás la IA, el pedido y la parte del diagrama necesaria se envían al proveedor del modelo para generar la propuesta.</li>
+  <li>Cuando usás la IA, el pedido y la parte del diagrama necesaria se envían al proveedor del modelo (hoy, DeepSeek, que procesa los datos en China) para generar la propuesta. Sin usar la IA, nada de eso sale de Diagramia.</li>
   <li>Podés apagar la medición, y podés eliminar tu cuenta y todo lo que guardaste en la nube cuando quieras.</li>
 </ul>
 
@@ -37,10 +40,11 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 <div class="table"><table>
   <thead><tr><th>Dato</th><th>Para qué</th><th>Dónde y por cuánto tiempo</th></tr></thead>
   <tbody>
-    <tr><td>Tus diagramas sin cuenta</td><td>Que no pierdas tu trabajo</td><td>Sólo en tu navegador (almacenamiento local). No llegan a nuestros servidores salvo que los guardes en la nube o uses la IA.</td></tr>
+    <tr><td>Tus diagramas sin cuenta</td><td>Que no pierdas tu trabajo</td><td>Sólo en tu navegador (almacenamiento local). No llegan a nuestros servidores salvo que los guardes en la nube (a mano o con el guardado automático, que viene apagado) o uses la IA.</td></tr>
     <tr><td>Datos de uso anónimos: herramientas usadas, cantidad de elementos, exportaciones, errores (sin mensajes), tiempos de carga, tipo de dispositivo y navegador, idioma, sitio de origen (sólo el dominio) y campaña</td><td>Entender qué funciona y dónde se traba la gente, para mejorar el producto</td><td>En nuestra base de datos. Se identifican con un código aleatorio guardado en tu navegador, no con tu nombre. Por ahora no tienen un plazo de borrado automático: se conservan mientras el servicio esté activo, salvo que elimines tu cuenta (se desvinculan de vos) o nos pidas borrarlos.</td></tr>
     <tr><td>Cuenta: email, si está verificado, y el identificador que da el servicio de inicio de sesión</td><td>Iniciar sesión, guardar en la nube y usar la IA con su cuota</td><td>Mientras tengas la cuenta.</td></tr>
     <tr><td>Diagramas guardados en la nube y sus versiones</td><td>Que los abras desde cualquier dispositivo y recuperes versiones</td><td>Mientras tengas la cuenta, y en copias de seguridad hasta 14 días después de borrarlos.</td></tr>
+    <tr><td>Enlaces para compartir un diagrama</td><td>Que otra persona vea un diagrama tuyo y su animación sin tener cuenta</td><td>Sólo existen si vos creás el enlace. Quien lo tenga ve ese diagrama, en sólo lectura y siempre en su última versión guardada, sin ver nada más de tu cuenta. Deja de funcionar apenas elegís «Dejar de compartir» o eliminás tu cuenta. No se ofrece a buscadores, pero cualquiera que reciba el enlace puede abrirlo: compartilo como compartirías el diagrama.</td></tr>
     <tr><td>Pedidos a la IA: tu texto y la parte del diagrama necesaria</td><td>Generar la propuesta</td><td>Se envían al proveedor del modelo. Guardamos la respuesta 24 horas para reintentos y, durante 90 días, sólo el registro de créditos usados, sin contenido.</td></tr>
     <tr><td>Un enlace del que pedís la vista previa</td><td>Traer el título y la descripción de esa página</td><td>Sólo cuando tocás «Traer título y descripción». Nuestro servidor visita la página (el sitio ve nuestra dirección, no la tuya) y guarda el resultado en memoria unos 10 minutos. El enlace no queda en registros ni en la base.</td></tr>
     <tr><td>Tu opinión sobre una respuesta (👍/👎 y motivo)</td><td>Mejorar la IA</td><td>Junto con los datos de uso. No incluye texto libre.</td></tr>
@@ -50,11 +54,20 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
   </tbody>
 </table></div>
 
+<h2>Por qué podemos usarlos</h2>
+<p>Tratamos tus datos según la Ley 25.326 de Protección de Datos Personales de Argentina. Si estás en el Espacio Económico Europeo o en el Reino Unido, también se aplica el Reglamento General de Protección de Datos (RGPD). La base de cada uso es:</p>
+<ul>
+  <li><strong>Prestarte el servicio que pediste</strong> (contrato): tu cuenta, los diagramas en la nube, los enlaces para compartir, la vista previa de enlaces, los pedidos a la IA y la suscripción Pro.</li>
+  <li><strong>Nuestro interés legítimo en mejorar y proteger Diagramia</strong>: los datos de uso anónimos y tu opinión sobre las respuestas (podés oponerte apagando la medición), y la dirección IP para frenar abusos.</li>
+  <li><strong>Tu pedido</strong>: las consultas de empresas, que usamos sólo para responderte.</li>
+  <li><strong>Obligaciones legales</strong>: la facturación y los impuestos de los pagos, que gestiona Paddle.</li>
+</ul>
+
 <h2>Cookies y almacenamiento en tu navegador</h2>
 <ul>
   <li><strong>Sesión</strong> (<code>diagramia_session</code>): necesaria para mantenerte dentro de tu cuenta. Dura hasta 30 días o hasta que cerrás sesión.</li>
   <li><strong>Inicio de sesión</strong> (<code>diagramia_oidc_flow</code>): dura 10 minutos, sólo durante el login.</li>
-  <li><strong>Almacenamiento local</strong>: tus borradores, tus preferencias (tema, tutorial) y el código anónimo de medición.</li>
+  <li><strong>Almacenamiento local</strong>: tus borradores, tus preferencias (tema, tutorial), el código anónimo de medición y tus últimas 20 conversaciones con la IA, sólo como texto. Las conversaciones no se guardan en nuestros servidores y las podés borrar desde el historial del chat.</li>
   <li>No usamos cookies de publicidad ni herramientas de analítica de terceros.</li>
 </ul>
 
@@ -66,7 +79,16 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
   <li><strong>Paddle</strong> (Paddle.com Market Limited): procesa los pagos de la suscripción Pro y actúa como vendedor autorizado (Merchant of Record). Recibe los datos de pago que ingresás en su página; <a href="https://www.paddle.com/legal/privacy">su política de privacidad</a>.</li>
   <li><strong>Hostinger</strong>: servidor donde corre Diagramia. El servidor está en São Paulo, Brasil. <a href="https://www.hostinger.com/legal/privacy-policy">Política de privacidad de Hostinger</a>.</li>
 </ul>
-<p>No vendemos tus datos.</p>
+<p>No vendemos tus datos. A los proveedores de IA sólo les llega el pedido y la parte necesaria del diagrama: no les enviamos tu nombre, tu email ni el identificador de tu cuenta.</p>
+
+<h2>Datos fuera de tu país</h2>
+<p>Diagramia funciona en un servidor en São Paulo, Brasil, y sus proveedores procesan datos en otros países:</p>
+<ul>
+  <li><strong>DeepSeek</strong> procesa y guarda los pedidos a la IA en servidores en la República Popular China, un país sin una decisión de adecuación de Argentina ni de la Unión Europea, de modo que sus leyes pueden proteger menos tus datos. Por eso la IA es opcional: la pizarra, la nube, compartir y exportar funcionan sin ella. Si usás la IA, aceptás esta transferencia. Si un pedido contiene algo que no querés que salga de Diagramia, no lo envíes a la IA.</li>
+  <li><strong>OpenAI</strong>, cuando es el modelo en uso, procesa los pedidos en Estados Unidos.</li>
+  <li><strong>Auth0 (Okta)</strong> y <strong>Paddle</strong> pueden procesar datos fuera de tu país, incluido Estados Unidos, con las garantías que describen sus políticas de privacidad.</li>
+</ul>
+<p>Si sos una empresa y necesitás que los pedidos a la IA no salgan hacia un proveedor determinado, escribinos antes de usarla.</p>
 
 <h2>Tus decisiones y derechos</h2>
 <ul>

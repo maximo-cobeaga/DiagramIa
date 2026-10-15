@@ -14,6 +14,7 @@ import {SelectionToolbar} from './SelectionToolbar';
 import {PenTools} from './PenTools';
 import {CanvasSearch} from './CanvasSearch';
 import {beginPinch,pinchCamera,type PinchGesture} from './gestures';
+import {t} from '../i18n';
 
 type BoxKind='node'|'zone'|'frame';
 type Anchor={x:number;y:number}|null;
@@ -32,7 +33,7 @@ type Gesture=
   |{type:'segment';edgeId:string;index:number;start:Point;original:Point[];points:Point[]};
 
 const HANDLES=['nw','n','ne','e','se','s','sw','w'];
-const CONNECT_PORTS=[{name:'Arriba',x:.5,y:0},{name:'Derecha',x:1,y:.5},{name:'Abajo',x:.5,y:1},{name:'Izquierda',x:0,y:.5}];
+const CONNECT_PORTS=[{name:t('Arriba'),x:.5,y:0},{name:t('Derecha'),x:1,y:.5},{name:t('Abajo'),x:.5,y:1},{name:t('Izquierda'),x:0,y:.5}];
 export const SHAPE_MIME='application/x-diagramia-shape';
 const rectOf=(a:Point,b:Point):Rect=>({x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y)});
 function resizeRect(o:Rect,handle:string,dx:number,dy:number,min:number):Rect{
@@ -81,7 +82,7 @@ function withGesture(doc:DiagramDocument,g:Gesture|null):DiagramDocument{
 /** Nodo nuevo a partir de la plantilla elegida en la paleta, centrado en `at` y con la pertenencia a zona que corresponda. */
 function placeNode(doc:DiagramDocument,template:NodeTemplate,at:Point){
   const node=templateNode(template,at,newId('node')),target=resolveMembership(doc,{...node.position,...node.size});
-  if(!transact([{type:'ADD_NODE',node:{...node,position:target.position,zoneId:target.zoneId}}],'Nodo agregado'))return;
+  if(!transact([{type:'ADD_NODE',node:{...node,position:target.position,zoneId:target.zoneId}}],t('Nodo agregado')))return;
   select([node.id]);viewStore.set({tool:'select',editingId:node.id});
 }
 
@@ -95,11 +96,11 @@ function InlineEditor({target,camera}:{target:Editable;camera:Camera}){
     const text=value.replace(/\s+/g,' ').trim();
     viewStore.set({editingId:null});
     if(!save||text===target.value)return;
-    if(!text&&target.kind!=='edge'){notify('El nombre no puede quedar vacío.','warn');return;}
-    transact([target.kind==='node'?{type:'UPDATE_NODE',id:target.id,changes:{label:text}}:target.kind==='edge'?{type:'UPDATE_EDGE',id:target.id,changes:{label:text}}:target.kind==='zone'?{type:'UPDATE_ZONE',id:target.id,changes:{label:text}}:{type:'UPDATE_FRAME',id:target.id,changes:{label:text}}],'Texto cambiado');
+    if(!text&&target.kind!=='edge'){notify(t('El nombre no puede quedar vacío.'),'warn');return;}
+    transact([target.kind==='node'?{type:'UPDATE_NODE',id:target.id,changes:{label:text}}:target.kind==='edge'?{type:'UPDATE_EDGE',id:target.id,changes:{label:text}}:target.kind==='zone'?{type:'UPDATE_ZONE',id:target.id,changes:{label:text}}:{type:'UPDATE_FRAME',id:target.id,changes:{label:text}}],t('Texto cambiado'));
   };
   const {box}=target,style={left:(box.x-camera.x)*camera.zoom,top:(box.y-camera.y)*camera.zoom,width:Math.max(target.kind==='node'?40:90,box.width*camera.zoom),height:Math.max(target.kind==='node'?18:28,box.height*camera.zoom),fontSize:Math.max(8,target.size*camera.zoom),color:target.color,textAlign:target.align,fontWeight:target.bold?700:undefined,fontStyle:target.italic?'italic':undefined};
-  return <textarea ref={ref} className={'inline-editor kind-'+target.kind} style={style} value={value} maxLength={target.kind==='edge'?160:200} aria-label="Texto del elemento"
+  return <textarea ref={ref} className={'inline-editor kind-'+target.kind} style={style} value={value} maxLength={target.kind==='edge'?160:200} aria-label={t('Texto del elemento')}
     onChange={e=>setValue(e.target.value)} onBlur={()=>finish(true)} onPointerDown={e=>e.stopPropagation()}
     onKeyDown={e=>{e.stopPropagation();if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finish(true);}if(e.key==='Escape'){e.preventDefault();finish(false);}}}/>;
 }
@@ -242,7 +243,7 @@ export function Canvas(){
         if(!guideAt.current||Math.hypot(last.x-guideAt.current.x,last.y-guideAt.current.y)>4/viewStore.get().camera.zoom){
           clearGuide();guideAt.current=last;guideTimer.current=setTimeout(()=>{
             const current=gestureRef.current;if(current?.type!=='stroke'||!current.guided)return;
-            const guided=guideInk(current.raw);if(guided){setGesture({...current,points:guided.points,guideLabel:guided.label});notify(`Forma emprolijada: ${guided.label}. Soltá para guardarlo.`);}
+            const guided=guideInk(current.raw);if(guided){setGesture({...current,points:guided.points,guideLabel:guided.label});notify(t('Forma emprolijada: {0}. Soltá para guardarlo.',guided.label));}
           },450);
         }
       }
@@ -319,53 +320,53 @@ export function Canvas(){
       case 'place':placeNode(doc,template,g.at);break;
       case 'stroke':{
         const guided=g.guided?guideInk(g.raw):null,points=guided?.points??g.points;
-        if(points.length<2||(g.kind!=='freehand'&&inkLength(points)<4/viewStore.get().camera.zoom)){notify('Arrastrá un poco más para dibujar.','warn');break;}
+        if(points.length<2||(g.kind!=='freehand'&&inkLength(points)<4/viewStore.get().camera.zoom)){notify(t('Arrastrá un poco más para dibujar.'),'warn');break;}
         const id=newId('drawing');
-        if(transact([{type:'ADD_DRAWING',drawing:{id,kind:g.kind,points,style:g.style}}],guided?`Forma emprolijada: ${guided.label}`:g.kind==='freehand'?'Trazo dibujado':g.kind==='arrow'?'Flecha libre creada':'Línea creada')){select([id]);if(g.kind!=='freehand')viewStore.set({tool:'select'});}
+        if(transact([{type:'ADD_DRAWING',drawing:{id,kind:g.kind,points,style:g.style}}],guided?t('Forma emprolijada: {0}',guided.label):g.kind==='freehand'?t('Trazo dibujado'):g.kind==='arrow'?t('Flecha libre creada'):t('Línea creada'))){select([id]);if(g.kind!=='freehand')viewStore.set({tool:'select'});}
         break;
       }
-      case 'erase':if(g.ids.length)transact(g.ids.map(id=>({type:'DELETE_DRAWING',id})),'Trazos borrados');break;
+      case 'erase':if(g.ids.length)transact(g.ids.map(id=>({type:'DELETE_DRAWING',id})),t('Trazos borrados'));break;
       case 'draw':{
         const raw=rectOf(g.start,g.current),bounds={x:snap(raw.x),y:snap(raw.y),width:snap(raw.width),height:snap(raw.height)};
-        if(bounds.width<100||bounds.height<100){notify('Arrastrá para dibujar el área: el mínimo es 100 × 100.','warn');break;}
+        if(bounds.width<100||bounds.height<100){notify(t('Arrastrá para dibujar el área: el mínimo es 100 × 100.'),'warn');break;}
         const id=newId(g.kind);
         // Una zona nueva adopta los nodos sin zona que quedaron completamente adentro.
         const actions:ActionInput[]=g.kind==='frame'
-          ?[{type:'CREATE_FRAME',frame:{id,label:`Frame ${doc.frames.length+1}`,bounds}}]
-          :[{type:'CREATE_ZONE',zone:{id,label:'Nueva zona',bounds}},...doc.nodes.filter(n=>!n.zoneId&&contains(bounds,nodeRect(n))).map(n=>({type:'UPDATE_NODE' as const,id:n.id,changes:{zoneId:id}}))];
-        if(transact(actions,g.kind==='frame'?'Frame creado':`Zona creada con ${actions.length-1} nodo(s)`)){select([id]);viewStore.set({tool:'select',editingId:id});}
+          ?[{type:'CREATE_FRAME',frame:{id,label:t('Frame {0}',doc.frames.length+1),bounds}}]
+          :[{type:'CREATE_ZONE',zone:{id,label:t('Nueva zona'),bounds}},...doc.nodes.filter(n=>!n.zoneId&&contains(bounds,nodeRect(n))).map(n=>({type:'UPDATE_NODE' as const,id:n.id,changes:{zoneId:id}}))];
+        if(transact(actions,g.kind==='frame'?t('Frame creado'):t('Zona creada con {0} nodo(s)',actions.length-1))){select([id]);viewStore.set({tool:'select',editingId:id});}
         break;
       }
       case 'move':
-        if(g.dx||g.dy)transact(moveActions(doc,g.ids,g.dx,g.dy),g.ids.length>1?`${g.ids.length} elementos movidos`:'Elemento movido');
+        if(g.dx||g.dy)transact(moveActions(doc,g.ids,g.dx,g.dy),g.ids.length>1?t('{0} elementos movidos',g.ids.length):t('Elemento movido'));
         else if(!g.shift&&ids.length>g.unit.length)select(g.unit);
         break;
       case 'box':{
         if(!g.dx&&!g.dy)break;
         const b=boxOf(doc,g.kind,g.id)!,position={x:b.x+g.dx,y:b.y+g.dy};
-        transact([g.kind==='zone'?{type:'MOVE_ZONE',id:g.id,position}:{type:'UPDATE_FRAME',id:g.id,changes:{bounds:{...b,...position}}}],g.kind==='zone'?'Zona movida con sus nodos':'Frame movido');
+        transact([g.kind==='zone'?{type:'MOVE_ZONE',id:g.id,position}:{type:'UPDATE_FRAME',id:g.id,changes:{bounds:{...b,...position}}}],g.kind==='zone'?t('Zona movida con sus nodos'):t('Frame movido'));
         break;
       }
       case 'resize':{
         const {x,y,width,height}=g.rect,o=g.original;
         if(x===o.x&&y===o.y&&width===o.width&&height===o.height)break;
-        transact([g.kind==='node'?{type:'RESIZE_NODE',id:g.id,size:{width,height},position:{x,y}}:{type:g.kind==='zone'?'UPDATE_ZONE':'UPDATE_FRAME',id:g.id,changes:{bounds:g.rect}}],'Tamaño cambiado');
+        transact([g.kind==='node'?{type:'RESIZE_NODE',id:g.id,size:{width,height},position:{x,y}}:{type:g.kind==='zone'?'UPDATE_ZONE':'UPDATE_FRAME',id:g.id,changes:{bounds:g.rect}}],t('Tamaño cambiado'));
         break;
       }
       case 'connect':
         if(g.target){
           const id=newId('edge'),toAnchor=anchorAt(boxOf(doc,'node',g.target)!,g.current);
-          if(transact([{type:'ADD_EDGE',edge:{id,from:g.from,to:g.target,fromAnchor:g.fromAnchor,toAnchor}}],'Conexión creada')){select([id]);if(g.quick)viewStore.set({tool:'select',connectFromId:null,connectFromAnchor:null});}
-        }else{viewStore.set({tool:'connect',connectFromId:g.from,connectFromAnchor:g.fromAnchor});notify('Elegí el destino para unir. Esc cancela.');}
+          if(transact([{type:'ADD_EDGE',edge:{id,from:g.from,to:g.target,fromAnchor:g.fromAnchor,toAnchor}}],t('Conexión creada'))){select([id]);if(g.quick)viewStore.set({tool:'select',connectFromId:null,connectFromAnchor:null});}
+        }else{viewStore.set({tool:'connect',connectFromId:g.from,connectFromAnchor:g.fromAnchor});notify(t('Elegí el destino para unir. Esc cancela.'));}
         break;
       case 'endpoint':
         if(g.target){
           const anchor=anchorNear(boxOf(doc,'node',g.target)!,g.current,tolerance);
-          transact([{type:'UPDATE_EDGE',id:g.edgeId,changes:g.end==='from'?{from:g.target,fromAnchor:anchor,fromPort:'auto'}:{to:g.target,toAnchor:anchor,toPort:'auto'}}],anchor?'Extremo enganchado en ese punto':'Extremo conectado');
+          transact([{type:'UPDATE_EDGE',id:g.edgeId,changes:g.end==='from'?{from:g.target,fromAnchor:anchor,fromPort:'auto'}:{to:g.target,toAnchor:anchor,toPort:'auto'}}],anchor?t('Extremo enganchado en ese punto'):t('Extremo conectado'));
         }
         break;
       case 'segment':
-        if(g.points.some((p,i)=>p.x!==g.original[i].x||p.y!==g.original[i].y))transact([{type:'UPDATE_EDGE',id:g.edgeId,changes:{points:g.points}}],'Recorrido de la conexión ajustado');
+        if(g.points.some((p,i)=>p.x!==g.original[i].x||p.y!==g.original[i].y))transact([{type:'UPDATE_EDGE',id:g.edgeId,changes:{points:g.points}}],t('Recorrido de la conexión ajustado'));
         break;
       case 'marquee':{
         const area=rectOf(g.start,g.current);
@@ -425,7 +426,7 @@ export function Canvas(){
   return <div className="canvas-host" ref={hostRef} onDrop={drop}
     onDragOver={e=>{if(e.dataTransfer.types.includes(SHAPE_MIME)){e.preventDefault();e.dataTransfer.dropEffect='copy';setGhostAt(toWorld(e));}}}
     onDragLeave={e=>{if(!hostRef.current?.contains(e.relatedTarget as Node|null))setGhostAt(null);}}>
-    <svg ref={svgRef} className={`canvas tool-${tool}`} tabIndex={0} style={{cursor}} role="group" aria-label={`Canvas editable: ${doc.nodes.length} nodos, ${doc.edges.length} conexiones`}
+    <svg ref={svgRef} className={`canvas tool-${tool}`} tabIndex={0} style={{cursor}} role="group" aria-label={t('Canvas editable: {0} nodos, {1} conexiones',doc.nodes.length,doc.edges.length)}
       viewBox={`${camera.x} ${camera.y} ${viewport.width/camera.zoom} ${viewport.height/camera.zoom}`}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setGhostAt(null)} onPointerCancel={cancelGesture}
       onKeyDown={e=>{if(e.key==='Escape'){cancelGesture();return;}const target=hit(e.target);if(target&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();if(viewStore.get().connectFromId&&target.type==='node'&&!staging){connectTo(target.id);return;}const unit=e.altKey?[target.id]:selectionUnit(doc,target.id);select(e.shiftKey?[...ids,...unit]:unit);}}}>
@@ -439,7 +440,7 @@ export function Canvas(){
         {gesture?.type==='move'&&gesture.guides?.map((guide,i)=><line key={i} className="alignment-guide" x1={guide.axis==='x'?guide.at:guide.from} y1={guide.axis==='y'?guide.at:guide.from} x2={guide.axis==='x'?guide.at:guide.to} y2={guide.axis==='y'?guide.at:guide.to} strokeWidth={px}/>)}
         {groupBoxes.map(g=><g key={g.id}><rect className="group-outline" x={g.box.x-8} y={g.box.y-8} width={g.box.width+16} height={g.box.height+16} rx="8" strokeWidth={px}/>{g.label&&<text className="group-label" x={g.box.x-8} y={g.box.y-14} fontSize={11*px}>{g.label}</text>}</g>)}
         {escaped.map(n=><rect key={n.id} className="conflict-outline" x={n.position.x-3} y={n.position.y-3} width={n.size.width+6} height={n.size.height+6} rx="12" strokeWidth={2*px}/>)}
-        {escaped.length>0&&gesture?.type==='resize'&&<text className="conflict-label" x={gesture.rect.x} y={gesture.rect.y+gesture.rect.height+18*px} fontSize={12*px}>⚠ {escaped.length} nodo(s) quedarían fuera de la zona: el cambio se va a rechazar.</text>}
+        {escaped.length>0&&gesture?.type==='resize'&&<text className="conflict-label" x={gesture.rect.x} y={gesture.rect.y+gesture.rect.height+18*px} fontSize={12*px}>⚠ {escaped.length} {t('nodo(s) quedarían fuera de la zona: el cambio se va a rechazar.')}</text>}
         {flash&&flashBoxes.map((r,i)=><rect key={`${flash.key}-${i}`} className={`focus-flash tone-${flash.tone}`} x={r.x-10} y={r.y-10} width={r.width+20} height={r.height+20} rx="14" strokeWidth={4*px}/>)}
         {draft&&<rect className={gesture!.type==='marquee'?'marquee':'draft'} {...draft} strokeWidth={px}/>}
         {wireTarget&&<rect className="drop-target" x={wireTarget.x-4} y={wireTarget.y-4} width={wireTarget.width+8} height={wireTarget.height+8} rx="12" strokeWidth={2*px}/>}
@@ -447,7 +448,7 @@ export function Canvas(){
         {!staging&&ids.map(id=>{const box=documentBounds(visible,[id]);return box&&<rect key={id} className="selection-outline" x={box.x-5*px} y={box.y-5*px} width={box.width+10*px} height={box.height+10*px} rx={5*px} strokeWidth={px}/>;})}
       </g>
       {gesture?.type==='stroke'&&<g className="ink-preview" pointerEvents="none" aria-hidden="true"><DiagramLayer doc={singleDrawingDocument({id:'ink-preview',kind:gesture.kind,points:gesture.points,style:gesture.style,groupId:null})}/></g>}
-      {connectionPortBox&&CONNECT_PORTS.map(port=>{const x=connectionPortBox.x+connectionPortBox.width*port.x+(port.x===0?-15:port.x===1?15:0)*px,y=connectionPortBox.y+connectionPortBox.height*port.y+(port.y===0?-15:port.y===1?15:0)*px;return <g key={port.name} className="connect-port" data-connect-port={port.name} role="button" tabIndex={0} aria-label={'Conectar desde '+port.name.toLowerCase()} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();viewStore.set({tool:'connect',connectFromId:ids[0],connectFromAnchor:{x:port.x,y:port.y}});}}}><circle className="connect-port-hit" cx={x} cy={y} r={16*px}/><circle cx={x} cy={y} r={8*px} strokeWidth={1.5*px}/><path d={`M${x-3*px} ${y}h${6*px}M${x} ${y-3*px}v${6*px}`} strokeWidth={1.5*px}/></g>;})}
+      {connectionPortBox&&CONNECT_PORTS.map(port=>{const x=connectionPortBox.x+connectionPortBox.width*port.x+(port.x===0?-15:port.x===1?15:0)*px,y=connectionPortBox.y+connectionPortBox.height*port.y+(port.y===0?-15:port.y===1?15:0)*px;return <g key={port.name} className="connect-port" data-connect-port={port.name} role="button" tabIndex={0} aria-label={t('Conectar desde ')+port.name.toLowerCase()} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();viewStore.set({tool:'connect',connectFromId:ids[0],connectFromAnchor:{x:port.x,y:port.y}});}}}><circle className="connect-port-hit" cx={x} cy={y} r={16*px}/><circle cx={x} cy={y} r={8*px} strokeWidth={1.5*px}/><path d={`M${x-3*px} ${y}h${6*px}M${x} ${y-3*px}v${6*px}`} strokeWidth={1.5*px}/></g>;})}
       {handleBox&&resizable&&tool==='select'&&<g className="handles">
         {HANDLES.map(h=>{
           const cx=handleBox.x+(h.includes('w')?0:h.includes('e')?handleBox.width:handleBox.width/2),cy=handleBox.y+(h.includes('n')?0:h.includes('s')?handleBox.height:handleBox.height/2);
@@ -464,12 +465,12 @@ export function Canvas(){
       </g>}
     </svg>
     {!staging&&<PenTools guideLabel={gesture?.type==='stroke'?gesture.guideLabel:undefined}/>}
-    {shownWire?.ready&&wireTarget&&<div className="connection-feedback" role="status" style={{left:Math.max(8,Math.min(viewport.width-200,(wireTarget.x-camera.x)*camera.zoom)),top:Math.max(8,Math.min(viewport.height-40,(wireTarget.y-camera.y)*camera.zoom-38))}}>Unir con {doc.nodes.find(n=>n.position.x===wireTarget.x&&n.position.y===wireTarget.y)?.label??'este elemento'}</div>}
+    {shownWire?.ready&&wireTarget&&<div className="connection-feedback" role="status" style={{left:Math.max(8,Math.min(viewport.width-200,(wireTarget.x-camera.x)*camera.zoom)),top:Math.max(8,Math.min(viewport.height-40,(wireTarget.y-camera.y)*camera.zoom-38))}}>{t('Unir con')} {doc.nodes.find(n=>n.position.x===wireTarget.x&&n.position.y===wireTarget.y)?.label??t('este elemento')}</div>}
     <SelectionToolbar busy={Boolean(gesture)}/>
     <CanvasSearch/>
-    {viewStore.get().connectFromId&&tool==='connect'&&<div className="connect-invitation" role="status">Elegí el otro elemento para unirlos.<button onClick={()=>{viewStore.set({connectFromId:null,tool:'select'});notify('Unión cancelada.');}}>Cancelar</button></div>}
+    {viewStore.get().connectFromId&&tool==='connect'&&<div className="connect-invitation" role="status">{t('Elegí el otro elemento para unirlos.')}<button onClick={()=>{viewStore.set({connectFromId:null,tool:'select'});notify(t('Unión cancelada.'));}}>{t('Cancelar')}</button></div>}
     {editing&&<InlineEditor key={editing.id} target={editing} camera={camera}/>}
-    {staging&&<p className="canvas-banner" role="status">Vista previa de la propuesta · paso {staging.step} de {staging.total} · aceptala o rechazala en el panel IA</p>}
+    {staging&&<p className="canvas-banner" role="status">{t('Vista previa de la propuesta · paso')} {staging.step} {t('de')} {staging.total} {t('· aceptala o rechazala en el panel IA')}</p>}
     {empty&&!editing&&!staging&&!gesture&&tool==='select'&&<Welcome/>}
     {empty&&!editing&&!staging&&!gesture&&tool==='node'&&viewStore.get().startMode==='draw'&&<Welcome/>}
   </div>;
