@@ -173,7 +173,7 @@ export function createApp(options:AppOptions):Server{
         if(realIp&&!webhookPerIp.allow(ip))return fail(429,'RATE_LIMITED','Demasiados avisos.');
         const raw=await readRaw(req,MAX_WEBHOOK_BODY);
         if(!verifySignature(raw,String(req.headers['paddle-signature']??''),options.billing.paddle.webhookSecret))return fail(400,'BAD_SIGNATURE','Firma inválida.');
-        const change=translate(raw,[options.billing.paddle.priceId,options.billing.paddle.yearlyPriceId]);
+        const change=translate(raw,[options.billing.paddle.priceId,options.billing.paddle.yearlyPriceId,...(options.billing.paddle.legacyPriceIds??[])]);
         if(!change)return send(200,{received:true,ignored:true});
         const result=await options.billing.repository.apply(change,(JSON.parse(raw.toString('utf8')) as {event_type:string}).event_type);
         // Dos suscripciones para una misma cuenta es un cobro doble a revisar en Paddle: queda en el log, sin datos de la persona.
@@ -245,7 +245,9 @@ export function createApp(options:AppOptions):Server{
         // El descuento se decide acá, no en el navegador: una oferta vencida no se aplica aunque la página siga abierta.
         // La oferta es del plan mensual: el anual ya tiene su propio descuento.
         const offer=interval==='month'?offerFor(options.billing.offer,await options.billing.repository.accountCreatedAt(session.userId)):null;
-        return send(200,{url:await createCheckout(options.billing.paddle,session.userId,fetch,offer?options.billing.offer!.discountId:undefined,interval),offerApplied:Boolean(offer),interval});
+        // Precio anunciado: Paddle tiene que cobrar exactamente eso o no se abre el pago (ADR 109).
+        const announced=interval==='year'?options.billing.prices?.yearlyUsd:options.billing.prices?.monthlyUsd;
+        return send(200,{url:await createCheckout(options.billing.paddle,session.userId,fetch,offer?options.billing.offer!.discountId:undefined,interval,announced),offerApplied:Boolean(offer),interval});
       }
       if(path==='/v1/offer'&&req.method==='GET'){
         // Pública (la landing la consulta): sólo la campaña general. La oferta de bienvenida es de cada cuenta.

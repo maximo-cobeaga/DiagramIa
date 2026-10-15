@@ -111,7 +111,7 @@ La app de producción sigue en sandbox hasta que hagas estos pasos. Paddle no co
    ```sh
    docker run --rm -v "$PWD":/app -w /app node:22.23.1-alpine node scripts/paddle-live.mjs setup --env .env.production --write
    ```
-   Crea el producto, el precio mensual de USD 10 y el anual de USD 40 (los dos con cantidad 1–1), el descuento si hay oferta, el destino de avisos hacia `/api/v1/billing/webhook` (sólo los ocho avisos de suscripción, sin simulaciones) y el token público de Paddle.js. Reutiliza lo que ya esté bien: correrlo dos veces no duplica nada. No imprime la clave ni el secreto del webhook.
+   Crea el producto, el precio mensual de USD 5 y el anual de USD 40 (los dos con cantidad 1–1), el descuento si hay oferta, el destino de avisos hacia `/api/v1/billing/webhook` (sólo los ocho avisos de suscripción, sin simulaciones) y el token público de Paddle.js. Reutiliza lo que ya esté bien: correrlo dos veces no duplica nada. No imprime la clave ni el secreto del webhook.
 6. Comprobá contra Paddle, incluido el enlace de pago (deja una transacción sin pagar, que no es de ninguna cuenta):
    ```sh
    docker run --rm -v "$PWD":/app -w /app node:22.23.1-alpine node scripts/paddle-live.mjs check --env .env.production --probe
@@ -125,6 +125,21 @@ La app de producción sigue en sandbox hasta que hagas estos pasos. Paddle no co
 **Volver al sandbox:** restaurá la copia `.env.production.antes-de-paddle-<fecha>` y corré `DIAGRAMIA_SKIP_PULL=1 infra/deploy.sh`. Las suscripciones de prueba quitadas no vuelven solas (están en el respaldo previo de `deploy.sh`), y una suscripción real conserva Pro aunque el entorno configurado sea otro.
 
 **Estado al 12/10/2026:** no hay credenciales live en el entorno de desarrollo ni acceso al panel de Paddle o al VPS desde las sesiones del agente. El script se probó contra el sandbox real en modo de sólo lectura (encuentra el producto, los dos precios, el descuento, el destino de avisos y el token que usa producción, sin crear nada) y con un doble de la API para la creación (`apps/api/test/paddleLive.test.ts`). Falta ejecutarlo contra la cuenta live.
+
+### Cambiar el precio de Pro (ADR 109: USD 10 → USD 5 por mes)
+
+El precio vive en dos lugares que tienen que coincidir: el código (`PRO_PRICE_USD` en `apps/api/src/index.ts` y el catálogo de `scripts/paddle-live.mjs`) y Paddle. Mientras no coinciden, el gateway **no abre el pago** y muestra «Estamos actualizando el precio de Pro» (`CHECKOUT_PRICE` en el log): nunca se cobra un monto distinto del anunciado. En el VPS, después del despliegue del código:
+
+1. Copia de seguridad: `cp .env.production .env.production.antes-de-precio-$(date +%F)`.
+2. Borrá las variables `DIAGRAMIA_OFFER_*` de `.env.production` (desde ADR 109 no hay descuento en el plan mensual).
+3. `docker run --rm -v "$PWD":/app -w /app node:22.23.1-alpine node scripts/paddle-live.mjs setup --env .env.production --write` — crea el precio mensual de USD 5 (1–1) y reemplaza `DIAGRAMIA_PADDLE_PRICE_PRO`. El anual de USD 40 ya existe y se reutiliza. El precio viejo de USD 10 no se toca: si alguien ya paga con él, sigue renovando en USD 10 hasta que se pase a mano en Paddle.
+4. `docker run --rm -v "$PWD":/app -w /app node:22.23.1-alpine node scripts/paddle-live.mjs check --env .env.production --probe` — sin ✖.
+5. `DIAGRAMIA_SKIP_PULL=1 infra/deploy.sh`.
+6. Abrí el pago con tu cuenta: Paddle tiene que mostrar USD 5 (más impuestos). En Paddle, archivá el precio de USD 10 si nadie lo usa y el descuento del 50 %.
+
+### Reembolsos
+
+Los reembolsos se piden por email (política de 14 días) y se hacen en Paddle. Un reembolso no cancela la suscripción: en el mismo momento, cancelala en Paddle con efecto inmediato. El aviso `subscription.canceled` baja la cuenta a Free sin borrar nada. Un contracargo se trata igual.
 
 ### Oferta por tiempo limitado (ADR 092)
 

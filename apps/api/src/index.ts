@@ -16,7 +16,8 @@ import {FounderDashboard} from './repositories/dashboard.js';
 import {parseOffer} from './billing/offer.js';
 
 /** Precios de lista del plan Pro en USD (ADR 093): los que muestran la landing, el editor y la oferta. Deben coincidir con los precios de Paddle. */
-const PRO_PRICE_USD=10,PRO_YEARLY_USD=40;
+// Precios de lista de Pro (ADR 109). Tienen que coincidir con los de Paddle: si no, el pago no se abre (CHECKOUT_PRICE).
+const PRO_PRICE_USD=5,PRO_YEARLY_USD=40;
 
 const root=fileURLToPath(new URL('../../../',import.meta.url));
 // Carga opcional de .env en la raíz del repo (el archivo está en .gitignore). Las variables ya definidas tienen prioridad.
@@ -60,6 +61,16 @@ async function start(){
       const purge=()=>accounts.purgeExpired().catch(error=>console.error('No se pudo purgar datos vencidos:',error instanceof Error?error.message:String(error)));
       await purge();setInterval(()=>void purge(),6*3_600_000).unref();
     }
+    // Retención publicada en el aviso de privacidad (ADR 109): datos de uso y consultas de empresas, 13 meses.
+    if(pool){
+      const retain=async()=>{
+        try{
+          const {events}=await new TelemetryRepository(pool).purgeOlderThan(),contacts=await new ContactRepository(pool).purgeOlderThan();
+          if(events||contacts)console.log(`Retención: se borraron ${events} eventos de uso y ${contacts} consultas de más de 13 meses.`);
+        }catch(error){console.error('No se pudo aplicar la retención de 13 meses:',error instanceof Error?error.message:String(error));}
+      };
+      await retain();setInterval(()=>void retain(),24*3_600_000).unref();
+    }
     // Cobro (ADR 089/094): todo o nada, pero una configuración incompleta apaga el cobro en vez de tirar abajo el producto.
     // El editor, la IA y la nube no dependen de Paddle; el aviso queda en el log y en `npm run doctor`.
     const paddleNames=['DIAGRAMIA_PADDLE_API_KEY','DIAGRAMIA_PADDLE_WEBHOOK_SECRET','DIAGRAMIA_PADDLE_PRICE_PRO'] as const;
@@ -78,7 +89,7 @@ async function start(){
     const checkoutUrl=env.DIAGRAMIA_OIDC_HOME_URL?new URL('pago.html',env.DIAGRAMIA_OIDC_HOME_URL).href:null;
     let offer:ReturnType<typeof parseOffer>;
     try{offer=paddleConfigured.length?parseOffer(env,PRO_PRICE_USD):undefined;}catch(error){console.error('OFERTA APAGADA:',error instanceof Error?error.message:String(error));}
-    const billing=paddleConfigured.length&&pool?{repository:new BillingRepository(pool,paddleEnv),paddle:{env:paddleEnv as 'live'|'sandbox',apiKey:env.DIAGRAMIA_PADDLE_API_KEY!,webhookSecret:env.DIAGRAMIA_PADDLE_WEBHOOK_SECRET!,priceId:env.DIAGRAMIA_PADDLE_PRICE_PRO!,yearlyPriceId:env.DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY||null,clientToken,checkoutUrl},offer,prices:{monthlyUsd:PRO_PRICE_USD,yearlyUsd:PRO_YEARLY_USD}}:undefined;
+    const billing=paddleConfigured.length&&pool?{repository:new BillingRepository(pool,paddleEnv),paddle:{env:paddleEnv as 'live'|'sandbox',apiKey:env.DIAGRAMIA_PADDLE_API_KEY!,webhookSecret:env.DIAGRAMIA_PADDLE_WEBHOOK_SECRET!,priceId:env.DIAGRAMIA_PADDLE_PRICE_PRO!,yearlyPriceId:env.DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY||null,legacyPriceIds:(env.DIAGRAMIA_PADDLE_PRICE_PRO_LEGACY??'').split(',').map(id=>id.trim()).filter(id=>id.startsWith('pri_')),clientToken,checkoutUrl},offer,prices:{monthlyUsd:PRO_PRICE_USD,yearlyUsd:PRO_YEARLY_USD}}:undefined;
     // Pase a cobros reales (ADR 098): lo que se pagó con tarjetas de prueba no sigue dando Pro.
     if(billing){const dropped=await billing.repository.dropTestSubscriptions();if(dropped)console.warn(`[billing] cobro en modo live: se quitaron ${dropped} suscripción(es) de prueba del sandbox.`);}
     const remoteMcp=mcpConfigured.length&&documents&&accounts?new RemoteMcpService({resourceUrl:env.DIAGRAMIA_MCP_RESOURCE_URL!,issuer:env.DIAGRAMIA_OIDC_ISSUER!,jwksUrl:env.DIAGRAMIA_MCP_JWKS_URL!},accounts,documents):undefined;

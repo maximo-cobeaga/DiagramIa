@@ -39,7 +39,10 @@ try{
   // Semana actual (08–14/10): A llega por la landing, crea, exporta a los 10 min, se registra y aplica una propuesta de IA.
   await visit(a,'2026-10-08T10:00:00Z',[['landing_view',{}],['board_opened',{returning:false,fromLanding:true}],['first_element_created',{},'2026-10-08T10:02:00Z'],
     ['useful_diagram_created',{reason:'exported',nodes:3,edges:2},'2026-10-08T10:10:00Z'],['ai_proposal_applied',{requestId:'req-a',mode:'create',actions:6},'2026-10-08T10:20:00Z'],
-    ['ai_feedback',{requestId:'req-a',rating:'up',reason:null},'2026-10-08T10:21:00Z']],userA);
+    ['ai_feedback',{requestId:'req-a',rating:'up',reason:null},'2026-10-08T10:21:00Z'],
+    // Difusión (ADR 109): exporta la animación, comparte el enlace y ese enlace se abre dos veces; una vez tocan la marca.
+    ['export',{format:'animation-gif'},'2026-10-08T10:22:00Z'],['export',{format:'svg'},'2026-10-08T10:23:00Z'],['share_link_created',{},'2026-10-08T10:24:00Z'],
+    ['shared_view_opened',{animated:true,steps:3},'2026-10-08T11:00:00Z'],['shared_view_opened',{animated:true,steps:3},'2026-10-08T12:00:00Z'],['shared_view_cta_clicked',{},'2026-10-08T12:01:00Z']],userA);
   const serverEvents=new TelemetryRepository(pool,()=>new Date('2026-10-08T10:15:00Z'));
   await serverEvents.record({name:'signup_completed',props:{provider:'oidc'}},userA);
   await serverEvents.record({name:'ai_request',props:{requestId:'req-a',mode:'create',provider:'openai',model:'gpt-6-luna',outcome:'proposal',errorCode:null,inputTokens:6000,cachedInputTokens:0,outputTokens:1500,costUsd:0.002,latencyMs:3000,calls:1,repairs:0,replayed:false}},userA);
@@ -72,6 +75,7 @@ try{
   assert.deepEqual(report.monetization,{upgradePrompts:1,offerViews:0,proCtaClicks:1,checkoutStarted:1,checkoutFailed:0,checkoutCompleted:1,limitHits:0,previous:{checkoutStarted:0,upgradePrompts:0},
     promptToCheckout:0.5,landingToPricing:0.5,pricingToProClick:1});
   assert.deepEqual(report.usage,{sessions:1,avgActiveMinutes:5,avgChanges:40,aiShare:1,animationShare:1,questionsAnswered:1,questionOtherShare:1,animationsCreated:0,animationFinishRate:1,landingScrolled75:0.5,landingReachedClosing:0});
+  assert.deepEqual(report.reach,{shareLinks:1,sharedViews:2,viewsPerLink:2,ctaFromShared:0.5,animationExports:1},'difusión: el SVG no cuenta como animación exportada');
   assert.deepEqual(report.cost,{aiUsd:0.002,previousAiUsd:0,perActiveUser:0.0005,aiRequests:1,blocked:1,failed:0});
   // Recalcular no duplica: un registro por día y los mismos números.
   const again=await dashboard.report();
@@ -108,8 +112,9 @@ try{
     await send('Page.navigate',{url:origin+'/?lang=es#fundador'});
     // La bandeja de consultas carga aparte: sólo se cuentan los indicadores del panel.
     const metricTiles="[...document.querySelectorAll('.founder-tile')].filter(t=>t.closest('section')?.getAttribute('aria-label')!=='Consultas de empresas').length";
-    let tiles=0;for(let i=0;i<60&&tiles<17;i++){await sleep(250);tiles=await js(metricTiles);}
-    assert.equal(tiles,17,'9 indicadores, costo y fricción, suscripción y uso');
+    let tiles=0;for(let i=0;i<60&&tiles<19;i++){await sleep(250);tiles=await js(metricTiles);}
+    assert.equal(tiles,19,'9 indicadores, costo y fricción, suscripción, uso y difusión');
+    assert.ok(await js("document.querySelector('[aria-label=\"Difusión\"]').textContent.includes('2 aperturas')"),'la tarjeta de enlaces muestra las aperturas sembradas');
     // Tendencias y recorrido: ocho gráficas con su tabla, hover/teclado con valor del día, y las etapas del recorrido con los valores sembrados.
     assert.equal(await js("document.querySelectorAll('.trend-tile').length"),8,'ocho tendencias');
     assert.equal(await js("document.querySelectorAll('.funnel li').length"),7,'siete etapas del recorrido');

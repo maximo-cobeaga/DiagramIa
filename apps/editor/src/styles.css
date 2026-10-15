@@ -54,8 +54,8 @@ header .cloud-save{min-height:30px;padding:3px 10px;font-size:13px;white-space:n
 .header-actions select{min-height:36px;padding:6px 8px}
 
 .doc-tabs{flex:none;display:flex;align-items:flex-end;gap:4px;padding:6px 14px 0;background:var(--surface-2);border-bottom:1px solid var(--line);overflow:auto hidden;min-height:42px}
-.doc-tabs>[role=tablist]{display:flex;gap:4px;min-width:0}
-.doc-tab{display:flex;align-items:center;background:transparent;border:1px solid transparent;border-bottom:0;border-radius:9px 9px 0 0;max-width:220px;position:relative}
+.doc-tabs>[role=tablist]{display:flex;gap:4px;min-width:0;overflow:auto hidden;scrollbar-width:thin;align-self:stretch;align-items:flex-end}
+.doc-tab{display:flex;align-items:center;background:transparent;border:1px solid transparent;border-bottom:0;border-radius:9px 9px 0 0;max-width:220px;min-width:104px;flex:0 1 auto;position:relative}
 .doc-tab.active{background:var(--surface);border-color:var(--line)}
 .doc-tab.active::before{content:'';position:absolute;left:10px;right:10px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--lime)}
 .doc-tab button{border:0;background:none;box-shadow:none;min-height:34px;transform:none}

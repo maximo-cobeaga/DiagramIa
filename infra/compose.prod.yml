@@ -70,6 +70,9 @@ services:
     ports:
       - "127.0.0.1:${DIAGRAMIA_WEB_PORT:-8080}:80"
     security_opt: [no-new-privileges:true]
+    # Sólo lo que nginx necesita: escuchar en el 80 y pasar sus procesos al usuario nginx (probado con la imagen oficial, ADR 109).
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE]
     restart: unless-stopped
     deploy:
       resources:

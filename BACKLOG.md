@@ -2,6 +2,12 @@
 
 Fuente estructurada: docs/development-plan.json (cada microfase lleva `status` y `evidence`). No cambiar status sin evidencia. Ordenar por dependencia, no sólo por facilidad visual.
 
+## Decisiones de producto delegadas (15/10/2026; ADR 109)
+
+- **Implementado:** Pro USD 5/mes o USD 40/año con salvaguarda de precio; difusión medida (compartir como diagrama útil, tarjeta en el panel); retención de 13 meses; capacidades mínimas del contenedor `web`; tira de pestañas en móvil; procedimiento de reembolsos.
+- **Pendiente del usuario (VPS y Paddle):** «Cambiar el precio de Pro» en `infra/DEPLOY.md`; hasta entonces Pro no se puede comprar. Archivar en Paddle el precio de USD 10 y el descuento del 50 % si nadie los usa. Primer pago real con reembolso. GitGuardian: tipo, archivo y línea del aviso.
+- **Para después, según datos:** quitar la marca de los enlaces como beneficio Pro; selección de proveedor de IA por cuenta para Empresas; panel del fundador y mensajes del core en inglés; Turnstile si llega spam.
+
 ## Auditoría externa del sitio (15/10/2026; ADR 106–108)
 
 - **Implementado, local:** arreglos de la auditoría (privacidad sin JavaScript, JSON de ejemplo, topes diarios, «Diagramia»), `pricing.html` y `business.html` en inglés, buscadores (`robots`, `sitemap`, Open Graph, `canonical`, `hreflang`, `noindex` en el editor), `security.txt`, 404 real en nginx, Términos y Privacidad con proveedor de IA, créditos, base legal y transferencias. Enlace para compartir y GIF/video, hechos en la sesión anterior, registrados y verificados (P4.2/P6.4/P8.2/P8.3).

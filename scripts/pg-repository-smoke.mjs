@@ -349,6 +349,18 @@ try{
   assert.equal((await recovered.apply(id,winner)).replayed,true);
   assert.equal((await recovered.restore(id,0,2,'restore-empty')).replayed,true);
   assert.equal((await recovered.get(id)).revision,104,'los reintentos no alteran el documento recuperado');
+  // Retención de 13 meses (ADR 109), sobre la copia restaurada: lo viejo se va, lo reciente queda, los agregados no se tocan.
+  const oldVisitor=randomUUID(),oldUser=(await targetPool.query('SELECT id FROM users LIMIT 1')).rows[0].id;
+  await targetPool.query(`INSERT INTO telemetry_events (id,origin,name,anonymous_id,session_id,occurred_at) VALUES ($1,'client','board_opened',$2,$3,now()-interval '14 months')`,[randomUUID(),oldVisitor,randomUUID()]);
+  await targetPool.query(`INSERT INTO telemetry_identities (anonymous_id,user_id,linked_at) VALUES ($1,$2,now()-interval '14 months')`,[oldVisitor,oldUser]);
+  await targetPool.query(`INSERT INTO contact_requests (id,name,email,company,message,created_at) VALUES ($1,'Vieja','vieja@empresa.test','Empresa vieja','Consulta de hace más de un año',now()-interval '14 months')`,[randomUUID()]);
+  const eventsBefore=(await targetPool.query('SELECT count(*)::int AS n FROM telemetry_events')).rows[0].n,dailyBefore=(await targetPool.query('SELECT count(*)::int AS n FROM telemetry_daily')).rows[0].n;
+  assert.deepEqual(await new TelemetryRepository(targetPool).purgeOlderThan(),{events:1,identities:1},'sólo el evento viejo y su vínculo');
+  assert.equal(await new ContactRepository(targetPool).purgeOlderThan(),1,'sólo la consulta vieja');
+  assert.equal((await targetPool.query('SELECT count(*)::int AS n FROM telemetry_events')).rows[0].n,eventsBefore-1);
+  assert.equal((await targetPool.query('SELECT count(*)::int AS n FROM telemetry_daily')).rows[0].n,dailyBefore,'los agregados diarios se conservan');
+  assert.equal((await new ContactRepository(targetPool).list())[0].company,'Equipo de pruebas','la consulta reciente queda');
+  console.log('  retención de 13 meses: eventos, vínculos y consultas viejas borrados; lo reciente y los agregados intactos');
   console.log('Repositorio PostgreSQL: CAS, editor ↔ MCP, sesiones/proyectos aislados, cuota de 3 documentos y backup/restore aprobados.');
 }catch(error){failure=error;
 }finally{

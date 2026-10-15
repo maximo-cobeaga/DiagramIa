@@ -11,7 +11,8 @@ type Report={to:string;window:{from:string;to:string};wau:number;previousWau:num
   monetization?:{upgradePrompts:number;offerViews:number;proCtaClicks:number;checkoutStarted:number;checkoutFailed:number;checkoutCompleted?:number;limitHits:number;previous:{checkoutStarted:number;upgradePrompts:number};
     promptToCheckout:number|null;landingToPricing:number|null;pricingToProClick:number|null};
   usage?:{sessions:number;avgActiveMinutes:number|null;avgChanges:number|null;aiShare:number|null;animationShare:number|null;questionsAnswered:number;questionOtherShare:number|null;
-    animationsCreated:number;animationFinishRate:number|null;landingScrolled75:number|null;landingReachedClosing:number|null};};
+    animationsCreated:number;animationFinishRate:number|null;landingScrolled75:number|null;landingReachedClosing:number|null};
+  reach?:{shareLinks:number;sharedViews:number;viewsPerLink:number|null;ctaFromShared:number|null;animationExports:number};};
 
 const format=(value:number|null,unit:Unit)=>value===null?'Sin datos':unit==='ratio'?`${(value*100).toFixed(value<0.1&&value>0?1:0)} %`
   :unit==='minutes'?`${value<10?value.toFixed(1):Math.round(value)} min`:unit==='usd'?`USD ${value.toFixed(value<1?4:2)}`:value.toFixed(2);
@@ -82,6 +83,12 @@ export function FounderDashboard(){
         <p>Eligieron «Otro» en {format(report.usage.questionOtherShare,'ratio')}: si es alto, las opciones sugeridas no están acertando.</p></article>
       <article className="founder-tile"><h2>Animaciones</h2><strong>{report.usage.animationsCreated}</strong><span className="founder-change">creadas en la semana</span>
         <p>Reproducciones que llegan hasta el final: {format(report.usage.animationFinishRate,'ratio')}.</p></article>
+    </section>}
+    {report.reach&&<section className="founder-grid" aria-label="Difusión">
+      <article className="founder-tile"><h2>Enlaces compartidos</h2><strong>{report.reach.shareLinks}</strong><span className="founder-change">creados en la semana</span>
+        <p>{report.reach.sharedViews} aperturas ({format(report.reach.viewsPerLink,'number')} por enlace). Desde un enlace, {format(report.reach.ctaFromShared,'ratio')} tocó «Hecho con Diagramia».</p></article>
+      <article className="founder-tile"><h2>GIF y video</h2><strong>{report.reach.animationExports}</strong><span className="founder-change">animaciones exportadas</span>
+        <p>Cada archivo circula fuera de Diagramia con su marca: es la otra vía de difusión, además de los enlaces.</p></article>
     </section>}
     <section aria-label="Agregados diarios">
       <h2 className="founder-section">Últimos 14 días</h2>

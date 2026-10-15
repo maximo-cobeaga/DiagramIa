@@ -34,7 +34,7 @@ const EVENT_PROPS={
   board_opened:z.strictObject({returning:z.boolean(),fromLanding:z.boolean()}),
   first_element_created:z.strictObject({}),
   signup_started:z.strictObject({trigger:z.enum(['ai','cloud','menu','pro'])}),
-  useful_diagram_created:z.strictObject({reason:z.enum(['exported','saved_cloud','reopened']),nodes:Count,edges:Count}),
+  useful_diagram_created:z.strictObject({reason:z.enum(['exported','saved_cloud','reopened','shared']),nodes:Count,edges:Count}),
   // Editor
   node_created:ChangeProps,node_deleted:ChangeProps,node_moved:ChangeProps,node_resized:ChangeProps,node_edited:ChangeProps,
   edge_created:ChangeProps,edge_deleted:ChangeProps,edge_edited:ChangeProps,zone_created:ChangeProps,drawing_created:ChangeProps,

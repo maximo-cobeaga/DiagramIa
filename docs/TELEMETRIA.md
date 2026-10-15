@@ -82,6 +82,15 @@ Eventos nuevos, todos enums o conteos (el contrato sigue sin texto libre):
 
 El panel del fundador agrega «Suscripción y oferta» (del aviso al pago, landing → precios → Pro, oferta y límites) y «Uso del editor» (sesiones, tiempo activo, adopción de IA y animaciones, preguntas respondidas con «Otro», animaciones que llegan al final). Las métricas diarias nuevas se calculan igual que las anteriores; los días previos a este cambio figuran en cero porque esos eventos no existían.
 
+## Difusión y diagrama útil (ADR 109)
+
+- `useful_diagram_created` suma la razón `shared`: crear el enlace de un diagrama es la señal de valor más fuerte (alguien quiso mostrárselo a otra persona). Exportar la animación a GIF o video ya contaba como `exported`. Sigue contando una vez por documento.
+- El panel suma «Difusión»: enlaces creados, aperturas de enlaces (`shared_view_opened`), aperturas por enlace, proporción que toca «Hecho con Diagramia» (`shared_view_cta_clicked`) y animaciones exportadas (`export` con `animation-gif` o `animation-video`). Son cuatro métricas diarias nuevas (`share_links`, `shared_views`, `shared_view_cta`, `animation_exports`); los días agregados antes del cambio las muestran en cero hasta que se recalculan.
+
+## Retención (ADR 109)
+
+Los eventos crudos (`telemetry_events`) y las consultas de empresas se borran a los 13 meses, automáticamente, al arrancar el gateway y una vez por día. Los agregados diarios (`telemetry_daily`) se conservan: son conteos sin identificadores.
+
 ## Dashboard del fundador (P7.3)
 
 Abrí el editor en `/#fundador` con una cuenta cuyo email verificado esté en `DIAGRAMIA_ADMIN_EMAILS` (separados por comas). Muestra los 10 indicadores de la sección 12 de la sesión de negocio para la semana UTC actual contra la anterior, más costo de IA, fricción y una tabla de los últimos 14 días. Definiciones: ADR 053. API: `GET /v1/admin/dashboard?to=AAAA-MM-DD`.

@@ -8,7 +8,9 @@ export const DAILY_METRICS=['active','landing_visitors','landing_to_canvas','can
   // Uso del editor: sesiones con interacción, tiempo activo y qué porción usa IA o animaciones.
   'sessions','session_active_seconds','session_changes','session_with_ai','session_with_animation','ai_questions_answered','ai_question_other','animations_created','animations_played','animations_finished',
   // Recorrido de la landing: visitantes que llegaron a cada tramo.
-  'landing_reached_precios','landing_reached_cierre','landing_scrolled_75'] as const;
+  'landing_reached_precios','landing_reached_cierre','landing_scrolled_75',
+  // Difusión (ADR 109): enlaces para compartir, sus aperturas y la animación exportada, que circulan con la marca.
+  'share_links','shared_views','shared_view_cta','animation_exports'] as const;
 export type DailyMetrics=Record<typeof DAILY_METRICS[number],number>;
 export type Indicator={id:string;label:string;unit:'ratio'|'minutes'|'number'|'usd';value:number|null;previous:number|null;detail:string};
 
@@ -53,7 +55,11 @@ const DAILY_SQL=`SELECT
   count(*) FILTER (WHERE name='animation_finished') AS animations_finished,
   count(DISTINCT anonymous_id) FILTER (WHERE name='landing_section_viewed' AND props->>'section'='precios') AS landing_reached_precios,
   count(DISTINCT anonymous_id) FILTER (WHERE name='landing_section_viewed' AND props->>'section'='cierre') AS landing_reached_cierre,
-  count(DISTINCT anonymous_id) FILTER (WHERE name='landing_scroll_depth' AND (props->>'percent')::int>=75) AS landing_scrolled_75
+  count(DISTINCT anonymous_id) FILTER (WHERE name='landing_scroll_depth' AND (props->>'percent')::int>=75) AS landing_scrolled_75,
+  count(*) FILTER (WHERE name='share_link_created') AS share_links,
+  count(*) FILTER (WHERE name='shared_view_opened') AS shared_views,
+  count(*) FILTER (WHERE name='shared_view_cta_clicked') AS shared_view_cta,
+  count(*) FILTER (WHERE name='export' AND props->>'format' IN ('animation-gif','animation-video')) AS animation_exports
 FROM telemetry_facts WHERE day=$1::date`;
 
 const iso=(date:Date)=>date.toISOString().slice(0,10);
@@ -147,6 +153,7 @@ export class FounderDashboard{
         animationsCreated:now.animations_created,animationFinishRate:ratio(now.animations_finished,now.animations_played),
         landingScrolled75:ratio(now.landing_scrolled_75,now.landing_visitors),landingReachedClosing:ratio(now.landing_reached_cierre,now.landing_visitors)
       },
+      reach:{shareLinks:now.share_links,sharedViews:now.shared_views,viewsPerLink:ratio(now.shared_views,now.share_links),ctaFromShared:ratio(now.shared_view_cta,now.shared_views),animationExports:now.animation_exports},
       friction:{jsErrorsPerActive:ratio(now.js_errors,w.active),apiErrors:now.api_errors,aiUndoAfterApply:ratio(now.ai_undo_after,now.ai_applied),aiRegenerations:ratio(now.ai_regenerated,now.ai_proposals)},
       indicators,days};
   }

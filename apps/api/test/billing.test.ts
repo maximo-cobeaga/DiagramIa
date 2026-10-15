@@ -97,6 +97,11 @@ test('checkout: sends the price and the account, uses the right host, and fails 
   await createCheckout({...config,yearlyPriceId:'pri_year'},'user-3',ok,undefined,'year');
   assert.deepEqual(JSON.parse(String(seen.at(-1)!.init.body)).items,[{price_id:'pri_year',quantity:1}]);
   await assert.rejects(createCheckout(config,'user-3',ok,undefined,'year'),BillingError);
+  // Precio anunciado (ADR 109): si Paddle cobraría otro monto o moneda, no se devuelve la página de pago.
+  const priced=(amount:string,currency='USD',id=PRICE):typeof fetch=>async()=>new Response(JSON.stringify({data:{checkout:{url:'https://pay.example/checkout/txn_9'},items:[{price:{id,unit_price:{amount,currency_code:currency}}}]}}),{status:201});
+  assert.equal(await createCheckout(config,'user-5',priced('500'),undefined,'month',5),'https://pay.example/checkout/txn_9');
+  for(const [label,fetcher] of [['otro monto',priced('1000')],['otra moneda',priced('500','EUR')],['otro precio',priced('500','USD','pri_other')],['sin precio en la respuesta',ok]] as const)
+    await assert.rejects(createCheckout(config,'user-5',fetcher,undefined,'month',5),(error:unknown)=>error instanceof BillingError&&error.code==='BILLING_UNAVAILABLE'&&error.message.includes('CHECKOUT_PRICE'),label);
   // El descuento viaja sólo si el servidor lo decide; sin él, el cuerpo es el de siempre.
   await createCheckout(config,'user-2',ok,'dsc_01abcdefghijklmnopqrstuvwx');
   assert.deepEqual(JSON.parse(String(seen.at(-1)!.init.body)),{items:[{price_id:PRICE,quantity:1}],custom_data:{diagramia_user_id:'user-2'},discount_id:'dsc_01abcdefghijklmnopqrstuvwx'});

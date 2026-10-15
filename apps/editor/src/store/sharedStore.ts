@@ -123,6 +123,8 @@ export async function shareTokenOf(id:string):Promise<string|null>{
 export async function createShareLink(id:string):Promise<string>{
   const answer=await request(endpoint('cloud',id)+'/share','POST');
   track('share_link_created',{});
+  // Compartir es la señal de valor más fuerte: alguien quiso mostrárselo a otra persona.
+  if(current()&&documentStore.get().doc.id===id)trackUseful(documentStore.get().doc,'shared');
   return answer.token;
 }
 /** Corta el enlace: deja de abrir en el momento. Compartir de nuevo genera una dirección distinta. */

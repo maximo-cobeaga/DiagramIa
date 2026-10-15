@@ -111,8 +111,11 @@ function AccountButton(){
 /** Pestañas: cada una es un diagrama independiente, con su propio historial y guardado. */
 function Tabs(){
   const {tabs,activeId,doc}=useStore(documentStore);
+  // Con muchas pestañas la tira se desplaza: la activa (también una recién creada) queda siempre a la vista.
+  const list=useRef<HTMLDivElement>(null);
+  useEffect(()=>{list.current?.querySelector('.doc-tab.active')?.scrollIntoView({block:'nearest',inline:'nearest'});},[activeId,tabs.length]);
   return <nav className="doc-tabs" aria-label={t('Diagramas abiertos')}>
-    <div role="tablist">{tabs.map(tab=><div key={tab.id} className={'doc-tab'+(tab.id===activeId?' active':'')}>
+    <div role="tablist" ref={list}>{tabs.map(tab=><div key={tab.id} className={'doc-tab'+(tab.id===activeId?' active':'')}>
       <button role="tab" aria-selected={tab.id===activeId} onClick={()=>{if(tab.id!==activeId){resetPlayback();switchTab(tab.id);}}} title={tab.title}>{tab.title}{tab.id===activeId&&<small>r{doc.revision}</small>}</button>
       <button className="doc-tab-close" aria-label={t('Cerrar {0}',tab.title)} title={t('Cerrar pestaña')} onClick={()=>{if(confirm(t('Se cierra «{0}» y se borra de este navegador. Exportalo antes si lo necesitás.',tab.title))){resetPlayback();closeTab(tab.id);}}}>×</button>
     </div>)}</div>

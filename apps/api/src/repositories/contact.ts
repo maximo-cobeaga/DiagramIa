@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import type {Pool} from 'pg';
 import {z} from 'zod';
+import {RETENTION_MONTHS,monthsBefore} from './telemetry.js';
 
 const clean=(max:number)=>z.string().trim().max(max);
 /** Consulta del plan Empresas. `website` es una trampa para bots: una persona nunca lo ve ni lo completa. */
@@ -36,5 +37,11 @@ export class ContactRepository{
   async markAnswered(id:string):Promise<boolean>{
     const result=await this.pool.query("UPDATE contact_requests SET status='answered' WHERE id=$1",[id]);
     return result.rowCount===1;
+  }
+
+  /** Retención (ADR 109): una consulta se borra a los 13 meses de recibida, respondida o no. */
+  async purgeOlderThan(months=RETENTION_MONTHS,now=new Date()):Promise<number>{
+    const result=await this.pool.query('DELETE FROM contact_requests WHERE created_at<$1',[monthsBefore(now,months)]);
+    return result.rowCount??0;
   }
 }

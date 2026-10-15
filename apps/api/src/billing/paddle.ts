@@ -12,6 +12,8 @@ export type SubscriptionChange={
 };
 /** `priceId` es el plan mensual; `yearlyPriceId`, opcional, el anual (ADR 093). Los dos otorgan el mismo plan Pro. */
 export type PaddleConfig={env:'sandbox'|'live';apiKey:string;webhookSecret:string;priceId:string;yearlyPriceId?:string|null;
+  /** Precios reemplazados (ADR 109): ya no se venden, pero sus suscripciones siguen dando Pro y sus avisos se procesan. */
+  legacyPriceIds?:readonly string[];
   /** Token público de Paddle.js (`test_…` o `live_…`). Es el único dato de Paddle que llega al navegador; sin él no se ofrece el pago. */
   clientToken?:string|null;
   /** Página propia que carga Paddle.js (ADR 094). Paddle devuelve esta URL con `?_ptxn=<transacción>` y ahí se abre el pago. La fija el servidor, nunca el cliente. */
@@ -71,8 +73,10 @@ export function translate(rawBody:Buffer,priceIds:string|readonly (string|null|u
  * Paddle no tiene una página de pago propia para esto: devuelve el «default payment link» (o `checkoutUrl`) con `?_ptxn=…`,
  * y esa página tiene que cargar Paddle.js. Requiere el «default payment link» configurado en el panel de Paddle (Checkout settings).
  * La URL devuelta se valida: sólo se redirige al navegador a la página propia o, sin ella, a una dirección https.
+ * Con `expectedUsd`, el precio que Paddle va a cobrar tiene que ser el que anuncia el sitio (ADR 109): si no coincide
+ * (por ejemplo, entre un cambio de precio en el código y en Paddle), no se abre el pago. La transacción queda sin pagar.
  */
-export async function createCheckout(config:PaddleConfig,userId:string,fetcher:typeof fetch=fetch,discountId?:string,interval:BillingInterval='month'):Promise<string>{
+export async function createCheckout(config:PaddleConfig,userId:string,fetcher:typeof fetch=fetch,discountId?:string,interval:BillingInterval='month',expectedUsd?:number|null):Promise<string>{
   const priceId=interval==='year'?config.yearlyPriceId:config.priceId;
   if(!priceId)throw new BillingError('BILLING_UNAVAILABLE','El plan anual no está disponible.');
   const response=await fetcher(`${API[config.env]}/transactions`,{
@@ -83,7 +87,7 @@ export async function createCheckout(config:PaddleConfig,userId:string,fetcher:t
     body:JSON.stringify({items:[{price_id:priceId,quantity:1}],custom_data:{diagramia_user_id:userId},...(discountId?{discount_id:discountId}:{})})
   }).catch(()=>null);
   if(!response)throw new BillingError('PROVIDER_ERROR','No se pudo contactar al proveedor de pagos.');
-  const body=await response.json().catch(()=>null) as {data?:{checkout?:{url?:unknown}};error?:{code?:unknown}}|null;
+  const body=await response.json().catch(()=>null) as {data?:{checkout?:{url?:unknown};items?:{price?:{id?:unknown;unit_price?:{amount?:unknown;currency_code?:unknown}}}[]};error?:{code?:unknown}}|null;
   const url=body?.data?.checkout?.url;
   const trusted=typeof url==='string'&&(config.checkoutUrl?url.startsWith(config.checkoutUrl+'?'):url.startsWith('https://'));
   if(!response.ok||!trusted){
@@ -94,6 +98,13 @@ export async function createCheckout(config:PaddleConfig,userId:string,fetcher:t
     if(code==='transaction_checkout_url_domain_is_not_approved')throw new BillingError('BILLING_UNAVAILABLE','El dominio del pago todavía no está aprobado en Paddle. Contactá a soporte; volver a intentarlo ahora no lo resolverá. Referencia: CHECKOUT_DOMAIN.');
     if(response.status===401||response.status===403)throw new BillingError('BILLING_UNAVAILABLE','No podemos habilitar el pago en este momento. Contactá a soporte. Referencia: CHECKOUT_ACCESS.');
     throw new BillingError('PROVIDER_ERROR','No pudimos preparar tu pago con Paddle. Esperá unos minutos o contactá a soporte si continúa.');
+  }
+  if(expectedUsd!=null){
+    const charged=body?.data?.items?.find(item=>item.price?.id===priceId)?.price?.unit_price;
+    if(charged?.currency_code!=='USD'||Number(charged.amount)!==Math.round(expectedUsd*100)){
+      console.error('[billing] el precio de Paddle no coincide con el anunciado:',priceId,`anunciado USD ${expectedUsd}`,`Paddle ${typeof charged?.currency_code==='string'?charged.currency_code:'?'} ${Number(charged?.amount)/100}`);
+      throw new BillingError('BILLING_UNAVAILABLE','Estamos actualizando el precio de Pro. Probá de nuevo en unos minutos; no se cobró nada. Referencia: CHECKOUT_PRICE.');
+    }
   }
   return url;
 }

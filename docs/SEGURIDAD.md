@@ -56,7 +56,8 @@ Revisión del gateway, el cobro, el login, la configuración de nginx y el front
 
 - **Enlace de pago ajeno.** Quien recibe un enlace `pago.html?_ptxn=…` creado por otra cuenta pagaría el Pro de esa cuenta. No se ata el enlace al navegador que lo creó porque Paddle usa el mismo formato en sus correos de recuperación y en «Cambiar medio de pago». El importe y el destinatario se ven en el formulario de Paddle.
 - **HSTS sin `includeSubDomains`** y terminación TLS: los pone el proxy del VPS (carpeta de ReservApp), fuera de este repositorio.
-- **Contenedor `web`:** nginx corre con las capacidades por defecto de la imagen oficial; el gateway sí corre sin root, sin capacidades y con sistema de archivos de sólo lectura.
+- **Contenedor `web`:** desde ADR 109 nginx corre sin capacidades salvo CHOWN, SETUID, SETGID y NET_BIND_SERVICE y con `no-new-privileges` (probado con la imagen oficial); el gateway corre sin root, sin capacidades y con sistema de archivos de sólo lectura.
+- **Precio anunciado y cobrado (ADR 109):** el gateway no abre un pago si el precio de Paddle difiere del que anuncia el sitio (`CHECKOUT_PRICE`).
 - **Ataque volumétrico:** los límites del gateway viven en memoria de un proceso; no reemplazan un límite en el proxy del VPS o un servicio delante.
 - **Reembolsos y contracargos:** el gateway sólo procesa avisos de suscripción. Un reembolso hecho en Paddle no baja el plan hasta que la suscripción se cancele.
 - **Textos legales:** privacidad, términos y reembolsos se publican como definitivos desde el 13/10/2026 (ADR 100), en español e inglés, sin revisión profesional; Paddle los revisa para aprobar la cuenta real.

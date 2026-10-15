@@ -38,7 +38,7 @@ test('go-live setup creates the whole live catalog once, and the check then agre
   const first=await setup(fake.api,settings(offer));
   assert.deepEqual(fake.writes,['POST /products','POST /prices','POST /prices','POST /discounts','POST /notification-settings','POST /client-tokens']);
   const [monthly,yearly]=fake.store.prices!;
-  assert.deepEqual([monthly!.unit_price,monthly!.billing_cycle,monthly!.quantity],[{amount:'1000',currency_code:'USD'},{interval:'month',frequency:1},{minimum:1,maximum:1}]);
+  assert.deepEqual([monthly!.unit_price,monthly!.billing_cycle,monthly!.quantity],[{amount:'500',currency_code:'USD'},{interval:'month',frequency:1},{minimum:1,maximum:1}]);
   assert.deepEqual([yearly!.unit_price.amount,yearly!.billing_cycle.interval,yearly!.quantity],['4000','year',{minimum:1,maximum:1}],'un Pro por compra: nunca 1–100');
   assert.deepEqual([fake.store.discounts![0]!.amount,fake.store.discounts![0]!.maximum_recurring_intervals,fake.store.discounts![0]!.restrict_to],['50',3,[monthly!.id]],'la oferta sólo alcanza al plan mensual');
   const destination=fake.store['notification-settings']![0]!;
@@ -54,6 +54,18 @@ test('go-live setup creates the whole live catalog once, and the check then agre
   assert.deepEqual(bad(report),[]);assert.deepEqual(fake.writes,['POST /transactions'],'sólo --probe escribe: una transacción sin pagar');
   assert.equal(fake.store.transactions![0]!.custom_data.diagramia_user_id,undefined,'la transacción de prueba no es de ninguna cuenta');
   assert.ok(!JSON.stringify(report).includes(destination.endpoint_secret_key)&&!JSON.stringify(first.done).includes(destination.endpoint_secret_key),'el secreto del webhook no aparece en lo que se imprime');
+});
+
+test('a price change creates the new monthly price and keeps recognizing the replaced one',async()=>{
+  // La cuenta live ya tenía el mensual de USD 10 (ADR 093); el catálogo ahora pide USD 5 (ADR 109).
+  const old={id:'pri_01oldmonthlytenusd0000000000',product_id:'pro_01existing',status:'active',description:'Diagramia Pro, USD 10 por mes',unit_price:{amount:'1000',currency_code:'USD'},billing_cycle:{interval:'month',frequency:1},quantity:{minimum:1,maximum:1},trial_period:null};
+  const fake=fakePaddle({products:[{id:'pro_01existing',name:'Diagramia Pro',status:'active',custom_data:{plan:'pro'}}],prices:[old]});
+  const {values,done}=await setup(fake.api,settings({...base,DIAGRAMIA_PADDLE_PRICE_PRO:old.id,DIAGRAMIA_PADDLE_PRICE_PRO_LEGACY:'pri_01older'}));
+  const created=fake.store.prices!.find(price=>price.unit_price.amount==='500')!;
+  assert.equal(values.DIAGRAMIA_PADDLE_PRICE_PRO,created.id,'el mensual pasa al precio nuevo');
+  assert.equal(values.DIAGRAMIA_PADDLE_PRICE_PRO_LEGACY,`pri_01older,${old.id}`,'el reemplazado se suma a los anteriores');
+  assert.equal(fake.store.prices!.find(price=>price.id===old.id)!.status,'active','el precio viejo no se archiva: quien ya paga con él sigue renovando');
+  assert.ok(done.some((line:string)=>line.includes(old.id)));
 });
 
 test('the check names what would stop real payments',async()=>{

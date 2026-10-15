@@ -28,6 +28,7 @@ const FIXED:Readonly<Record<string,string>>={
   'El dominio del pago todavía no está aprobado en Paddle. Contactá a soporte; volver a intentarlo ahora no lo resolverá. Referencia: CHECKOUT_DOMAIN.':'The checkout domain is not approved in Paddle yet. Contact support; trying again now will not fix it. Reference: CHECKOUT_DOMAIN.',
   'No podemos habilitar el pago en este momento. Contactá a soporte. Referencia: CHECKOUT_ACCESS.':'We cannot enable checkout right now. Contact support. Reference: CHECKOUT_ACCESS.',
   'No pudimos preparar tu pago con Paddle. Esperá unos minutos o contactá a soporte si continúa.':'We could not prepare your payment with Paddle. Wait a few minutes or contact support if it continues.',
+  'Estamos actualizando el precio de Pro. Probá de nuevo en unos minutos; no se cobró nada. Referencia: CHECKOUT_PRICE.':'We are updating the Pro price. Try again in a few minutes; nothing was charged. Reference: CHECKOUT_PRICE.',
   'No se pudo contactar al proveedor de pagos.':'Could not reach the payment provider.',
   'Este diagrama excede tu plan actual y quedó en sólo lectura. Pasá a Pro o borrá otros diagramas para editarlo.':'This diagram exceeds your current plan and is read-only. Go Pro or delete other diagrams to edit it.',
   'El documento supera 10 MB.':'The document exceeds 10 MB.',

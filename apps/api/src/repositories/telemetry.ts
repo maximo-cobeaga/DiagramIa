@@ -37,7 +37,23 @@ export class TelemetryRepository{
     await this.pool.query(`INSERT INTO telemetry_events (id,origin,name,user_id,occurred_at,props) VALUES ($1,'server',$2,$3,$4,$5::jsonb)`,
       [randomUUID(),parsed.name,userId,this.now(),JSON.stringify(parsed.props)]);
   }
+
+  /**
+   * Retención (ADR 109): los eventos de más de 13 meses se borran, y con ellos el vínculo navegador → cuenta que ya no
+   * tiene eventos. Los agregados diarios (`telemetry_daily`) quedan: son conteos sin identificadores.
+   */
+  async purgeOlderThan(months=RETENTION_MONTHS):Promise<{events:number;identities:number}>{
+    const cutoff=monthsBefore(this.now(),months);
+    const events=await this.pool.query('DELETE FROM telemetry_events WHERE occurred_at<$1',[cutoff]);
+    const identities=await this.pool.query(`DELETE FROM telemetry_identities i WHERE linked_at<$1
+      AND NOT EXISTS (SELECT 1 FROM telemetry_events e WHERE e.anonymous_id=i.anonymous_id)`,[cutoff]);
+    return {events:events.rowCount??0,identities:identities.rowCount??0};
+  }
 }
+
+/** Plazo de retención de datos de uso y consultas comerciales, el que publica el aviso de privacidad. */
+export const RETENTION_MONTHS=13;
+export const monthsBefore=(at:Date,months:number)=>{const date=new Date(at);date.setUTCMonth(date.getUTCMonth()-months);return date;};
 
 /** Límite de pedidos por clave (IP) en una ventana deslizante, en memoria del proceso. */
 export class RateLimiter{

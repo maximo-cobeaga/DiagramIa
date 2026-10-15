@@ -13,7 +13,7 @@ export const EVENTS=['subscription.created','subscription.activated','subscripti
 /** Catálogo de Pro. Los importes son los de lista del gateway (apps/api/src/index.ts) y los que anuncia el sitio. */
 export const CATALOG={
   product:{name:'Diagramia Pro',description:'Plan Pro de Diagramia: más créditos de IA, más diagramas en la nube y elementos propios.',tax_category:'saas',custom_data:{plan:'pro'}},
-  monthly:{amount:'1000',interval:'month',description:'Diagramia Pro, USD 10 por mes'},
+  monthly:{amount:'500',interval:'month',description:'Diagramia Pro, USD 5 por mes'},
   yearly:{amount:'4000',interval:'year',description:'Diagramia Pro, USD 40 por año'}
 };
 const PERMISSIONS='En Paddle → Developer tools → Authentication, la clave necesita leer y escribir Products, Prices, Discounts, Notification settings y Client-side tokens (y Transactions para --probe).';
@@ -66,7 +66,8 @@ export function settings(env){
   const percent=Number(env.DIAGRAMIA_OFFER_PERCENT),months=env.DIAGRAMIA_OFFER_MONTHS?Number(env.DIAGRAMIA_OFFER_MONTHS):1;
   return {apiKey:env.DIAGRAMIA_PADDLE_API_KEY,declared:env.DIAGRAMIA_PADDLE_ENV==='live'?'live':'sandbox',
     webhookUrl:new URL('api/v1/billing/webhook',home).href,checkoutUrl:new URL('pago.html',home).href,
-    monthly:env.DIAGRAMIA_PADDLE_PRICE_PRO||'',yearly:env.DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY||'',webhookSecret:env.DIAGRAMIA_PADDLE_WEBHOOK_SECRET||'',clientToken:env.DIAGRAMIA_PADDLE_CLIENT_TOKEN||'',
+    monthly:env.DIAGRAMIA_PADDLE_PRICE_PRO||'',yearly:env.DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY||'',
+    legacy:(env.DIAGRAMIA_PADDLE_PRICE_PRO_LEGACY||'').split(',').map(id=>id.trim()).filter(Boolean),webhookSecret:env.DIAGRAMIA_PADDLE_WEBHOOK_SECRET||'',clientToken:env.DIAGRAMIA_PADDLE_CLIENT_TOKEN||'',
     discountId:env.DIAGRAMIA_OFFER_DISCOUNT_ID||'',
     // La oferta es opcional: sólo se arma con un porcentaje válido (las mismas reglas que el gateway).
     offer:Number.isInteger(percent)&&percent>=5&&percent<=90&&Number.isInteger(months)&&months>=1&&months<=12?{percent,months}:null};
@@ -185,6 +186,12 @@ export async function setup(api,config){
   };
   const monthly=await price(CATALOG.monthly,'mensual'),yearly=await price(CATALOG.yearly,'anual');
   const values={DIAGRAMIA_PADDLE_ENV:api.environment,DIAGRAMIA_PADDLE_PRICE_PRO:monthly,DIAGRAMIA_PADDLE_PRICE_PRO_YEARLY:yearly};
+  // Un precio reemplazado (por ejemplo, al cambiar el monto) se sigue reconociendo en los avisos: quien ya paga con él no pierde Pro (ADR 109).
+  const replaced=[config.monthly,config.yearly].filter(id=>id&&id.startsWith('pri_')&&id!==monthly&&id!==yearly);
+  if(replaced.length){
+    values.DIAGRAMIA_PADDLE_PRICE_PRO_LEGACY=[...new Set([...(config.legacy??[]),...replaced])].join(',');
+    done.push(`Precios anteriores que se siguen reconociendo en los avisos: ${values.DIAGRAMIA_PADDLE_PRICE_PRO_LEGACY}`);
+  }
   if(config.offer){
     const {percent,months}=config.offer,discounts=await api.list('/discounts?status=active');
     let discount=discounts.find(item=>!item.code&&item.restrict_to?.length&&!discountIssues(item,config.offer,monthly).length);
